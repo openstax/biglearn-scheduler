@@ -31,6 +31,11 @@ gem 'sdoc', '~> 0.4.0', group: :doc
 # Use Capistrano for deployment
 # gem 'capistrano-rails', group: :development
 
+# We use this gem to talk to Biglearn
+# Even though Biglearn does not support OAuth,
+# this allows us to easily start using it in the future if we decide to
+gem 'oauth2'
+
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'byebug'
@@ -51,6 +56,12 @@ group :development do
 
   # Use thin as the webserver in development
   gem 'thin'
+
+  # Stubs HTTP requests
+  gem 'webmock'
+
+  # Records HTTP requests
+  gem 'vcr'
 end
 
 group :test do

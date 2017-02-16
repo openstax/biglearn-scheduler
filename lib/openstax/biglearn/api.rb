@@ -25,56 +25,48 @@ module OpenStax::Biglearn::Api
       single_api_request method: :fetch_course_metadatas
     end
 
-    def fetch_ecosystem_events(ecosystem_event_requests:)
+    def fetch_ecosystem_events(ecosystem_event_requests)
       bulk_api_request method: :fetch_ecosystem_events,
                        requests: ecosystem_event_requests,
-                       keys: [
-                         :event_types,
-                         :ecosystem_uuid,
-                         :sequence_number_offset,
-                         :event_limit
-                       ]
+                       keys: [ :event_types, :ecosystem ],
+                       optional_keys: [ :event_limit ]
     end
 
-    def fetch_course_events(course_event_requests:)
+    def fetch_course_events(course_event_requests)
       bulk_api_request method: :fetch_course_events,
                        requests: course_event_requests,
-                       keys: [
-                         :event_types,
-                         :ecosystem_uuid,
-                         :sequence_number_offset,
-                         :event_limit
-                       ]
+                       keys: [ :event_types, :course ],
+                       optional_keys: [ :event_limit ]
     end
 
-    def update_student_clues(student_clue_updates:)
+    def update_student_clues(student_clue_updates)
       bulk_api_request method: :update_student_clues,
                        requests: student_clue_updates,
-                       keys: [ :student_uuid, :book_container_uuid, :clue_data ]
+                       keys: [ :student, :book_container_uuid, :clue_data ]
     end
 
-    def update_teacher_clues(teacher_clue_updates:)
+    def update_teacher_clues(teacher_clue_updates)
       bulk_api_request method: :update_teacher_clues,
                        requests: teacher_clue_updates,
-                       keys: [ :course_container_uuid, :book_container_uuid, :clue_data ]
+                       keys: [ :course_container, :book_container_uuid, :clue_data ]
     end
 
-    def update_assignment_pes(pe_updates:)
+    def update_assignment_pes(pe_updates)
       bulk_api_request method: :update_assignment_pes,
                        requests: pe_updates,
-                       keys: [ :assignment_uuid, :exercise_uuids ]
+                       keys: [ :assignment, :exercises ]
     end
 
-    def update_assignment_spes(spe_updates:)
+    def update_assignment_spes(spe_updates)
       bulk_api_request method: :update_assignment_spes,
                        requests: spe_updates,
-                       keys: [ :assignment_uuid, :exercise_uuids ]
+                       keys: [ :assignment, :exercises ]
     end
 
-    def update_practice_worst_areas(practice_worst_areas_updates:)
+    def update_practice_worst_areas(practice_worst_areas_updates)
       bulk_api_request method: :update_practice_worst_areas,
                        requests: practice_worst_areas_updates,
-                       keys: [ :student_uuid, :exercise_uuids ]
+                       keys: [ :student, :exercises ]
     end
 
     def use_fake_client
@@ -128,7 +120,7 @@ module OpenStax::Biglearn::Api
       result
     end
 
-    def single_api_request(method:, request:, keys:, optional_keys: [],
+    def single_api_request(method:, request: nil, keys: [], optional_keys: [],
                            result_class: Hash, perform_later: false)
       verified_request = verify_and_slice_request method: method,
                                                   request: request,
