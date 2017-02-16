@@ -1,6 +1,5 @@
 source 'https://rubygems.org'
 
-
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
 gem 'rails', '4.2.7.1'
 # Use postgresql as the database for Active Record
@@ -52,4 +51,12 @@ group :development do
 
   # Use thin as the webserver in development
   gem 'thin'
+end
+
+group :test do
+  # Clean up the database before/after specs
+  gem 'database_cleaner'
+
+  # Convenience matchers for specs
+  gem 'shoulda-matchers'
 end
