@@ -1,5 +1,13 @@
 require 'rails_helper'
 
 RSpec.describe Ecosystem, type: :model do
-  pending "add some examples to (or delete) #{__FILE__}"
+  subject { FactoryGirl.create :ecosystem }
+
+  it { is_expected.to validate_presence_of :sequence_number }
+
+  it do
+    is_expected.to(
+      validate_numericality_of(:sequence_number).only_integer.is_greater_than_or_equal_to(0)
+    )
+  end
 end

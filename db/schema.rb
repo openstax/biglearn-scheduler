@@ -11,10 +11,34 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170215215802) do
+ActiveRecord::Schema.define(version: 20170216003441) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
+
+  create_table "assignment_pes", force: :cascade do |t|
+    t.uuid     "uuid",            null: false
+    t.uuid     "assignment_uuid", null: false
+    t.uuid     "exercise_uuid",   null: false
+    t.datetime "created_at",      null: false
+    t.datetime "updated_at",      null: false
+  end
+
+  add_index "assignment_pes", ["assignment_uuid"], name: "index_assignment_pes_on_assignment_uuid", using: :btree
+  add_index "assignment_pes", ["exercise_uuid", "assignment_uuid"], name: "index_assignment_pes_on_exercise_uuid_and_assignment_uuid", unique: true, using: :btree
+  add_index "assignment_pes", ["uuid"], name: "index_assignment_pes_on_uuid", unique: true, using: :btree
+
+  create_table "assignment_spes", force: :cascade do |t|
+    t.uuid     "uuid",            null: false
+    t.uuid     "assignment_uuid", null: false
+    t.uuid     "exercise_uuid",   null: false
+    t.datetime "created_at",      null: false
+    t.datetime "updated_at",      null: false
+  end
+
+  add_index "assignment_spes", ["assignment_uuid"], name: "index_assignment_spes_on_assignment_uuid", using: :btree
+  add_index "assignment_spes", ["exercise_uuid", "assignment_uuid"], name: "index_assignment_spes_on_exercise_uuid_and_assignment_uuid", unique: true, using: :btree
+  add_index "assignment_spes", ["uuid"], name: "index_assignment_spes_on_uuid", unique: true, using: :btree
 
   create_table "assignments", force: :cascade do |t|
     t.uuid     "uuid",                          null: false
@@ -74,6 +98,7 @@ ActiveRecord::Schema.define(version: 20170215215802) do
     t.uuid     "uuid",                                      null: false
     t.uuid     "ecosystem_uuid",                            null: false
     t.uuid     "book_container_uuid",                       null: false
+    t.boolean  "use_for_clue",                              null: false
     t.string   "use_for_personalized_for_assignment_types", null: false, array: true
     t.uuid     "exercise_uuids",                            null: false, array: true
     t.datetime "created_at",                                null: false
@@ -82,15 +107,16 @@ ActiveRecord::Schema.define(version: 20170215215802) do
 
   add_index "exercise_pools", ["book_container_uuid"], name: "index_exercise_pools_on_book_container_uuid", using: :btree
   add_index "exercise_pools", ["ecosystem_uuid"], name: "index_exercise_pools_on_ecosystem_uuid", using: :btree
+  add_index "exercise_pools", ["use_for_clue"], name: "index_exercise_pools_on_use_for_clue", using: :btree
   add_index "exercise_pools", ["uuid"], name: "index_exercise_pools_on_uuid", unique: true, using: :btree
 
   create_table "exercises", force: :cascade do |t|
-    t.uuid     "uuid",                 null: false
-    t.uuid     "group_uuid",           null: false
-    t.integer  "version",              null: false
-    t.uuid     "book_container_uuids", null: false, array: true
-    t.datetime "created_at",           null: false
-    t.datetime "updated_at",           null: false
+    t.uuid     "uuid",                null: false
+    t.uuid     "group_uuid",          null: false
+    t.integer  "version",             null: false
+    t.uuid     "exercise_pool_uuids", null: false, array: true
+    t.datetime "created_at",          null: false
+    t.datetime "updated_at",          null: false
   end
 
   add_index "exercises", ["group_uuid", "version"], name: "index_exercises_on_group_uuid_and_version", unique: true, using: :btree
@@ -108,6 +134,18 @@ ActiveRecord::Schema.define(version: 20170215215802) do
   add_index "responses", ["exercise_uuid"], name: "index_responses_on_exercise_uuid", using: :btree
   add_index "responses", ["student_uuid"], name: "index_responses_on_student_uuid", using: :btree
   add_index "responses", ["uuid"], name: "index_responses_on_uuid", unique: true, using: :btree
+
+  create_table "student_pes", force: :cascade do |t|
+    t.uuid     "uuid",          null: false
+    t.uuid     "student_uuid",  null: false
+    t.uuid     "exercise_uuid", null: false
+    t.datetime "created_at",    null: false
+    t.datetime "updated_at",    null: false
+  end
+
+  add_index "student_pes", ["exercise_uuid", "student_uuid"], name: "index_student_pes_on_exercise_uuid_and_student_uuid", unique: true, using: :btree
+  add_index "student_pes", ["student_uuid"], name: "index_student_pes_on_student_uuid", using: :btree
+  add_index "student_pes", ["uuid"], name: "index_student_pes_on_uuid", unique: true, using: :btree
 
   create_table "students", force: :cascade do |t|
     t.uuid     "uuid",                   null: false
