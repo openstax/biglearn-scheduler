@@ -177,19 +177,11 @@ RSpec.shared_examples 'a biglearn api client' do
     context "##{method}" do
       examples.each_with_index do |(method, requests, expected_responses, uuid_key), index|
         uuid_key ||= :request_uuid
-        expected_responses = instance_exec(&expected_responses) \
-          if expected_responses.is_a?(Proc)
 
         if requests.is_a?(Array)
           request_uuids = requests.map { SecureRandom.uuid }
           requests = requests.each_with_index.map do |request, index|
             request.merge(uuid_key => request_uuids[index])
-          end
-          expected_responses = expected_responses.each_with_index
-                                                 .map do |expected_response, index|
-            expected_response = instance_exec(&expected_response) \
-              if expected_response.is_a?(Proc)
-            expected_response.merge(uuid_key => request_uuids[index])
           end
 
           before(:all, when_tagged_with_vcr) do
@@ -204,6 +196,12 @@ RSpec.shared_examples 'a biglearn api client' do
         end
 
         it "returns the expected response for the #{(index + 1).ordinalize} set of requests" do
+          expected_responses = instance_exec(&expected_responses) if expected_responses.is_a?(Proc)
+          expected_responses = expected_responses.each_with_index.map do |expected_response, index|
+            expected_response = instance_exec(&expected_response) if expected_response.is_a?(Proc)
+            expected_response.merge(uuid_key => request_uuids[index])
+          end if requests.is_a?(Array)
+
           actual_responses = requests.nil? ? client.send(method) : client.send(method, requests)
 
           expect([actual_responses].flatten).to match_array([expected_responses].flatten)
