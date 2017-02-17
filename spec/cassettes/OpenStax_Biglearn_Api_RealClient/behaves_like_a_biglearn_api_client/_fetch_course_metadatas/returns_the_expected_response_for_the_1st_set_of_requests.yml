@@ -1,0 +1,50 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: http://localhost:3000/fetch_course_metadatas
+    body:
+      encoding: UTF-8
+      string: ''
+    headers:
+      User-Agent:
+      - Faraday v0.9.2
+      Content-Type:
+      - application/json
+      Content-Length:
+      - '0'
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Xss-Protection:
+      - 1; mode=block
+      X-Content-Type-Options:
+      - nosniff
+      Content-Type:
+      - application/json; charset=utf-8
+      Etag:
+      - W/"058c6e33bbda15d834f08ef5e14561f5"
+      Cache-Control:
+      - max-age=0, private, must-revalidate
+      X-Request-Id:
+      - 48db6ce2-92d4-4790-990b-f7d4d702ccc3
+      X-Runtime:
+      - '0.030012'
+      Connection:
+      - close
+      Server:
+      - thin
+    body:
+      encoding: UTF-8
+      string: '{"course_responses":[]}'
+    http_version: 
+  recorded_at: Fri, 17 Feb 2017 19:46:59 GMT
+recorded_with: VCR 2.9.3

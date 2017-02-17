@@ -1,0 +1,50 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: http://localhost:3000/update_assignment_pes
+    body:
+      encoding: UTF-8
+      string: '{"pe_updates":[{"request_uuid":"<UPDATE_ASSIGNMENT_PES EXAMPLE 1 REQUEST
+        1 UUID>","assignment_uuid":"<ASSIGNMENT UUID>","exercise_uuids":["7ae3d514-882e-4ab2-97e9-2520bbc9e647","622d547e-32d9-4c97-954d-928083c8163e","e0b9b83b-5125-4c12-b8ce-aa09f087d6a3","d53556e8-9f26-4a71-a0ac-464846c40321","c8d88849-7c28-41bd-87da-523b85632f9a","4c93a911-cc77-4c97-a954-1fae8cf29b16"]}]}'
+    headers:
+      User-Agent:
+      - Faraday v0.9.2
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Xss-Protection:
+      - 1; mode=block
+      X-Content-Type-Options:
+      - nosniff
+      Content-Type:
+      - application/json; charset=utf-8
+      Etag:
+      - W/"194282d841475de86b62e87a343a1add"
+      Cache-Control:
+      - max-age=0, private, must-revalidate
+      X-Request-Id:
+      - 0533b9d4-0695-438b-bbee-12766ae09d07
+      X-Runtime:
+      - '0.026813'
+      Connection:
+      - close
+      Server:
+      - thin
+    body:
+      encoding: UTF-8
+      string: '{"pe_update_responses":[{"request_uuid":"<UPDATE_ASSIGNMENT_PES EXAMPLE
+        1 REQUEST 1 UUID>","update_status":"accepted"}]}'
+    http_version: 
+  recorded_at: Fri, 17 Feb 2017 19:47:00 GMT
+recorded_with: VCR 2.9.3

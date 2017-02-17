@@ -16,7 +16,8 @@ class OpenStax::Biglearn::Api::FakeClient
       {
         request_uuid: request[:request_uuid],
         ecosystem_uuid: request[:ecosystem].uuid,
-        events: []
+        events: [],
+        is_stopped_at_gap: false
       }
     end
   end
@@ -26,7 +27,8 @@ class OpenStax::Biglearn::Api::FakeClient
       {
         request_uuid: request[:request_uuid],
         course_uuid: request[:course].uuid,
-        events: []
+        events: [],
+        is_stopped_at_gap: false
       }
     end
   end

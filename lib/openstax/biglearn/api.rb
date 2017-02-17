@@ -28,7 +28,7 @@ module OpenStax::Biglearn::Api
     def fetch_ecosystem_events(ecosystem_event_requests)
       bulk_api_request method: :fetch_ecosystem_events,
                        requests: ecosystem_event_requests,
-                       keys: [ :event_types, :ecosystem ],
+                       keys: [ :event_types, :ecosystem, ],
                        optional_keys: [ :event_limit ]
     end
 

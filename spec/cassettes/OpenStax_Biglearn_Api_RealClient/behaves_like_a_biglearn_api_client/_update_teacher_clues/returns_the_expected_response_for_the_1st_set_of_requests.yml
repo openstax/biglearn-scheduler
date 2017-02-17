@@ -1,0 +1,51 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: http://localhost:3000/update_teacher_clues
+    body:
+      encoding: UTF-8
+      string: '{"teacher_clue_updates":[{"request_uuid":"<UPDATE_TEACHER_CLUES EXAMPLE
+        1 REQUEST 1 UUID>","book_container_uuid":"<BOOK CONTAINER UUID>","clue_data":{"minimum":0.3247668992807933,"most_likely":0.5848690257000516,"maximum":0.7473825195596738,"is_real":true,"ecosystem_uuid":"<ECOSYSTEM
+        UUID>"},"course_container_uuid":"<COURSE CONTAINER UUID>"}]}'
+    headers:
+      User-Agent:
+      - Faraday v0.9.2
+      Content-Type:
+      - application/json
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Xss-Protection:
+      - 1; mode=block
+      X-Content-Type-Options:
+      - nosniff
+      Content-Type:
+      - application/json; charset=utf-8
+      Etag:
+      - W/"9a455e326b2fb8e7a82168bb36e74749"
+      Cache-Control:
+      - max-age=0, private, must-revalidate
+      X-Request-Id:
+      - 7e212aed-6a41-4fd4-92a6-24ee70491faa
+      X-Runtime:
+      - '0.027367'
+      Connection:
+      - close
+      Server:
+      - thin
+    body:
+      encoding: UTF-8
+      string: '{"teacher_clue_update_responses":[{"request_uuid":"<UPDATE_TEACHER_CLUES
+        EXAMPLE 1 REQUEST 1 UUID>","update_status":"accepted"}]}'
+    http_version: 
+  recorded_at: Fri, 17 Feb 2017 19:47:00 GMT
+recorded_with: VCR 2.9.3

@@ -1,4 +1,5 @@
 require 'rails_helper'
+require 'vcr_helper'
 
 RSpec.shared_examples 'a biglearn api client' do
   let(:configuration) { OpenStax::Biglearn::Api.configuration }
@@ -15,9 +16,7 @@ RSpec.shared_examples 'a biglearn api client' do
   end
 
   valid_ecosystem_event_types = [:create_ecosystem]
-  ecosystem_event_types = valid_ecosystem_event_types.sample(
-    rand(valid_ecosystem_event_types.size + 1)
-  )
+  ecosystem_event_types = valid_ecosystem_event_types.sample 1
 
   valid_course_event_types = [
     :create_course,
@@ -30,9 +29,7 @@ RSpec.shared_examples 'a biglearn api client' do
     :create_update_assignment,
     :record_response
   ]
-  course_event_types = valid_course_event_types.sample(
-    rand(valid_course_event_types.size + 1)
-  )
+  course_event_types = valid_course_event_types.sample rand(valid_course_event_types.size) + 1
 
   dummy_book_container_uuid = SecureRandom.uuid
   dummy_ecosystem = OpenStruct.new uuid: SecureRandom.uuid, sequence_number: 42
@@ -49,9 +46,25 @@ RSpec.shared_examples 'a biglearn api client' do
     minimum: random_sorted_numbers.first,
     most_likely: random_sorted_numbers.second,
     maximum: random_sorted_numbers.third,
-    ecosystem_uuid: dummy_ecosystem.uuid,
-    is_real: [true, false].sample
+    is_real: [true, false].sample,
+    ecosystem_uuid: dummy_ecosystem.uuid
   }
+
+  when_tagged_with_vcr = { vcr: ->(v) { !!v } }
+
+  before(:all, when_tagged_with_vcr) do
+    VCR.configure do |config|
+      config.define_cassette_placeholder('<ECOSYSTEM EVENT TYPES>') { ecosystem_event_types       }
+      config.define_cassette_placeholder('<COURSE EVENT TYPES>'   ) { course_event_types          }
+      config.define_cassette_placeholder('<BOOK CONTAINER UUID>'  ) { dummy_book_container_uuid   }
+      config.define_cassette_placeholder('<ECOSYSTEM UUID>'       ) { dummy_ecosystem.uuid        }
+      config.define_cassette_placeholder('<COURSE UUID>'          ) { dummy_course.uuid           }
+      config.define_cassette_placeholder('<COURSE CONTAINER UUID>') { dummy_course_container.uuid }
+      config.define_cassette_placeholder('<STUDENT UUID>'         ) { dummy_student.uuid          }
+      config.define_cassette_placeholder('<ASSIGNMENT UUID>'      ) { dummy_assignment.uuid       }
+      config.define_cassette_placeholder('<EXERCISE UUIDS>'       ) { dummy_exercises.map(&:uuid) }
+    end
+  end
 
   [
     [
@@ -75,7 +88,8 @@ RSpec.shared_examples 'a biglearn api client' do
       [
         {
           ecosystem_uuid: dummy_ecosystem.uuid,
-          events: []
+          events: [],
+          is_stopped_at_gap: false
         }
       ]
     ],
@@ -90,7 +104,8 @@ RSpec.shared_examples 'a biglearn api client' do
       [
         {
           course_uuid: dummy_course.uuid,
-          events: []
+          events: [],
+          is_stopped_at_gap: false
         }
       ]
     ],
@@ -161,24 +176,34 @@ RSpec.shared_examples 'a biglearn api client' do
   ].group_by(&:first).each do |method, examples|
     context "##{method}" do
       examples.each_with_index do |(method, requests, expected_responses, uuid_key), index|
-        it "returns the expected response for the #{(index + 1).ordinalize} set of requests" do
-          uuid_key ||= :request_uuid
-          expected_responses = instance_exec(&expected_responses) \
-            if expected_responses.is_a?(Proc)
+        uuid_key ||= :request_uuid
+        expected_responses = instance_exec(&expected_responses) \
+          if expected_responses.is_a?(Proc)
 
-          if requests.is_a?(Array)
-            request_uuids = requests.map{ SecureRandom.uuid }
-            requests = requests.each_with_index.map do |request, index|
-              request.merge(uuid_key => request_uuids[index])
-            end
-            expected_responses = expected_responses.each_with_index
-                                                   .map do |expected_response, index|
-              expected_response = instance_exec(&expected_response) \
-                if expected_response.is_a?(Proc)
-              expected_response.merge(uuid_key => request_uuids[index])
-            end
+        if requests.is_a?(Array)
+          request_uuids = requests.map { SecureRandom.uuid }
+          requests = requests.each_with_index.map do |request, index|
+            request.merge(uuid_key => request_uuids[index])
+          end
+          expected_responses = expected_responses.each_with_index
+                                                 .map do |expected_response, index|
+            expected_response = instance_exec(&expected_response) \
+              if expected_response.is_a?(Proc)
+            expected_response.merge(uuid_key => request_uuids[index])
           end
 
+          before(:all, when_tagged_with_vcr) do
+            VCR.configure do |config|
+              requests.each_with_index do |request, request_index|
+                config.define_cassette_placeholder(
+                  "<#{method.to_s.upcase} EXAMPLE #{index + 1} REQUEST #{request_index + 1} UUID>"
+                ) { request_uuids[index] }
+              end
+            end
+          end
+        end
+
+        it "returns the expected response for the #{(index + 1).ordinalize} set of requests" do
           actual_responses = requests.nil? ? client.send(method) : client.send(method, requests)
 
           expect([actual_responses].flatten).to match_array([expected_responses].flatten)
