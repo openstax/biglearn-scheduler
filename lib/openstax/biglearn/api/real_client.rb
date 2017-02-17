@@ -143,7 +143,7 @@ class OpenStax::Biglearn::Api::RealClient
     Addressable::URI.join @server_url, url.to_s
   end
 
-  def request(method:, url:, body:)
+  def api_request(method:, url:, body:)
     absolute_uri = absolutize_url(url)
 
     request_options = body.nil? ? HEADER_OPTIONS : HEADER_OPTIONS.merge(body: body.to_json)
@@ -154,7 +154,7 @@ class OpenStax::Biglearn::Api::RealClient
   end
 
   def single_api_request(method: :post, url:, request: nil)
-    response_hash = request method: method, url: url, body: request
+    response_hash = api_request method: method, url: url, body: request
 
     block_given? ? yield(response_hash) : response_hash
   end
@@ -166,7 +166,7 @@ class OpenStax::Biglearn::Api::RealClient
     requests.each_slice(max_requests).flat_map do |requests|
       body = { requests_key => requests }
 
-      response_hash = request method: method, url: url, body: body
+      response_hash = api_request method: method, url: url, body: body
 
       responses_array = response_hash.fetch responses_key
 
