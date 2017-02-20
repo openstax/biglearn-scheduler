@@ -36,6 +36,9 @@ gem 'sdoc', '~> 0.4.0', group: :doc
 # this allows us to easily start using it in the future if we decide to
 gem 'oauth2'
 
+# ActiveRecord import method (upsert)
+gem 'activerecord-import'
+
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'byebug'
