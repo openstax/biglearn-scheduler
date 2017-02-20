@@ -17,11 +17,11 @@ class OpenStax::Biglearn::Api::RealClient
   #
 
   def fetch_ecosystem_metadatas
-    single_api_request(url: :fetch_ecosystem_metadatas).fetch(:ecosystem_responses)
+    single_api_request url: :fetch_ecosystem_metadatas
   end
 
   def fetch_course_metadatas
-    single_api_request(url: :fetch_course_metadatas).fetch(:course_responses)
+    single_api_request url: :fetch_course_metadatas
   end
 
   def fetch_ecosystem_events(ecosystem_event_requests)
