@@ -1,3 +1,8 @@
+# create_course is already included in the metadata
+# and would not be useful to look at besides error-checking
+
+# Local query only calculates new CLUes/PEs/SPEs/Practice when receiving updates,
+# so update_course_active_dates is unnecessary
 RELEVANT_COURSE_EVENT_TYPES = [
   :prepare_course_ecosystem,
   :update_course_ecosystem,
@@ -15,8 +20,8 @@ namespace :fetch_events do
       logger.info { "Started at #{start_time}" }
     end
 
-    course_event_requests = []
     Course.transaction do
+      course_event_requests = []
       ecosystem_uuids_by_course_uuid = Course.all.map do |course|
         course_event_requests << { course: course, event_types: RELEVANT_COURSE_EVENT_TYPES }
 
@@ -38,15 +43,12 @@ namespace :fetch_events do
         course_uuid = course_event_response.fetch(:course_uuid)
         ecosystem_uuid = ecosystem_uuids_by_course_uuid.fetch(course_uuid)
         events = course_event_response.fetch(:events)
-        sequence_number = events.map{ |event| event.fetch(:sequence_number) }.max
+        sequence_number = events.map{ |event| event.fetch(:sequence_number) }.max + 1
         events_by_type = events.group_by{ |event| event.fetch(:event_type) }
 
         Course.new(uuid: course_uuid,
                    ecosystem_uuid: ecosystem_uuid,
                    sequence_number: sequence_number).tap do |course|
-
-          # Create course is already included in the metadata
-          # and would not be useful to look at besides error-checking
 
           # Prepare course ecosystem is stored for a future update
           # and used as a signal to start precomputing CLUes and PracticeWorstAreas

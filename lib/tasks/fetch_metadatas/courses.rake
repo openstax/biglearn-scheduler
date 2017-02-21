@@ -9,7 +9,8 @@ namespace :fetch_metadatas do
                                      .fetch(:course_responses)
                                      .map do |course_hash|
       Course.new uuid: course_hash.fetch(:uuid),
-                 ecosystem_uuid: course_hash.fetch(:initial_ecosystem_uuid)
+                 ecosystem_uuid: course_hash.fetch(:initial_ecosystem_uuid),
+                 sequence_number: 0
     end
 
     result = Course.import courses, validate: false,

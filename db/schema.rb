@@ -124,6 +124,7 @@ ActiveRecord::Schema.define(version: 20170221165949) do
 
   create_table "exercises", force: :cascade do |t|
     t.uuid     "uuid",                null: false
+    t.uuid     "exercise_uuid",       null: false
     t.uuid     "group_uuid",          null: false
     t.integer  "version",             null: false
     t.uuid     "exercise_pool_uuids", null: false, array: true
@@ -131,6 +132,7 @@ ActiveRecord::Schema.define(version: 20170221165949) do
     t.datetime "updated_at",          null: false
   end
 
+  add_index "exercises", ["exercise_uuid"], name: "index_exercises_on_exercise_uuid", using: :btree
   add_index "exercises", ["group_uuid", "version"], name: "index_exercises_on_group_uuid_and_version", unique: true, using: :btree
   add_index "exercises", ["uuid"], name: "index_exercises_on_uuid", unique: true, using: :btree
 

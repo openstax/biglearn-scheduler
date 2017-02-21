@@ -8,7 +8,7 @@ namespace :fetch_metadatas do
     ecosystems = OpenStax::Biglearn::Api.fetch_ecosystem_metadatas
                                         .fetch(:ecosystem_responses)
                                         .map do |ecosystem_hash|
-      Ecosystem.new uuid: ecosystem_hash.fetch(:uuid)
+      Ecosystem.new uuid: ecosystem_hash.fetch(:uuid), sequence_number: 0
     end
 
     result = Ecosystem.import ecosystems, validate: false,
