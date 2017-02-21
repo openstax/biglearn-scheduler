@@ -1,7 +1,6 @@
 namespace :fetch_metadatas do
   task courses: :environment do
     start_time = Time.now
-
     Rails.logger.tagged 'fetch_metadatas:courses' do |logger|
       logger.info { "Started at #{start_time}" }
     end
@@ -15,7 +14,6 @@ namespace :fetch_metadatas do
 
     result = Course.import courses, validate: false,
                                     on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
-
     Rails.logger.tagged 'fetch_metadatas:courses' do |logger|
       logger.info do
         "Received: #{courses.size} - Failed: #{result.failed_instances.size}" +

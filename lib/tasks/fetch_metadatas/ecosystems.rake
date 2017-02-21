@@ -1,7 +1,6 @@
 namespace :fetch_metadatas do
   task ecosystems: :environment do
     start_time = Time.now
-
     Rails.logger.tagged 'fetch_metadatas:ecosystems' do |logger|
       logger.info { "Started at #{start_time}" }
     end
@@ -14,7 +13,6 @@ namespace :fetch_metadatas do
 
     result = Ecosystem.import ecosystems, validate: false,
                                           on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
-
     Rails.logger.tagged 'fetch_metadatas:ecosystems' do |logger|
       logger.info do
         "Received: #{ecosystems.size} - Failed: #{result.failed_instances.size}" +

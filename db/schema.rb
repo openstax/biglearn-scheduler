@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170216003441) do
+ActiveRecord::Schema.define(version: 20170221165949) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -84,6 +84,18 @@ ActiveRecord::Schema.define(version: 20170216003441) do
 
   add_index "courses", ["ecosystem_uuid"], name: "index_courses_on_ecosystem_uuid", using: :btree
   add_index "courses", ["uuid"], name: "index_courses_on_uuid", unique: true, using: :btree
+
+  create_table "ecosystem_preparations", force: :cascade do |t|
+    t.uuid     "uuid",           null: false
+    t.uuid     "course_uuid",    null: false
+    t.uuid     "ecosystem_uuid", null: false
+    t.datetime "created_at",     null: false
+    t.datetime "updated_at",     null: false
+  end
+
+  add_index "ecosystem_preparations", ["course_uuid", "ecosystem_uuid"], name: "index_ecosystem_preparations_on_course_uuid_and_ecosystem_uuid", using: :btree
+  add_index "ecosystem_preparations", ["ecosystem_uuid"], name: "index_ecosystem_preparations_on_ecosystem_uuid", using: :btree
+  add_index "ecosystem_preparations", ["uuid"], name: "index_ecosystem_preparations_on_uuid", unique: true, using: :btree
 
   create_table "ecosystems", force: :cascade do |t|
     t.uuid     "uuid",            null: false
