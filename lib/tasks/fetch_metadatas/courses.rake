@@ -1,9 +1,9 @@
 namespace :fetch_metadatas do
   task courses: :environment do
-    Rails.logger.info do
-      @start_time = Time.now
+    start_time = Time.now
 
-      "Fetch course metadatas started at #{@start_time}"
+    Rails.logger.tagged 'fetch_metadatas:courses' do |logger|
+      logger.info { "Started at #{start_time}" }
     end
 
     courses = OpenStax::Biglearn::Api.fetch_course_metadatas
@@ -16,10 +16,12 @@ namespace :fetch_metadatas do
     result = Course.import courses, validate: false,
                                     on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
 
-    Rails.logger.info do
-      "Courses: Received: #{courses.size} - Failed: #{result.failed_instances.size}" +
-      " - New: #{result.num_inserts} - Total: #{Course.count}" +
-      " - Took: #{Time.now - @start_time} second(s)"
+    Rails.logger.tagged 'fetch_metadatas:courses' do |logger|
+      logger.info do
+        "Received: #{courses.size} - Failed: #{result.failed_instances.size}" +
+        " - New: #{result.num_inserts} - Total: #{Course.count}" +
+        " - Took: #{Time.now - start_time} second(s)"
+      end
     end
   end
 end

@@ -1,1 +1,3 @@
-namespace(:fetch_metadatas) { task all: [:ecosystems, :courses] }
+namespace :fetch_metadatas do
+  task all: [:ecosystems, :courses]
+end
