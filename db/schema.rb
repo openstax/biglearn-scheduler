@@ -133,7 +133,7 @@ ActiveRecord::Schema.define(version: 20170221165949) do
   end
 
   add_index "exercises", ["exercise_uuid"], name: "index_exercises_on_exercise_uuid", using: :btree
-  add_index "exercises", ["group_uuid", "version"], name: "index_exercises_on_group_uuid_and_version", unique: true, using: :btree
+  add_index "exercises", ["group_uuid", "version"], name: "index_exercises_on_group_uuid_and_version", using: :btree
   add_index "exercises", ["uuid"], name: "index_exercises_on_uuid", unique: true, using: :btree
 
   create_table "responses", force: :cascade do |t|

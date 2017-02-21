@@ -10,6 +10,6 @@ class CreateExercises < ActiveRecord::Migration
       t.timestamps                    null: false
     end
 
-    add_index :exercises, [:group_uuid, :version], unique: true
+    add_index :exercises, [:group_uuid, :version]
   end
 end

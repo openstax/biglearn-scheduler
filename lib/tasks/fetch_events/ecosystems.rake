@@ -41,8 +41,8 @@ namespace :fetch_events do
             data.fetch(:exercises).each do |exercise|
               exercises << Exercise.new(
                 uuid: SecureRandom.uuid,
-                exercise_uuid: exercise.fetch(:uuid),
-                group_uuid: exercise.fetch(:exercises_uuid),
+                exercise_uuid: exercise.fetch(:exercise_uuid),
+                group_uuid: exercise.fetch(:group_uuid),
                 version: exercise.fetch(:version)
               )
             end
