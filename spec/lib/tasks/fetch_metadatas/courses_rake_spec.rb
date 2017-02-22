@@ -32,7 +32,7 @@ RSpec.describe 'fetch_metadatas:courses', type: :task do
     let(:course_metadatas_response) { { course_responses: course_metadatas } }
 
     it 'creates all new courses' do
-      allow(OpenStax::Biglearn::Api).to(
+      expect(OpenStax::Biglearn::Api).to(
         receive(:fetch_course_metadatas).and_return(course_metadatas_response)
       )
 

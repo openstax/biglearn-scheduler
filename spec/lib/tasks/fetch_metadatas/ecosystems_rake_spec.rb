@@ -28,7 +28,7 @@ RSpec.describe 'fetch_metadatas:ecosystems', type: :task do
     let(:ecosystem_metadatas_response) { { ecosystem_responses: ecosystem_metadatas } }
 
     it 'creates all new ecosystems' do
-      allow(OpenStax::Biglearn::Api).to(
+      expect(OpenStax::Biglearn::Api).to(
         receive(:fetch_ecosystem_metadatas).and_return(ecosystem_metadatas_response)
       )
 

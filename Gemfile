@@ -48,6 +48,9 @@ group :development, :test do
 
   # Fixture creation
   gem 'factory_girl_rails', '~> 4.0'
+
+  # Lorem Ipsum
+  gem 'faker'
 end
 
 group :development do

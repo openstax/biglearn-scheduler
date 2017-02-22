@@ -38,29 +38,41 @@ namespace :fetch_events do
           if last_create_ecosystem.present?
             data = last_create_ecosystem.fetch(:event_data)
 
-            data.fetch(:exercises).each do |exercise|
-              exercises << Exercise.new(
-                uuid: SecureRandom.uuid,
-                exercise_uuid: exercise.fetch(:exercise_uuid),
-                group_uuid: exercise.fetch(:group_uuid),
-                version: exercise.fetch(:version)
-              )
-            end
-
+            exercise_pool_uuids_by_exercise_uuids = Hash.new { |hash, key| hash[key] = [] }
             data.fetch(:book).fetch(:contents).each do |content|
               container_uuid = content.fetch(:container_uuid)
-              assignment_types = pool.fetch(:use_for_personalized_for_assignment_types)
 
               content.fetch(:pools).each do |pool|
+                pool_uuid = SecureRandom.uuid
+                assignment_types = pool.fetch(:use_for_personalized_for_assignment_types)
+                exercise_uuids = pool.fetch(:exercise_uuids)
+
                 exercise_pools << ExercisePool.new(
-                  uuid: SecureRandom.uuid,
+                  uuid: pool_uuid,
                   ecosystem_uuid: ecosystem_uuid,
                   book_container_uuid: container_uuid,
                   use_for_clue: pool.fetch(:use_for_clue),
                   use_for_personalized_for_assignment_types: assignment_types,
-                  exercise_uuids: pool.fetch(:exercise_uuids)
+                  exercise_uuids: exercise_uuids
                 )
+
+                exercise_uuids.each do |exercise_uuid|
+                  exercise_pool_uuids_by_exercise_uuids[exercise_uuid] << pool_uuid
+                end
               end
+            end
+
+            data.fetch(:exercises).each do |exercise|
+              exercise_uuid = exercise.fetch(:exercise_uuid)
+              exercise_pool_uuids = exercise_pool_uuids_by_exercise_uuids[exercise_uuid]
+
+              exercises << Exercise.new(
+                uuid: SecureRandom.uuid,
+                exercise_uuid: exercise_uuid,
+                group_uuid: exercise.fetch(:group_uuid),
+                version: exercise.fetch(:version),
+                exercise_pool_uuids: exercise_pool_uuids
+              )
             end
           end
 
