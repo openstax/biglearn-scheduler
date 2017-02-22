@@ -1,5 +1,4 @@
 require 'rails_helper'
-require 'database_cleaner'
 
 RSpec.describe OpenStax::Biglearn::Api, type: :external do
   context 'configuration' do

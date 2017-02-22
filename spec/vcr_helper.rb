@@ -1,3 +1,4 @@
+require 'spec_helper'
 require 'vcr'
 
 VCR.configure do |c|
