@@ -15,9 +15,14 @@ namespace :fetch_metadatas do
                                           on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
     Rails.logger.tagged 'fetch_metadatas:ecosystems' do |logger|
       logger.info do
-        "Received: #{ecosystems.size} - Failed: #{result.failed_instances.size}" +
-        " - New: #{result.num_inserts} - Total: #{Ecosystem.count}" +
-        " - Took: #{Time.now - start_time} second(s)"
+        metadatas = ecosystems.size
+        conflicts = result.failed_instances.size
+        successes = metadatas - conflicts
+        total = Ecosystem.count
+        time = Time.now - start_time
+
+        "Received: #{metadatas} - Existing: #{conflicts} - New: #{successes}" +
+        " - Total: #{total} - Took: #{time} second(s)"
       end
     end
   end

@@ -99,12 +99,11 @@ namespace :fetch_events do
           ecosystem_events = ecosystem_event_responses.map do |response|
             response.fetch(:events).size
           end.reduce(0, :+)
-          failures = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-          num_inserts = results.map(&:num_inserts).reduce(0, :+)
+          conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
+          time = Time.now - start_time
 
-          "Received: #{ecosystem_events} events in #{ecosystems.size} ecosystems" +
-          " - Successful: #{num_inserts} insert(s) - Failed: #{failures} insert(s)" +
-          " - Took: #{Time.now - start_time} second(s)"
+          "Received: #{ecosystem_events} event(s) in #{ecosystems.size} ecosystem(s)" +
+          " - Conflicts: #{conflicts} - Took: #{time} second(s)"
         end
       end
     end

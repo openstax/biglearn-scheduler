@@ -2,7 +2,7 @@
 require 'spec_helper'
 require 'rake'
 
-shared_context 'rake' do
+RSpec.shared_context 'rake' do
   subject      { Rake.application[@task_name] }
 
   before(:all) do
@@ -20,6 +20,8 @@ shared_context 'rake' do
 
     Rake::Task.define_task(:environment)
   end
+
+  before       { subject.reenable }
 
   after(:all)  { Rake.application = @previous_rake_application }
 end

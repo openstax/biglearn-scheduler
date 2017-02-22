@@ -16,5 +16,8 @@
 !/log/.keep
 /tmp
 
+# Ignore RSpec failure information
+.rspec_last_failures
+
 # Ignore byebug history
 .byebug_history

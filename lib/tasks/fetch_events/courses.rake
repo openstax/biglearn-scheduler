@@ -247,14 +247,14 @@ namespace :fetch_events do
 
       Rails.logger.tagged 'fetch_events:courses' do |logger|
         logger.info do
-          course_events = course_event_responses.map{ |response| response.fetch(:events).size }
-                                                .reduce(0, :+)
-          failures = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-          num_inserts = results.map(&:num_inserts).reduce(0, :+)
+          course_events = course_event_responses.map do |response|
+            response.fetch(:events).size
+          end.reduce(0, :+)
+          conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
+          time = Time.now - start_time
 
-          "Received: #{course_events} events in #{courses.size} courses" +
-          " - Successful: #{num_inserts} insert(s) - Failed: #{failures} insert(s)" +
-          " - Took: #{Time.now - start_time} second(s)"
+          "Received: #{course_events} event(s) in #{courses.size} course(s)" +
+          " - Conflicts: #{conflicts} - Took: #{time} second(s)"
         end
       end
     end
