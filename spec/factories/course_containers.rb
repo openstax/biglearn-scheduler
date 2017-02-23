@@ -4,6 +4,7 @@ FactoryGirl.define do
 
     uuid          { SecureRandom.uuid }
     course_uuid   { SecureRandom.uuid }
+    is_archived   { [true, false].sample }
     student_uuids { students_count.times.map { SecureRandom.uuid } }
   end
 end

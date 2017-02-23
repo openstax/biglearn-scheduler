@@ -1,6 +1,5 @@
 # https://robots.thoughtbot.com/test-rake-tasks-like-a-boss
-require 'spec_helper'
-require 'rake'
+require 'rails_helper'
 
 RSpec.shared_context 'rake' do
   subject      { Rake.application[@task_name] }

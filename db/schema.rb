@@ -43,31 +43,35 @@ ActiveRecord::Schema.define(version: 20170221165949) do
   create_table "assignments", force: :cascade do |t|
     t.uuid     "uuid",                          null: false
     t.uuid     "course_uuid",                   null: false
+    t.uuid     "ecosystem_uuid",                null: false
     t.uuid     "student_uuid",                  null: false
     t.string   "assignment_type",               null: false
     t.uuid     "assigned_book_container_uuids", null: false, array: true
     t.uuid     "assigned_exercise_uuids",       null: false, array: true
-    t.integer  "goal_num_spes",                 null: false
-    t.integer  "goal_num_pes",                  null: false
+    t.integer  "goal_num_tutor_assigned_spes",  null: false
+    t.boolean  "spes_are_assigned",             null: false
+    t.integer  "goal_num_tutor_assigned_pes",   null: false
+    t.boolean  "pes_are_assigned",              null: false
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
   end
 
   add_index "assignments", ["course_uuid"], name: "index_assignments_on_course_uuid", using: :btree
-  add_index "assignments", ["goal_num_pes"], name: "index_assignments_on_goal_num_pes", using: :btree
-  add_index "assignments", ["goal_num_spes"], name: "index_assignments_on_goal_num_spes", using: :btree
+  add_index "assignments", ["ecosystem_uuid"], name: "index_assignments_on_ecosystem_uuid", using: :btree
+  add_index "assignments", ["goal_num_tutor_assigned_pes"], name: "index_assignments_on_goal_num_tutor_assigned_pes", using: :btree
+  add_index "assignments", ["goal_num_tutor_assigned_spes"], name: "index_assignments_on_goal_num_tutor_assigned_spes", using: :btree
   add_index "assignments", ["student_uuid"], name: "index_assignments_on_student_uuid", using: :btree
   add_index "assignments", ["uuid"], name: "index_assignments_on_uuid", unique: true, using: :btree
 
   create_table "course_containers", force: :cascade do |t|
     t.uuid     "uuid",          null: false
     t.uuid     "course_uuid",   null: false
+    t.boolean  "is_archived",   null: false
     t.uuid     "student_uuids", null: false, array: true
     t.datetime "created_at",    null: false
     t.datetime "updated_at",    null: false
   end
 
-  add_index "course_containers", ["course_uuid"], name: "index_course_containers_on_course_uuid", using: :btree
   add_index "course_containers", ["uuid"], name: "index_course_containers_on_uuid", unique: true, using: :btree
 
   create_table "courses", force: :cascade do |t|

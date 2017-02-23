@@ -20,14 +20,45 @@ RSpec.describe 'fetch_events:ecosystems', type: :task do
   context 'with an exiting ecosystem and ecosystem events' do
     let!(:ecosystem)                { FactoryGirl.create :ecosystem, sequence_number: 0 }
 
+    let(:sequence_number)           { 0 }
+    let(:event_uuid)                { SecureRandom.uuid }
+
+    let(:ecosystem_event)           do
+      {
+        sequence_number: sequence_number,
+        event_uuid: event_uuid,
+        event_type: event_type,
+        event_data: event_data
+      }
+    end
+
+    let(:ecosystem_events)          { [ ecosystem_event ] }
+
+    let(:ecosystem_events_response) do
+      {
+        request_uuid: SecureRandom.uuid,
+        ecosystem_uuid: ecosystem.uuid,
+        events: ecosystem_events,
+        is_stopped_at_gap: false
+      }
+    end
+
+    before                          do
+      expect(OpenStax::Biglearn::Api).to receive(:fetch_ecosystem_events) do |requests|
+        { requests.first => ecosystem_events_response }
+      end
+    end
+
     context 'create_ecosystem events' do
-      let(:num_los)                   { rand(5)  + 1 }
-      let(:los)                       do
+      let(:event_type)              { 'create_ecosystem' }
+
+      let(:num_los)                 { rand(5)  + 1 }
+      let(:los)                     do
         num_los.times.map { Faker::Name.name.downcase.gsub('. ', ':').gsub(' ', '-') }
       end
 
-      let(:num_exercises)             { rand(10) + 1 }
-      let(:exercises)                 do
+      let(:num_exercises)           { rand(10) + 1 }
+      let(:exercises)               do
         num_exercises.times.map do
           {
             exercise_uuid: SecureRandom.uuid,
@@ -38,10 +69,10 @@ RSpec.describe 'fetch_events:ecosystems', type: :task do
         end
       end
 
-      let(:num_chapters)              { rand(10) + 1 }
-      let(:num_pages_per_chapter)     { rand(6)  + 2 }
-      let(:num_pools_per_container)   { rand(5)  + 1 }
-      let(:book_containers)           do
+      let(:num_chapters)            { rand(10) + 1 }
+      let(:num_pages_per_chapter)   { rand(6)  + 2 }
+      let(:num_pools_per_container) { rand(5)  + 1 }
+      let(:book_containers)         do
         num_chapters.times.flat_map do
           container_uuid = SecureRandom.uuid
 
@@ -79,37 +110,23 @@ RSpec.describe 'fetch_events:ecosystems', type: :task do
         end
       end
 
-      let(:book)                      do
+      let(:book)                    do
         {
           cnx_identity: "#{SecureRandom.uuid}@#{rand(10) + 1}.#{rand(10)}",
           contents: book_containers
         }
       end
 
-      let(:create_ecosystem)          do
+      let(:event_data)              do
         {
-          sequence_number: 0,
-          event_uuid: SecureRandom.uuid,
-          event_type: 'create_ecosystem',
-          event_data: { book: book, exercises: exercises }
-        }
-      end
-
-      let(:ecosystem_events)          { [ create_ecosystem ] }
-      let(:ecosystem_events_response) do
-        {
-          request_uuid: SecureRandom.uuid,
           ecosystem_uuid: ecosystem.uuid,
-          events: ecosystem_events,
-          is_stopped_at_gap: false
+          sequence_number: sequence_number,
+          book: book,
+          exercises: exercises
         }
       end
 
       it 'creates ExercisePools and Exercises for the Ecosystem' do
-        expect(OpenStax::Biglearn::Api).to receive(:fetch_ecosystem_events) do |requests|
-          { requests.first => ecosystem_events_response }
-        end
-
         num_pages = num_chapters * num_pages_per_chapter
         num_book_containers = num_chapters + num_pages
         num_pools = num_pools_per_container * num_book_containers
@@ -117,6 +134,9 @@ RSpec.describe 'fetch_events:ecosystems', type: :task do
         expect { subject.invoke }.to  not_change { Ecosystem.count }
                                  .and change { ExercisePool.count }.by(num_pools)
                                  .and change { Exercise.count }.by(num_exercises)
+                                 .and(change do
+                                   ecosystem.reload.sequence_number
+                                 end.from(0).to(sequence_number + 1))
       end
     end
   end

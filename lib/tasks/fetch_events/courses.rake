@@ -22,10 +22,10 @@ namespace :fetch_events do
 
     Course.transaction do
       course_event_requests = []
-      ecosystem_uuids_by_course_uuid = Course.all.map do |course|
+      courses_by_course_uuid = Course.all.map do |course|
         course_event_requests << { course: course, event_types: RELEVANT_COURSE_EVENT_TYPES }
 
-        [ course.uuid, course.ecosystem_uuid ]
+        [ course.uuid, course ]
       end.to_h
       course_event_responses = OpenStax::Biglearn::Api.fetch_course_events(course_event_requests)
                                                       .values
@@ -37,157 +37,166 @@ namespace :fetch_events do
       assignments = []
       responses = []
       courses = course_event_responses.map do |course_event_response|
-        events = course_event_response.fetch(:events)
+        events = course_event_response.fetch :events
         next if events.empty?
 
-        course_uuid = course_event_response.fetch(:course_uuid)
-        ecosystem_uuid = ecosystem_uuids_by_course_uuid.fetch(course_uuid)
-        events = course_event_response.fetch(:events)
-        sequence_number = events.map{ |event| event.fetch(:sequence_number) }.max + 1
+        course_uuid = course_event_response.fetch :course_uuid
+        course = courses_by_course_uuid.fetch course_uuid
+
         events_by_type = events.group_by{ |event| event.fetch(:event_type) }
 
-        Course.new(uuid: course_uuid,
-                   ecosystem_uuid: ecosystem_uuid,
-                   sequence_number: sequence_number).tap do |course|
+        # Prepare course ecosystem is stored for a future update
+        # and used as a signal to start precomputing CLUes and PracticeWorstAreas
+        prepare_ecosystems = events_by_type['prepare_course_ecosystem'] || []
+        course_ecosystem_preparations = prepare_ecosystems.map do |prepare_course_ecosystem|
+          data = prepare_course_ecosystem.fetch(:event_data)
 
-          # Prepare course ecosystem is stored for a future update
-          # and used as a signal to start precomputing CLUes and PracticeWorstAreas
-          prepare_ecosystems = events_by_type['prepare_course_ecosystem'] || []
-          course_ecosystem_preparations = prepare_ecosystems.map do |prepare_course_ecosystem|
-            data = prepare_course_ecosystem.fetch(:event_data)
-
-            ecosystem_preparations << EcosystemPreparation.new(
-              uuid: prepare_course_ecosystem.fetch(:event_uuid),
-              course_uuid: data.fetch(:course_uuid),
-              ecosystem_uuid: data.fetch(:ecosystem_uuid)
-            )
-          end
-
-          # Update course ecosystem changes the course ecosystem and is used as a signal
-          # to stop computing CLUes and PracticeWorstAreas for the previous ecosystem
-          update_ecosystems = events_by_type['update_course_ecosystem'] || []
-          last_update_ecosystem = update_ecosystems.last
-          if last_update_ecosystem.present?
-            preparation_uuid = last_update_ecosystem.fetch(:event_data).fetch(:preparation_uuid)
-            # Look in the current updates for the EcosystemPreparation
-            # If not found, look in the database
-            preparation = course_ecosystem_preparations.find{ |prep| prep.uuid == preparation_uuid }
-            preparation ||= EcosystemPreparation.find_by uuid: preparation_uuid
-            course.ecosystem_uuid = preparation.ecosystem_uuid
-          end
-
-          # Update roster changes the students and periods we compute CLUes for
-          update_rosters = events_by_type['update_roster'] || []
-          last_roster = update_rosters.last
-          if last_roster.present?
-            data = last_roster.fetch(:event_data)
-            course_containers = data.fetch(:course_containers).reject{ |cc| cc.fetch :is_archived }
-
-            parent_uuids_by_container_uuid = course_containers.map do |container|
-              container_uuid = course_container.fetch(:container_uuid)
-
-              course_containers << CourseContainer.new(
-                uuid: container_uuid,
-                course_uuid: last_roster.fetch(:course_uuid)
-              )
-
-              [ container_uuid, course_container.fetch(:parent_container_uuid) ]
-            end.to_h
-
-            data.fetch(:students).each do |student|
-              container_uuids = []
-              current_container_uuid = student.fetch(:container_uuid)
-              # Flatten the course tree structure into an array of uuids
-              until current_container_uuid.nil? || current_container_uuid == course_uuid do
-                container_uuids << current_container_uuid
-                current_container_uuid = parent_uuids_by_container_uuid[current_container_uuid]
-              end
-
-              students << Student.new(
-                uuid: student.fetch(:student_uuid),
-                course_container_uuids: container_uuids
-              )
-            end
-          end
-
-          # Update globally excluded exercises and update course excluded exercises
-          # mark some exercises as unavailable for PE/SPE/PracticeWorstAreas
-          update_global_exclusions = events_by_type['update_globally_excluded_exercises'] || []
-          last_global_exclusion_update = update_global_exclusions.last
-          if last_global_exclusion_update.present?
-            exclusions = last_global_exclusion_update.fetch(:event_data).fetch(:exclusions)
-
-            exercise_uuids = []
-            exercise_group_uuids = []
-            exclusions.each do |exclusion|
-              exercise_uuids << exclusion[:exercise_uuid] unless exclusion[:exercise_uuid].nil?
-              exercise_group_uuids << exclusion[:exercise_group_uuid] \
-                unless exclusion[:exercise_group_uuid].nil?
-            end
-
-            course.global_excluded_exercise_uuids = exercise_uuids
-            course.global_excluded_exercise_group_uuids = exercise_group_uuids
-          end
-
-          update_course_exclusions = events_by_type['update_course_excluded_exercises'] || []
-          last_course_exclusion_update = update_course_exclusions.last
-          if last_course_exclusion_update.present?
-            exclusions = last_course_exclusion_update.fetch(:event_data).fetch(:exclusions)
-
-            exercise_uuids = []
-            exercise_group_uuids = []
-            exclusions.each do |exclusion|
-              exercise_uuids << exclusion[:exercise_uuid] unless exclusion[:exercise_uuid].nil?
-              exercise_group_uuids << exclusion[:exercise_group_uuid] \
-                unless exclusion[:exercise_group_uuid].nil?
-            end
-
-            course.course_excluded_exercise_uuids = exercise_uuids
-            course.course_excluded_exercise_group_uuids = exercise_group_uuids
-          end
-
-          # Create update assignment changes the assignments we compute PEs and SPEs for
-          create_update_assignments = events_by_type['create_update_assignment'] || []
-          create_update_assignments.group_by do |create_update_assignment|
-            create_update_assignment.fetch(:assignment_uuid)
-          end.each do |assignment_uuid, create_update_assignments|
-            last_create_update_assignment = create_update_assignments.last
-
-            assigned_book_container_uuids = \
-              last_create_update_assignment.fetch(:assigned_book_container_uuids)
-            exercises = last_create_update_assignment.fetch(:assigned_exercises)
-            exercise_uuids = exercises.map { |exercise| exercise.fetch(:exercise_uuid) }
-            goal_num_spes = last_create_update_assignment.fetch(:goal_num_tutor_assigned_spes)
-            goal_num_pes = last_create_update_assignment.fetch(:goal_num_tutor_assigned_pes)
-
-            assignments << Assignment.new(
-              uuid: assignment_uuid,
-              course_uuid: last_create_update_assignment.fetch(:course_uuid),
-              student_uuid: last_create_update_assignment.fetch(:student_uuid),
-              assignment_type: last_create_update_assignment.fetch(:assignment_type),
-              assigned_book_container_uuids: assigned_book_container_uuids,
-              assigned_exercise_uuids: exercise_uuids,
-              goal_num_spes: goal_num_spes,
-              goal_num_pes: goal_num_pes
-            )
-          end
-
-          # Record response saves a student response used to compute the CLUes
-          record_responses = events_by_type['record_response'] || []
-          record_responses.group_by do |record_response|
-            record_response.fetch(:response_uuid)
-          end.each do |response_uuid, record_responses|
-            last_record_response = record_responses.last
-
-            responses << Response.new(
-              uuid: response_uuid,
-              student_uuid: last_record_response.fetch(:student_uuid),
-              exercise_uuid: last_record_response.fetch(:exercise_uuid),
-              is_correct: last_record_response.fetch(:is_correct)
-            )
-          end
-
+          ecosystem_preparations << EcosystemPreparation.new(
+            uuid: data.fetch(:preparation_uuid),
+            course_uuid: data.fetch(:course_uuid),
+            ecosystem_uuid: data.fetch(:ecosystem_uuid)
+          )
         end
+
+        # Update course ecosystem changes the course ecosystem and is used as a signal
+        # to stop computing CLUes and PracticeWorstAreas for the previous ecosystem
+        update_ecosystems = events_by_type['update_course_ecosystem'] || []
+        last_update_ecosystem = update_ecosystems.last
+        if last_update_ecosystem.present?
+          preparation_uuid = last_update_ecosystem.fetch(:event_data).fetch(:preparation_uuid)
+          # Look in the current updates for the EcosystemPreparation
+          # If not found, look in the database
+          preparation = course_ecosystem_preparations.find{ |prep| prep.uuid == preparation_uuid }
+          preparation ||= EcosystemPreparation.find_by uuid: preparation_uuid
+          course.ecosystem_uuid = preparation.ecosystem_uuid
+        end
+
+        # Update roster changes the students and periods we compute CLUes for
+        update_rosters = events_by_type['update_roster'] || []
+        last_roster = update_rosters.last
+        if last_roster.present?
+          data = last_roster.fetch(:event_data)
+          containers = data.fetch(:course_containers)
+          parent_uuids_by_container_uuid = containers.map do |container|
+            [ container.fetch(:container_uuid), container.fetch(:parent_container_uuid) ]
+          end.to_h
+
+          student_uuids_by_container_uuid = Hash.new { |hash, key| hash[key] = [] }
+          data.fetch(:students).each do |student|
+            container_uuids_set = Set.new
+            current_container_uuid = student.fetch(:container_uuid)
+            student_uuid = student.fetch(:student_uuid)
+
+            # Flatten the course tree structure into arrays of uuids
+            until current_container_uuid.nil? ||
+                  current_container_uuid == course_uuid ||
+                  container_uuids_set.include?(current_container_uuid) do
+              container_uuids_set << current_container_uuid
+              student_uuids_by_container_uuid[current_container_uuid] << student_uuid
+
+              current_container_uuid = parent_uuids_by_container_uuid[current_container_uuid]
+            end
+
+            students << Student.new(
+              uuid: student_uuid,
+              course_uuid: course_uuid,
+              course_container_uuids: container_uuids_set.to_a
+            )
+          end
+
+          containers.each do |course_container|
+            container_uuid = course_container.fetch(:container_uuid)
+
+            course_containers << CourseContainer.new(
+              uuid: container_uuid,
+              course_uuid: course_uuid,
+              student_uuids: student_uuids_by_container_uuid[container_uuid],
+              is_archived: course_container.fetch(:is_archived)
+            )
+          end
+        end
+
+        # Update globally excluded exercises and update course excluded exercises
+        # mark some exercises as unavailable for PE/SPE/PracticeWorstAreas
+        update_global_exclusions = events_by_type['update_globally_excluded_exercises'] || []
+        last_global_exclusion_update = update_global_exclusions.last
+        if last_global_exclusion_update.present?
+          exclusions = last_global_exclusion_update.fetch(:event_data).fetch(:exclusions)
+
+          exercise_uuids = []
+          exercise_group_uuids = []
+          exclusions.each do |exclusion|
+            exercise_uuids << exclusion[:exercise_uuid] unless exclusion[:exercise_uuid].nil?
+            exercise_group_uuids << exclusion[:exercise_group_uuid] \
+              unless exclusion[:exercise_group_uuid].nil?
+          end
+
+          course.global_excluded_exercise_uuids = exercise_uuids
+          course.global_excluded_exercise_group_uuids = exercise_group_uuids
+        end
+
+        update_course_exclusions = events_by_type['update_course_excluded_exercises'] || []
+        last_course_exclusion_update = update_course_exclusions.last
+        if last_course_exclusion_update.present?
+          exclusions = last_course_exclusion_update.fetch(:event_data).fetch(:exclusions)
+
+          exercise_uuids = []
+          exercise_group_uuids = []
+          exclusions.each do |exclusion|
+            exercise_uuids << exclusion[:exercise_uuid] unless exclusion[:exercise_uuid].nil?
+            exercise_group_uuids << exclusion[:exercise_group_uuid] \
+              unless exclusion[:exercise_group_uuid].nil?
+          end
+
+          course.course_excluded_exercise_uuids = exercise_uuids
+          course.course_excluded_exercise_group_uuids = exercise_group_uuids
+        end
+
+        # Create update assignment changes the assignments we compute PEs and SPEs for
+        create_update_assignments = events_by_type['create_update_assignment'] || []
+        create_update_assignments.group_by do |create_update_assignment|
+          create_update_assignment.fetch(:event_data).fetch(:assignment_uuid)
+        end.each do |assignment_uuid, create_update_assignments|
+          last_create_update_assignment = create_update_assignments.last
+          data = last_create_update_assignment.fetch(:event_data)
+
+          exercises = data.fetch(:assigned_exercises)
+          exercise_uuids = exercises.map { |exercise| exercise.fetch(:exercise_uuid) }
+
+          assignments << Assignment.new(
+            uuid: assignment_uuid,
+            course_uuid: course_uuid,
+            ecosystem_uuid: data.fetch(:ecosystem_uuid),
+            student_uuid: data.fetch(:student_uuid),
+            assignment_type: data.fetch(:assignment_type),
+            assigned_book_container_uuids: data.fetch(:assigned_book_container_uuids),
+            assigned_exercise_uuids: exercise_uuids,
+            goal_num_tutor_assigned_spes: data.fetch(:goal_num_tutor_assigned_spes),
+            spes_are_assigned: data.fetch(:spes_are_assigned),
+            goal_num_tutor_assigned_pes: data.fetch(:goal_num_tutor_assigned_pes),
+            pes_are_assigned: data.fetch(:pes_are_assigned)
+          )
+        end
+
+        # Record response saves a student response used to compute the CLUes
+        record_responses = events_by_type['record_response'] || []
+        record_responses.group_by do |record_response|
+          record_response.fetch(:event_data).fetch(:response_uuid)
+        end.each do |response_uuid, record_responses|
+          last_record_response = record_responses.last
+          data = last_record_response.fetch(:event_data)
+
+          responses << Response.new(
+            uuid: data.fetch(:trial_uuid),
+            student_uuid: data.fetch(:student_uuid),
+            exercise_uuid: data.fetch(:exercise_uuid),
+            is_correct: data.fetch(:is_correct)
+          )
+        end
+
+        course.sequence_number = events.map{ |event| event.fetch(:sequence_number) }.max + 1
+
+        course
       end.compact
 
       results = []
@@ -229,12 +238,15 @@ namespace :fetch_events do
           conflict_target: [ :uuid ],
           columns: [
             :course_uuid,
+            :ecosystem_uuid,
             :student_uuid,
             :assignment_type,
             :assigned_book_container_uuids,
             :assigned_exercise_uuids,
-            :goal_num_spes,
-            :goal_num_pes
+            :goal_num_tutor_assigned_spes,
+            :spes_are_assigned,
+            :goal_num_tutor_assigned_pes,
+            :pes_are_assigned
           ]
         }
       )
