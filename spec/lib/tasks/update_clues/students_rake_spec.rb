@@ -1,6 +1,6 @@
 require 'rake_helper'
 
-RSpec.describe 'fetch_metadatas:courses', type: :task do
+RSpec.describe 'update_clues:students', type: :task do
   include_context 'rake'
 
   it 'includes the environment as prerequisite' do
@@ -8,7 +8,7 @@ RSpec.describe 'fetch_metadatas:courses', type: :task do
   end
 
   it 'calls the appropriate service' do
-    service_class = Services::FetchCourseMetadatas::Service
+    service_class = Services::UpdateStudentClues::Service
     service_spy = instance_spy(service_class)
     expect(service_class).to receive(:new).and_return(service_spy)
     expect(service_spy).to receive(:process)

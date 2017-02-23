@@ -3,7 +3,7 @@ require 'rake_helper'
 RSpec.describe 'fetch_events:all', type: :task do
   include_context 'rake'
 
-  it 'includes the fetch_events:ecosystems and fetch_events:courses as prerequisites' do
+  it 'includes fetch_events:ecosystems and fetch_events:courses as prerequisites' do
     expect(subject.prerequisites).to eq ['ecosystems', 'courses']
   end
 end
