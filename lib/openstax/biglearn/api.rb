@@ -42,13 +42,13 @@ module OpenStax::Biglearn::Api
     def update_student_clues(student_clue_updates)
       bulk_api_request method: :update_student_clues,
                        requests: student_clue_updates,
-                       keys: [ :student, :book_container_uuid, :clue_data ]
+                       keys: [ :student_uuid, :book_container_uuid, :clue_data ]
     end
 
     def update_teacher_clues(teacher_clue_updates)
       bulk_api_request method: :update_teacher_clues,
                        requests: teacher_clue_updates,
-                       keys: [ :course_container, :book_container_uuid, :clue_data ]
+                       keys: [ :course_container_uuid, :book_container_uuid, :clue_data ]
     end
 
     def update_assignment_pes(pe_updates)

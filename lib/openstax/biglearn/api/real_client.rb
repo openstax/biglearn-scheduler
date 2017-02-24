@@ -60,10 +60,8 @@ class OpenStax::Biglearn::Api::RealClient
 
   def update_student_clues(student_clue_updates)
     requests = student_clue_updates.map do |request|
-      student = request.fetch(:student)
-
       request.slice(:request_uuid, :book_container_uuid, :clue_data)
-             .merge(student_uuid: student.uuid)
+             .merge(student_uuid: request.fetch(:student_uuid))
     end
 
     bulk_api_request url: :update_student_clues,
@@ -74,10 +72,8 @@ class OpenStax::Biglearn::Api::RealClient
 
   def update_teacher_clues(teacher_clue_updates)
     requests = teacher_clue_updates.map do |request|
-      course_container = request.fetch(:course_container)
-
       request.slice(:request_uuid, :book_container_uuid, :clue_data)
-             .merge(course_container_uuid: course_container.uuid)
+             .merge(course_container_uuid: request.fetch(:course_container_uuid))
     end
 
     bulk_api_request url: :update_teacher_clues,

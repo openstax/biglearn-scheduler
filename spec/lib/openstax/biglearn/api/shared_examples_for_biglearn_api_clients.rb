@@ -113,7 +113,7 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_student_clues,
       [
         {
-          student: dummy_student,
+          student_uuid: dummy_student.uuid,
           book_container_uuid: dummy_book_container_uuid,
           clue_data: dummy_clue_data
         }
@@ -126,7 +126,7 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_teacher_clues,
       [
         {
-          course_container: dummy_course_container,
+          course_container_uuid: dummy_course_container.uuid,
           book_container_uuid: dummy_book_container_uuid,
           clue_data: dummy_clue_data
         }

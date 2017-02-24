@@ -96,7 +96,7 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
         -> {
           [
             {
-              student: @student,
+              student_uuid: @student.uuid,
               book_container_uuid: @book_container_uuid,
               clue_data: @clue_data
             }
@@ -109,7 +109,7 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
         -> {
           [
             {
-              course_container: @course_container,
+              course_container_uuid: @course_container.uuid,
               book_container_uuid: @book_container_uuid,
               clue_data: @clue_data
             }

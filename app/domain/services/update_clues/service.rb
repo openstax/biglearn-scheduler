@@ -10,27 +10,22 @@ class Services::UpdateClues::Service
     # Any responses created/updated after the last CLUe update indicate the need for a new CLUe
     new_responses = Response.where(used_in_clues: false).to_a
 
-    response_attributes = new_responses.map do |response|
-      [ response.uuid, response.student_uuid, response.exercise_uuid ]
-    end
+    student_uuid_by_trial_uuid = new_responses.map do |response|
+      [ response.uuid, response.student_uuid ]
+    end.to_h
 
     # Build some hashes to minimize the number of queries
-    student_uuids = response_attributes.map(&:second)
+    student_uuids = student_uuid_by_trial_uuid.values
     course_container_uuids_by_student_uuids = Student.where(uuid: student_uuids)
                                                      .pluck(:uuid, :course_container_uuids)
                                                      .to_h
 
-    course_container_uuids = course_container_uuids_by_student_uuids.values
+    course_container_uuids = course_container_uuids_by_student_uuids.values.flatten
     student_uuids_by_course_container_uuids = CourseContainer.where(uuid: course_container_uuids)
                                                              .pluck(:uuid, :student_uuids)
                                                              .to_h
 
-    exercise_uuids = response_attributes.map(&:third)
-    exercise_group_uuid_by_exercise_uuid = Exercise.where(uuid: exercise_uuids)
-                                                   .pluck(:uuid, :group_uuid)
-                                                   .to_h
-
-    trial_uuids = response_attributes.map(&:first)
+    trial_uuids = student_uuid_by_trial_uuid.keys
     ecosystem_uuid_by_trial_uuid = Trial.where(uuid: trial_uuids)
                                         .pluck(:uuid, :ecosystem_uuid)
                                         .to_h
@@ -60,7 +55,7 @@ class Services::UpdateClues::Service
       book_container_uuids_map[ecosystem_uuid][exercise_uuid] = book_container_uuids
     end
 
-    book_container_uuids = book_container_uuids_map.values.flat_map(&:values)
+    book_container_uuids = book_container_uuids_map.values.map(&:values).flatten
     ecosystem_uuid_by_book_container_uuid = {}
     exercise_uuids_by_book_container_uuids = Hash.new { |hash, key| hash[key] = [] }
     ExercisePool.where(book_container_uuid: book_container_uuids)
@@ -71,6 +66,11 @@ class Services::UpdateClues::Service
 
       exercise_uuids_by_book_container_uuids[book_container_uuid].concat exercise_uuids
     end
+
+    exercise_uuids = exercise_uuids_by_book_container_uuids.values.flatten
+    exercise_group_uuid_by_exercise_uuid = Exercise.where(uuid: exercise_uuids)
+                                                   .pluck(:uuid, :group_uuid)
+                                                   .to_h
 
     student_clues_to_update = Hash.new { |hash, key| hash[key] = [] }
     teacher_clues_to_update = Hash.new { |hash, key| hash[key] = [] }
@@ -94,13 +94,11 @@ class Services::UpdateClues::Service
       exercise_uuids = \
         exercise_uuids_by_book_container_uuids.values_at(*book_container_uuids).flatten
 
-      # Find all course containers that contain the given student and all students in all of them
+      # Find all course containers that contain the given student
       course_container_uuids = course_container_uuids_by_student_uuids.fetch student_uuid, []
-      student_uuids = \
-        student_uuids_by_course_container_uuids.values_at(*course_container_uuids).compact.flatten
 
       book_container_uuids.each do |book_container_uuid|
-        student_clues_to_update[book_container_uuid].concat student_uuids
+        student_clues_to_update[book_container_uuid] << student_uuid
 
         teacher_clues_to_update[book_container_uuid].concat course_container_uuids
       end
@@ -202,6 +200,9 @@ class Services::UpdateClues::Service
       end
     end.compact
 
+    OpenStax::Biglearn::Api.update_student_clues(student_clues) if student_clues.any?
+    OpenStax::Biglearn::Api.update_teacher_clues(teacher_clues) if teacher_clues.any?
+
     Response.import new_responses, validate: false, on_duplicate_key_update: {
       conflict_target: [ :uuid ], columns: [ :used_in_clues ]
     }
@@ -232,7 +233,7 @@ class Services::UpdateClues::Service
       {
         minimum: [p_hat - interval, 0].max,
         most_likely: p_hat,
-        maximum: [p_hat + interval, 1].max,
+        maximum: [p_hat + interval, 1].min,
         is_real: true
       }
     else

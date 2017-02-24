@@ -30,6 +30,6 @@ class Worker
   protected
 
   def log(level, &block)
-    Rails.logger.tagged(@task_string, 'worker') { |logger| logger.public_send(level, &block) }
+    Rails.logger.tagged(@task_string, 'Worker') { |logger| logger.public_send(level, &block) }
   end
 end
