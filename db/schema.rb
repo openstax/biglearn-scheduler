@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170224020058) do
+ActiveRecord::Schema.define(version: 20170223231504) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -91,15 +91,15 @@ ActiveRecord::Schema.define(version: 20170224020058) do
 
   create_table "ecosystem_exercises", force: :cascade do |t|
     t.uuid     "uuid",                 null: false
-    t.uuid     "exercise_uuid",        null: false
     t.uuid     "ecosystem_uuid",       null: false
+    t.uuid     "exercise_group_uuid",  null: false
     t.uuid     "book_container_uuids", null: false, array: true
     t.datetime "created_at",           null: false
     t.datetime "updated_at",           null: false
   end
 
   add_index "ecosystem_exercises", ["ecosystem_uuid"], name: "index_ecosystem_exercises_on_ecosystem_uuid", using: :btree
-  add_index "ecosystem_exercises", ["exercise_uuid", "ecosystem_uuid"], name: "index_ecosystem_exercises_on_exercise_uuid_and_ecosystem_uuid", unique: true, using: :btree
+  add_index "ecosystem_exercises", ["exercise_group_uuid", "ecosystem_uuid"], name: "index_eco_exercises_on_exercise_group_uuid_and_eco_uuid", unique: true, using: :btree
   add_index "ecosystem_exercises", ["uuid"], name: "index_ecosystem_exercises_on_uuid", unique: true, using: :btree
 
   create_table "ecosystem_preparations", force: :cascade do |t|
@@ -188,15 +188,5 @@ ActiveRecord::Schema.define(version: 20170224020058) do
 
   add_index "students", ["course_uuid"], name: "index_students_on_course_uuid", using: :btree
   add_index "students", ["uuid"], name: "index_students_on_uuid", unique: true, using: :btree
-
-  create_table "trials", force: :cascade do |t|
-    t.uuid     "uuid",           null: false
-    t.uuid     "ecosystem_uuid", null: false
-    t.datetime "created_at",     null: false
-    t.datetime "updated_at",     null: false
-  end
-
-  add_index "trials", ["ecosystem_uuid"], name: "index_trials_on_ecosystem_uuid", using: :btree
-  add_index "trials", ["uuid"], name: "index_trials_on_uuid", unique: true, using: :btree
 
 end

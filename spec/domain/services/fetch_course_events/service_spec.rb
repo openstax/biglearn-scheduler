@@ -10,7 +10,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                 .and not_change { CourseContainer.count }
                                 .and not_change { Student.count }
                                 .and not_change { Assignment.count }
-                                .and not_change { Trial.count }
                                 .and not_change { Response.count }
     end
   end
@@ -91,7 +90,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
-                                  .and not_change { Trial.count }
                                   .and not_change { Response.count }
                                   .and(change     do
                                     course.reload.sequence_number
@@ -129,7 +127,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
-                                  .and not_change { Trial.count }
                                   .and not_change { Response.count }
                                   .and(change     do
                                     course.reload.sequence_number
@@ -191,7 +188,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { CourseContainer.count }.by(num_containers)
                                   .and change     { Student.count }.by(num_students)
                                   .and not_change { Assignment.count }
-                                  .and not_change { Trial.count }
                                   .and not_change { Response.count }
                                   .and(change     do
                                     course.reload.sequence_number
@@ -238,7 +234,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
-                                  .and not_change { Trial.count }
                                   .and not_change { Response.count }
                                   .and(change     do
                                     course.reload.sequence_number
@@ -290,7 +285,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
-                                  .and not_change { Trial.count }
                                   .and not_change { Response.count }
                                   .and(change     do
                                     course.reload.sequence_number
@@ -367,7 +361,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and change     { Assignment.count }.by(1)
-                                  .and change     { Trial.count }.by(num_assigned_exercises)
                                   .and not_change { Response.count }
                                   .and(change     do
                                     course.reload.sequence_number
@@ -389,10 +382,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         expect(assignment.spes_are_assigned).to eq spes_are_assigned
         expect(assignment.goal_num_tutor_assigned_pes).to eq goal_num_tutor_assigned_pes
         expect(assignment.pes_are_assigned).to eq pes_are_assigned
-
-        trial_uuids = assigned_exercises.map { |trial| trial.fetch :trial_uuid }
-        trials = Trial.where(uuid: trial_uuids)
-        trials.each { |trial| expect(trial.ecosystem_uuid).to eq ecosystem_uuid }
       end
     end
 
@@ -422,7 +411,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
-                                  .and not_change { Trial.count }
                                   .and change     { Response.count }.by(1)
                                   .and(change     do
                                     course.reload.sequence_number

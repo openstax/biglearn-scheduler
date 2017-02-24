@@ -35,7 +35,6 @@ class Services::FetchCourseEvents::Service
       course_containers = []
       students = []
       assignments = []
-      trials = []
       responses = []
       courses = course_event_responses.map do |course_event_response|
         events = course_event_response.fetch :events
@@ -178,10 +177,6 @@ class Services::FetchCourseEvents::Service
             goal_num_tutor_assigned_pes: data.fetch(:goal_num_tutor_assigned_pes),
             pes_are_assigned: data.fetch(:pes_are_assigned)
           )
-
-          exercises.each do |exercise|
-            trials << Trial.new(uuid: exercise.fetch(:trial_uuid), ecosystem_uuid: ecosystem_uuid)
-          end
         end
 
         # Record response saves a student response used to compute the CLUes
@@ -257,10 +252,6 @@ class Services::FetchCourseEvents::Service
             :pes_are_assigned
           ]
         }
-      )
-
-      results << Trial.import(
-        trials, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
       )
 
       results << Response.import(

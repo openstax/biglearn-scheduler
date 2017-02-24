@@ -66,18 +66,19 @@ class Services::FetchEcosystemEvents::Service
 
           data.fetch(:exercises).each do |exercise|
             exercise_uuid = exercise.fetch(:exercise_uuid)
+            exercise_group_uuid = exercise.fetch(:group_uuid)
             book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid]
 
             ecosystem_exercises << EcosystemExercise.new(
               uuid: SecureRandom.uuid,
-              exercise_uuid: exercise_uuid,
               ecosystem_uuid: ecosystem_uuid,
+              exercise_group_uuid: exercise_group_uuid,
               book_container_uuids: book_container_uuids
             )
 
             exercises << Exercise.new(
               uuid: exercise_uuid,
-              group_uuid: exercise.fetch(:group_uuid),
+              group_uuid: exercise_group_uuid,
               version: exercise.fetch(:version)
             )
           end
@@ -111,7 +112,7 @@ class Services::FetchEcosystemEvents::Service
       results << EcosystemExercise.import(
         ecosystem_exercises, validate: false, on_duplicate_key_update: {
           conflict_target: [ :uuid ],
-          columns: [ :exercise_uuid, :ecosystem_uuid, :book_container_uuids ]
+          columns: [ :ecosystem_uuid, :exercise_group_uuid, :book_container_uuids ]
         }
       )
 
