@@ -23,6 +23,7 @@ class Services::FetchEcosystemEvents::Service
 
       exercise_pools = []
       exercises = []
+      ecosystem_exercises = []
       ecosystems = ecosystem_event_responses.map do |ecosystem_event_response|
         events = ecosystem_event_response.fetch :events
         next if events.empty?
@@ -39,7 +40,7 @@ class Services::FetchEcosystemEvents::Service
         if last_create_ecosystem.present?
           data = last_create_ecosystem.fetch(:event_data)
 
-          exercise_pool_uuids_by_exercise_uuids = Hash.new { |hash, key| hash[key] = [] }
+          book_container_uuids_by_exercise_uuids = Hash.new { |hash, key| hash[key] = [] }
           data.fetch(:book).fetch(:contents).each do |content|
             container_uuid = content.fetch(:container_uuid)
 
@@ -58,21 +59,26 @@ class Services::FetchEcosystemEvents::Service
               )
 
               exercise_uuids.each do |exercise_uuid|
-                exercise_pool_uuids_by_exercise_uuids[exercise_uuid] << pool_uuid
+                book_container_uuids_by_exercise_uuids[exercise_uuid] << container_uuid
               end
             end
           end
 
           data.fetch(:exercises).each do |exercise|
             exercise_uuid = exercise.fetch(:exercise_uuid)
-            exercise_pool_uuids = exercise_pool_uuids_by_exercise_uuids[exercise_uuid]
+            book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid]
 
-            exercises << Exercise.new(
+            ecosystem_exercises << EcosystemExercise.new(
               uuid: SecureRandom.uuid,
               exercise_uuid: exercise_uuid,
+              ecosystem_uuid: ecosystem_uuid,
+              book_container_uuids: book_container_uuids
+            )
+
+            exercises << Exercise.new(
+              uuid: exercise_uuid,
               group_uuid: exercise.fetch(:group_uuid),
-              version: exercise.fetch(:version),
-              exercise_pool_uuids: exercise_pool_uuids
+              version: exercise.fetch(:version)
             )
           end
         end
@@ -102,11 +108,15 @@ class Services::FetchEcosystemEvents::Service
         }
       )
 
-      results << Exercise.import(
-        exercises, validate: false, on_duplicate_key_update: {
+      results << EcosystemExercise.import(
+        ecosystem_exercises, validate: false, on_duplicate_key_update: {
           conflict_target: [ :uuid ],
-          columns: [ :exercise_uuid, :group_uuid, :version, :exercise_pool_uuids ]
+          columns: [ :exercise_uuid, :ecosystem_uuid, :book_container_uuids ]
         }
+      )
+
+      results << Exercise.import(
+        exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
       )
 
       Rails.logger.tagged 'FetchEcosystemEvents' do |logger|

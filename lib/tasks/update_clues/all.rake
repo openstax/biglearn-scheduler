@@ -1,3 +1,3 @@
 namespace :update_clues do
-  task all: [:students, :teachers]
+  task(all: :environment) { Services::UpdateClues::Service.new.process }
 end

@@ -35,6 +35,7 @@ class Services::FetchCourseEvents::Service
       course_containers = []
       students = []
       assignments = []
+      trials = []
       responses = []
       courses = course_event_responses.map do |course_event_response|
         events = course_event_response.fetch :events
@@ -160,13 +161,14 @@ class Services::FetchCourseEvents::Service
           last_create_update_assignment = create_update_assignments.last
           data = last_create_update_assignment.fetch(:event_data)
 
+          ecosystem_uuid = data.fetch(:ecosystem_uuid)
           exercises = data.fetch(:assigned_exercises)
           exercise_uuids = exercises.map { |exercise| exercise.fetch(:exercise_uuid) }
 
           assignments << Assignment.new(
             uuid: assignment_uuid,
             course_uuid: course_uuid,
-            ecosystem_uuid: data.fetch(:ecosystem_uuid),
+            ecosystem_uuid: ecosystem_uuid,
             student_uuid: data.fetch(:student_uuid),
             assignment_type: data.fetch(:assignment_type),
             assigned_book_container_uuids: data.fetch(:assigned_book_container_uuids),
@@ -176,6 +178,10 @@ class Services::FetchCourseEvents::Service
             goal_num_tutor_assigned_pes: data.fetch(:goal_num_tutor_assigned_pes),
             pes_are_assigned: data.fetch(:pes_are_assigned)
           )
+
+          exercises.each do |exercise|
+            trials << Trial.new(uuid: exercise.fetch(:trial_uuid), ecosystem_uuid: ecosystem_uuid)
+          end
         end
 
         # Record response saves a student response used to compute the CLUes
@@ -190,7 +196,9 @@ class Services::FetchCourseEvents::Service
             uuid: trial_uuid,
             student_uuid: data.fetch(:student_uuid),
             exercise_uuid: data.fetch(:exercise_uuid),
-            is_correct: data.fetch(:is_correct)
+            responded_at: data.fetch(:responded_at),
+            is_correct: data.fetch(:is_correct),
+            used_in_clues: false
           )
         end
 
@@ -251,9 +259,14 @@ class Services::FetchCourseEvents::Service
         }
       )
 
+      results << Trial.import(
+        trials, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+      )
+
       results << Response.import(
         responses, validate: false, on_duplicate_key_update: {
-          conflict_target: [ :uuid ], columns: [ :student_uuid, :exercise_uuid, :is_correct ]
+          conflict_target: [ :uuid ],
+          columns: [ :student_uuid, :exercise_uuid, :responded_at, :is_correct, :used_in_clues ]
         }
       )
 

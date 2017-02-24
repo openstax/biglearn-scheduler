@@ -3,7 +3,16 @@ require 'rake_helper'
 RSpec.describe 'update_clues:all', type: :task do
   include_context 'rake'
 
-  it 'includes update_clues:students and update_clues:teachers as prerequisites' do
-    expect(subject.prerequisites).to eq ['students', 'teachers']
+  it 'includes the environment as prerequisite' do
+    expect(subject.prerequisites).to eq ['environment']
+  end
+
+  it 'calls the appropriate service' do
+    service_class = Services::UpdateClues::Service
+    service_spy = instance_spy(service_class)
+    expect(service_class).to receive(:new).and_return(service_spy)
+    expect(service_spy).to receive(:process)
+
+    subject.invoke
   end
 end

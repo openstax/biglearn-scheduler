@@ -8,6 +8,7 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
       expect { subject.process }.to  not_change { Ecosystem.count }
                                 .and not_change { ExercisePool.count }
                                 .and not_change { Exercise.count }
+                                .and not_change { EcosystemExercise.count }
     end
   end
 
@@ -61,6 +62,9 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
             los: los.sample(rand(num_los) + 1)
           }
         end
+      end
+      let!(:existing_exercise)      do
+        FactoryGirl.create :exercise, uuid: exercises.first.fetch(:exercise_uuid)
       end
 
       let(:num_chapters)            { rand(10) + 1 }
@@ -127,7 +131,8 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
 
         expect { subject.process }.to  not_change { Ecosystem.count }
                                   .and change { ExercisePool.count }.by(num_pools)
-                                  .and change { Exercise.count }.by(num_exercises)
+                                  .and change { Exercise.count }.by(num_exercises - 1)
+                                  .and change { EcosystemExercise.count }.by(num_exercises)
                                   .and(change do
                                     ecosystem.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
