@@ -193,7 +193,7 @@ class Services::FetchCourseEvents::Service
             exercise_uuid: data.fetch(:exercise_uuid),
             responded_at: data.fetch(:responded_at),
             is_correct: data.fetch(:is_correct),
-            used_in_clues: false
+            used_in_clues_for_ecosystem_uuid: nil
           )
         end
 
@@ -257,7 +257,13 @@ class Services::FetchCourseEvents::Service
       results << Response.import(
         responses, validate: false, on_duplicate_key_update: {
           conflict_target: [ :uuid ],
-          columns: [ :student_uuid, :exercise_uuid, :responded_at, :is_correct, :used_in_clues ]
+          columns: [
+            :student_uuid,
+            :exercise_uuid,
+            :responded_at,
+            :is_correct,
+            :used_in_clues_for_ecosystem_uuid
+          ]
         }
       )
 

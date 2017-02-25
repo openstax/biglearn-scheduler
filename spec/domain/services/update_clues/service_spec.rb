@@ -39,46 +39,56 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
       @exercise_4 = FactoryGirl.create :exercise
       @exercise_5 = FactoryGirl.create :exercise
 
-      @response_1 = FactoryGirl.create :response, used_in_clues: true,
-                                                  is_correct: true,
-                                                  student_uuid: @student_1.uuid,
-                                                  exercise_uuid: @exercise_1.uuid
-      @response_2 = FactoryGirl.create :response, used_in_clues: true,
+      @response_1 = FactoryGirl.create :response,
+                                       used_in_clues_for_ecosystem_uuid: @ecosystem_2.uuid,
+                                       is_correct: true,
+                                       student_uuid: @student_1.uuid,
+                                       exercise_uuid: @exercise_1.uuid
+      @response_2 = FactoryGirl.create :response,
+                                       used_in_clues_for_ecosystem_uuid: @ecosystem_2.uuid,
                                                   is_correct: false,
                                                   student_uuid: @student_1.uuid,
                                                   exercise_uuid: @exercise_2.uuid
-      @response_3 = FactoryGirl.create :response, used_in_clues: true,
-                                                  is_correct: true,
-                                                  student_uuid: @student_1.uuid,
-                                                  exercise_uuid: @exercise_3.uuid
-      @response_4 = FactoryGirl.create :response, used_in_clues: false,
-                                                  is_correct: true,
-                                                  student_uuid: @student_1.uuid,
-                                                  exercise_uuid: @exercise_4.uuid
-      @response_5 = FactoryGirl.create :response, used_in_clues: false,
-                                                  is_correct: true,
-                                                  student_uuid: @student_1.uuid,
-                                                  exercise_uuid: @exercise_5.uuid
-      @response_6 = FactoryGirl.create :response, used_in_clues: true,
-                                                  is_correct: false,
-                                                  student_uuid: @student_2.uuid,
-                                                  exercise_uuid: @exercise_1.uuid
-      @response_7 = FactoryGirl.create :response, used_in_clues: true,
-                                                  is_correct: true,
-                                                  student_uuid: @student_2.uuid,
-                                                  exercise_uuid: @exercise_2.uuid
-      @response_8 = FactoryGirl.create :response, used_in_clues: false,
-                                                  is_correct: true,
-                                                  student_uuid: @student_2.uuid,
-                                                  exercise_uuid: @exercise_3.uuid
-      @response_9 = FactoryGirl.create :response, used_in_clues: false,
-                                                  is_correct: true,
-                                                  student_uuid: @student_2.uuid,
-                                                  exercise_uuid: @exercise_4.uuid
-      @response_10 = FactoryGirl.create :response, used_in_clues: false,
-                                                   is_correct: false,
-                                                   student_uuid: @student_2.uuid,
-                                                   exercise_uuid: @exercise_5.uuid
+      @response_3 = FactoryGirl.create :response,
+                                       used_in_clues_for_ecosystem_uuid: @ecosystem_2.uuid,
+                                       is_correct: true,
+                                       student_uuid: @student_1.uuid,
+                                       exercise_uuid: @exercise_3.uuid
+      @response_4 = FactoryGirl.create :response,
+                                       used_in_clues_for_ecosystem_uuid: @ecosystem_1.uuid,
+                                       is_correct: true,
+                                       student_uuid: @student_1.uuid,
+                                       exercise_uuid: @exercise_4.uuid
+      @response_5 = FactoryGirl.create :response,
+                                       used_in_clues_for_ecosystem_uuid: nil,
+                                       is_correct: true,
+                                       student_uuid: @student_1.uuid,
+                                       exercise_uuid: @exercise_5.uuid
+      @response_6 = FactoryGirl.create :response,
+                                       used_in_clues_for_ecosystem_uuid: @ecosystem_2.uuid,
+                                       is_correct: false,
+                                       student_uuid: @student_2.uuid,
+                                       exercise_uuid: @exercise_1.uuid
+      @response_7 = FactoryGirl.create :response,
+                                       used_in_clues_for_ecosystem_uuid: @ecosystem_2.uuid,
+                                       is_correct: true,
+                                       student_uuid: @student_2.uuid,
+                                       exercise_uuid: @exercise_2.uuid
+      @response_8 = FactoryGirl.create :response,
+                                       used_in_clues_for_ecosystem_uuid: @ecosystem_1.uuid,
+                                       is_correct: true,
+                                       student_uuid: @student_2.uuid,
+                                       exercise_uuid: @exercise_3.uuid
+      @response_9 = FactoryGirl.create :response,
+                                       used_in_clues_for_ecosystem_uuid: nil,
+                                       is_correct: true,
+                                       student_uuid: @student_2.uuid,
+                                       exercise_uuid: @exercise_4.uuid
+      @response_10 = FactoryGirl.create :response,
+                                       used_in_clues_for_ecosystem_uuid: nil,
+                                       is_correct: false,
+                                       student_uuid: @student_2.uuid,
+                                       exercise_uuid: @exercise_5.uuid
     end
 
     after(:all)  { DatabaseCleaner.clean }
@@ -90,16 +100,26 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
       expect do
         subject.process
       end.to  not_change { Response.count                    }
-         .and not_change { @response_1.reload.used_in_clues  }
-         .and not_change { @response_2.reload.used_in_clues  }
-         .and not_change { @response_3.reload.used_in_clues  }
-         .and change     { @response_4.reload.used_in_clues  }.from(false).to(true)
-         .and change     { @response_5.reload.used_in_clues  }.from(false).to(true)
-         .and not_change { @response_6.reload.used_in_clues  }
-         .and not_change { @response_7.reload.used_in_clues  }
-         .and change     { @response_8.reload.used_in_clues  }.from(false).to(true)
-         .and change     { @response_9.reload.used_in_clues  }.from(false).to(true)
-         .and change     { @response_10.reload.used_in_clues }.from(false).to(true)
+         .and not_change { @response_1.reload.used_in_clues_for_ecosystem_uuid  }
+         .and not_change { @response_2.reload.used_in_clues_for_ecosystem_uuid  }
+         .and not_change { @response_3.reload.used_in_clues_for_ecosystem_uuid  }
+         .and(change     do
+           @response_4.reload.used_in_clues_for_ecosystem_uuid
+         end.from(@ecosystem_1.uuid).to(@ecosystem_2.uuid))
+         .and(change     do
+           @response_5.reload.used_in_clues_for_ecosystem_uuid
+         end.from(nil).to(@ecosystem_2.uuid))
+         .and not_change { @response_6.reload.used_in_clues_for_ecosystem_uuid  }
+         .and not_change { @response_7.reload.used_in_clues_for_ecosystem_uuid  }
+         .and(change     do
+           @response_8.reload.used_in_clues_for_ecosystem_uuid
+         end.from(@ecosystem_1.uuid).to(@ecosystem_2.uuid))
+         .and(change     do
+           @response_9.reload.used_in_clues_for_ecosystem_uuid
+         end.from(nil).to(@ecosystem_2.uuid))
+         .and(change     do
+           @response_10.reload.used_in_clues_for_ecosystem_uuid
+         end.from(nil).to(@ecosystem_2.uuid))
     end
 
     context 'with other associated records' do
@@ -242,16 +262,26 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
         expect do
           subject.process
         end.to  not_change { Response.count                    }
-           .and not_change { @response_1.reload.used_in_clues  }
-           .and not_change { @response_2.reload.used_in_clues  }
-           .and not_change { @response_3.reload.used_in_clues  }
-           .and change     { @response_4.reload.used_in_clues  }.from(false).to(true)
-           .and change     { @response_5.reload.used_in_clues  }.from(false).to(true)
-           .and not_change { @response_6.reload.used_in_clues  }
-           .and not_change { @response_7.reload.used_in_clues  }
-           .and change     { @response_8.reload.used_in_clues  }.from(false).to(true)
-           .and change     { @response_9.reload.used_in_clues  }.from(false).to(true)
-           .and change     { @response_10.reload.used_in_clues }.from(false).to(true)
+           .and not_change { @response_1.reload.used_in_clues_for_ecosystem_uuid  }
+           .and not_change { @response_2.reload.used_in_clues_for_ecosystem_uuid  }
+           .and not_change { @response_3.reload.used_in_clues_for_ecosystem_uuid  }
+           .and(change     do
+             @response_4.reload.used_in_clues_for_ecosystem_uuid
+           end.from(@ecosystem_1.uuid).to(@ecosystem_2.uuid))
+           .and(change     do
+             @response_5.reload.used_in_clues_for_ecosystem_uuid
+           end.from(nil).to(@ecosystem_2.uuid))
+           .and not_change { @response_6.reload.used_in_clues_for_ecosystem_uuid  }
+           .and not_change { @response_7.reload.used_in_clues_for_ecosystem_uuid  }
+           .and(change     do
+             @response_8.reload.used_in_clues_for_ecosystem_uuid
+           end.from(@ecosystem_1.uuid).to(@ecosystem_2.uuid))
+           .and(change     do
+             @response_9.reload.used_in_clues_for_ecosystem_uuid
+           end.from(nil).to(@ecosystem_2.uuid))
+           .and(change     do
+             @response_10.reload.used_in_clues_for_ecosystem_uuid
+           end.from(nil).to(@ecosystem_2.uuid))
       end
     end
   end

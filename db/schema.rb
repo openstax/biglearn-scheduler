@@ -151,19 +151,20 @@ ActiveRecord::Schema.define(version: 20170223231504) do
   add_index "exercises", ["uuid"], name: "index_exercises_on_uuid", unique: true, using: :btree
 
   create_table "responses", force: :cascade do |t|
-    t.uuid     "uuid",          null: false
-    t.uuid     "student_uuid",  null: false
-    t.uuid     "exercise_uuid", null: false
-    t.datetime "responded_at",  null: false
-    t.boolean  "is_correct",    null: false
-    t.boolean  "used_in_clues", null: false
-    t.datetime "created_at",    null: false
-    t.datetime "updated_at",    null: false
+    t.uuid     "uuid",                             null: false
+    t.uuid     "student_uuid",                     null: false
+    t.uuid     "exercise_uuid",                    null: false
+    t.datetime "responded_at",                     null: false
+    t.boolean  "is_correct",                       null: false
+    t.uuid     "used_in_clues_for_ecosystem_uuid"
+    t.datetime "created_at",                       null: false
+    t.datetime "updated_at",                       null: false
   end
 
   add_index "responses", ["exercise_uuid"], name: "index_responses_on_exercise_uuid", using: :btree
   add_index "responses", ["responded_at"], name: "index_responses_on_responded_at", using: :btree
   add_index "responses", ["student_uuid"], name: "index_responses_on_student_uuid", using: :btree
+  add_index "responses", ["used_in_clues_for_ecosystem_uuid"], name: "index_responses_on_used_in_clues_for_ecosystem_uuid", using: :btree
   add_index "responses", ["uuid"], name: "index_responses_on_uuid", unique: true, using: :btree
 
   create_table "student_pes", force: :cascade do |t|

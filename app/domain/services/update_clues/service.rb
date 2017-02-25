@@ -7,8 +7,16 @@ class Services::UpdateClues::Service
       logger.info { "Started at #{start_time}" }
     end
 
-    # Any responses created/updated after the last CLUe update indicate the need for a new CLUe
-    new_responses = Response.where(used_in_clues: false).to_a
+    # An Ecosystem update or any Responses created/updated after the last CLUe update
+    # indicate the need for new CLUes
+    rsp = Response.arel_table
+    cc = Course.arel_table
+    ee = EcosystemExercise.arel_table
+
+    response_query = rsp[:used_in_clues_for_ecosystem_uuid].eq(nil).or(
+      cc[:ecosystem_uuid].not_eq(rsp[:used_in_clues_for_ecosystem_uuid])
+    )
+    new_responses = Response.joins(student: :course).where(response_query).to_a
 
     # Build some hashes to minimize the number of queries
 
@@ -42,7 +50,7 @@ class Services::UpdateClues::Service
                                                    .to_h
 
     # Build a query to obtain the book_container_uuids for the new Responses
-    ee = EcosystemExercise.arel_table
+    processable_new_responses = []
     ee_queries = new_responses.map do |response|
       student_uuid = response.student_uuid
 
@@ -76,7 +84,8 @@ class Services::UpdateClues::Service
         next
       end
 
-      response.used_in_clues = true
+      response.used_in_clues_for_ecosystem_uuid = ecosystem_uuid
+      processable_new_responses << response
 
       ee[:ecosystem_uuid].eq(ecosystem_uuid).and(ee[:exercise_group_uuid].eq(exercise_group_uuid))
     end.compact.reduce(:or)
@@ -115,12 +124,10 @@ class Services::UpdateClues::Service
     # Collect the CLUes that need to be updated and build the final Response query
     student_clues_to_update = Hash.new { |hash, key| hash[key] = [] }
     teacher_clues_to_update = Hash.new { |hash, key| hash[key] = [] }
-    rsp = Response.arel_table
-    response_queries = new_responses.select(&:used_in_clues).map do |response|
+    response_queries = processable_new_responses.map do |response|
       student_uuid = response.student_uuid
-      course_uuid = course_uuid_by_student_uuid.fetch student_uuid
-      ecosystem_uuid = ecosystem_uuid_by_course_uuid.fetch course_uuid
       exercise_uuid = response.exercise_uuid
+      ecosystem_uuid = response.used_in_clues_for_ecosystem_uuid
       exercise_group_uuid = exercise_group_uuid_by_exercise_uuid[exercise_uuid]
 
       # Find all book containers that contain the given exercise and all exercises in all of them
@@ -139,6 +146,10 @@ class Services::UpdateClues::Service
         teacher_clues_to_update[book_container_uuid].concat course_container_uuids
       end
 
+      # All responses from students in the same course containers
+      # that refer to any exercise in the same book containers should be considered
+      student_uuids = \
+        student_uuids_by_course_container_uuids.values_at(*course_container_uuids).flatten
       rsp[:student_uuid].in(student_uuids).and rsp[:exercise_uuid].in(exercise_uuids)
     end.compact.reduce(:or)
 
@@ -244,15 +255,15 @@ class Services::UpdateClues::Service
     OpenStax::Biglearn::Api.update_teacher_clues(teacher_clues) if teacher_clues.any?
 
     # Store the fact that the CLUes are up-to-date
-    Response.import new_responses, validate: false, on_duplicate_key_update: {
-      conflict_target: [ :uuid ], columns: [ :used_in_clues ]
+    Response.import processable_new_responses, validate: false, on_duplicate_key_update: {
+      conflict_target: [ :uuid ], columns: [ :used_in_clues_for_ecosystem_uuid ]
     }
 
     Rails.logger.tagged 'UpdateClues' do |logger|
       logger.info do
         time = Time.now - start_time
 
-        "Updated: #{new_responses.size} response(s) - Took: #{time} second(s)"
+        "Updated: #{processable_new_responses.size} response(s) - Took: #{time} second(s)"
       end
     end
   end
