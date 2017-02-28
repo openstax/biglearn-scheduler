@@ -11,7 +11,10 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                 .and not_change { CourseContainer.count }
                                 .and not_change { Student.count }
                                 .and not_change { Assignment.count }
+                                .and not_change { AssignmentSpe.count }
+                                .and not_change { AssignmentPe.count }
                                 .and not_change { Response.count }
+                                .and not_change { ResponseClue.count }
     end
   end
 
@@ -93,7 +96,10 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignmentSpe.count }
+                                  .and not_change { AssignmentPe.count }
                                   .and not_change { Response.count }
+                                  .and not_change { ResponseClue.count }
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -110,16 +116,23 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
     end
 
     context 'update_course_ecosystem events' do
-      let!(:preparation) { FactoryGirl.create :ecosystem_preparation }
+      let!(:preparation)       { FactoryGirl.create :ecosystem_preparation }
 
-      let(:event_type)   { 'update_course_ecosystem' }
-      let(:event_data)   do
+      let(:event_type)         { 'update_course_ecosystem' }
+      let(:event_data)         do
         {
           request_uuid: event_uuid,
           course_uuid: course.uuid,
           sequence_number: sequence_number,
           preparation_uuid: preparation.uuid
         }
+      end
+
+      let(:num_response_clues) { rand(10) }
+      let!(:response_clues)    do
+        num_response_clues.times.map do
+          FactoryGirl.create :response_clue, course_uuid: course.uuid
+        end
       end
 
       it "updates the Course's ecosystem_uuid" do
@@ -131,7 +144,10 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignmentSpe.count }
+                                  .and not_change { AssignmentPe.count }
                                   .and not_change { Response.count }
+                                  .and change     { ResponseClue.count }.by(-num_response_clues)
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -193,7 +209,10 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { CourseContainer.count }.by(num_containers)
                                   .and change     { Student.count }.by(num_students)
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignmentSpe.count }
+                                  .and not_change { AssignmentPe.count }
                                   .and not_change { Response.count }
+                                  .and not_change { ResponseClue.count }
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -240,7 +259,10 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignmentSpe.count }
+                                  .and not_change { AssignmentPe.count }
                                   .and not_change { Response.count }
+                                  .and not_change { ResponseClue.count }
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -292,7 +314,10 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignmentSpe.count }
+                                  .and not_change { AssignmentPe.count }
                                   .and not_change { Response.count }
+                                  .and not_change { ResponseClue.count }
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -360,6 +385,28 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         }
       end
 
+      let!(:other_assignment)      do
+        FactoryGirl.create :assignment, student_uuid: student_uuid,
+                                        goal_num_tutor_assigned_spes: num_assigned_exercises,
+                                        num_assigned_spes: num_assigned_exercises,
+                                        goal_num_tutor_assigned_pes: num_assigned_exercises,
+                                        num_assigned_pes: num_assigned_exercises
+      end
+      let!(:other_assignment_spes) do
+        assigned_exercises.map do |assigned_exercise|
+          FactoryGirl.create :assignment_spe, assignment_uuid: other_assignment.uuid,
+                                              student_uuid: student_uuid,
+                                              exercise_uuid: assigned_exercise.fetch(:exercise_uuid)
+        end
+      end
+      let!(:other_assignment_pes) do
+        assigned_exercises.map do |assigned_exercise|
+          FactoryGirl.create :assignment_pe, assignment_uuid: other_assignment.uuid,
+                                             student_uuid: student_uuid,
+                                             exercise_uuid: assigned_exercise.fetch(:exercise_uuid)
+        end
+      end
+
       it 'creates an Assignment for the Course' do
         assigned_exercise_uuids = assigned_exercises.map { |ex| ex.fetch(:exercise_uuid) }
 
@@ -369,6 +416,19 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and change     { Assignment.count }.by(1)
+                                  .and(change     do
+                                    AssignmentSpe.count
+                                  end.by(-num_assigned_exercises))
+                                  .and(change     do
+                                    AssignmentPe.count
+                                  end.by(-num_assigned_exercises))
+                                  .and not_change { ResponseClue.count }
+                                  .and(change     do
+                                    other_assignment.reload.num_assigned_spes
+                                  end.by(-num_assigned_exercises))
+                                  .and(change     do
+                                    other_assignment.num_assigned_pes
+                                  end.by(-num_assigned_exercises))
                                   .and not_change { Response.count }
                                   .and(change     do
                                     course.reload.sequence_number
@@ -397,13 +457,13 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
     end
 
     context 'record_response events' do
-      let(:event_type)    { 'record_response' }
-      let(:trial_uuid)    { SecureRandom.uuid }
-      let(:student_uuid)  { SecureRandom.uuid }
-      let(:exercise_uuid) { SecureRandom.uuid }
-      let(:is_correct)    { [true, false].sample }
-      let(:responded_at)  { Time.now.utc.iso8601 }
-      let(:event_data)    do
+      let(:event_type)     { 'record_response' }
+      let(:trial_uuid)     { SecureRandom.uuid }
+      let(:student_uuid)   { SecureRandom.uuid }
+      let(:exercise_uuid)  { SecureRandom.uuid }
+      let(:is_correct)     { [true, false].sample }
+      let(:responded_at)   { Time.now.utc.iso8601 }
+      let(:event_data)     do
         {
           response_uuid: event_uuid,
           course_uuid: course.uuid,
@@ -416,6 +476,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         }
       end
 
+      let!(:response_clue) { FactoryGirl.create :response_clue, uuid: trial_uuid }
+
       it 'creates a Response for the Course' do
         expect { subject.process }.to  not_change { Course.count }
                                   .and not_change { EcosystemPreparation.count }
@@ -423,7 +485,10 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignmentSpe.count }
+                                  .and not_change { AssignmentPe.count }
                                   .and change     { Response.count }.by(1)
+                                  .and change     { ResponseClue.count }.by(-1)
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))

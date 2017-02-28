@@ -14,7 +14,7 @@ class Services::UpdateAssignmentExercises::Service
         spes_needed = assignment.goal_num_tutor_assigned_spes - assignment.num_assigned_spes
         k_ago_map = get_k_ago_map(spes_needed)
         due_at = assignment.due_at
-        next if k_ago_map.nil? || due_at.nil?
+        next if k_ago_map.blank? || due_at.nil?
 
         instructor_based_sequence_number = assignment.instructor_based_sequence_number
         sequence_number_queries = k_ago_map.map do |k_ago, num_exercises|

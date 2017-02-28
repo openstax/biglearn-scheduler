@@ -38,6 +38,7 @@ class Services::FetchCourseEvents::Service
       students = []
       assignments = []
       responses = []
+      response_uuids = []
       courses = course_event_responses.map do |course_event_response|
         events = course_event_response.fetch :events
         next if events.empty?
@@ -212,6 +213,8 @@ class Services::FetchCourseEvents::Service
           last_record_response = record_responses.last
           data = last_record_response.fetch(:event_data)
 
+          response_uuids << trial_uuid
+
           responses << Response.new(
             uuid: trial_uuid,
             student_uuid: data.fetch(:student_uuid),
@@ -288,13 +291,56 @@ class Services::FetchCourseEvents::Service
         }
       )
 
-      # Mark CLUes for recalculation for updated course ecosystems
-      ResponseClue.where(course_uuid: course_uuids_with_changed_ecosystems).delete_all
-
       # Mark SPEs/PEs for recalculation for updated Assignments
       assignment_uuids = assignments.map(&:uuid)
       AssignmentSpe.where(assignment_uuid: assignment_uuids).delete_all
       AssignmentPe.where(assignment_uuid: assignment_uuids).delete_all
+
+      spe = AssignmentSpe.arel_table
+      pe = AssignmentPe.arel_table
+      spe_queries = []
+      pe_queries = []
+      assignments.each do |assignment|
+        student_uuid = assignment.student_uuid
+        assigned_exercise_uuids = assignment.assigned_exercise_uuids
+
+        spe_queries << spe[:student_uuid].eq(student_uuid).and(
+                         spe[:exercise_uuid].in(assigned_exercise_uuids)
+                       )
+
+        pe_queries << pe[:student_uuid].eq(student_uuid).and(
+                        pe[:exercise_uuid].in(assigned_exercise_uuids)
+                      )
+      end
+
+      # Mark SPEs/PEs for recalculation if their Exercises have just been assigned
+      if spe_queries.any?
+        spe_query = spe_queries.reduce(:or)
+        affected_spe_assignment_uuids = AssignmentSpe.where(spe_query).pluck(:assignment_uuid)
+        if affected_spe_assignment_uuids.any?
+          spe_cases = affected_spe_assignment_uuids.group_by(&:itself)
+                                                   .map do |assignment_uuid, spes|
+            "WHEN '#{assignment_uuid}' THEN \"num_assigned_spes\" - #{spes.size}"
+          end.join("\n")
+          Assignment.where(uuid: affected_spe_assignment_uuids)
+                    .update_all("\"num_assigned_spes\" = CASE \"uuid\" #{spe_cases} END")
+        end
+        AssignmentSpe.where(spe_query).delete_all
+      end
+
+      if pe_queries.any?
+        pe_query = pe_queries.reduce(:or)
+        affected_pe_assignment_uuids = AssignmentPe.where(pe_query).pluck(:assignment_uuid)
+        if affected_pe_assignment_uuids.any?
+          pe_cases = affected_pe_assignment_uuids.group_by(&:itself)
+                                                 .map do |assignment_uuid, pes|
+            "WHEN '#{assignment_uuid}' THEN \"num_assigned_pes\" - #{pes.size}"
+          end.join("\n")
+          Assignment.where(uuid: affected_pe_assignment_uuids)
+                    .update_all("\"num_assigned_pes\" = CASE \"uuid\" #{pe_cases} END")
+        end
+        AssignmentPe.where(pe_query).delete_all
+      end
 
       results << Response.import(
         responses, validate: false, on_duplicate_key_update: {
@@ -307,6 +353,10 @@ class Services::FetchCourseEvents::Service
           ]
         }
       )
+
+      # Mark CLUes for recalculation for updated course ecosystems and responses
+      ResponseClue.where(uuid: response_uuids).delete_all
+      ResponseClue.where(course_uuid: course_uuids_with_changed_ecosystems).delete_all
 
       Rails.logger.tagged 'FetchCourseEvents' do |logger|
         logger.info do

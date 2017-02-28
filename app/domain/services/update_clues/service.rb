@@ -7,8 +7,8 @@ class Services::UpdateClues::Service
       logger.info { "Started at #{start_time}" }
     end
 
-    # An Ecosystem update or any Responses created/updated after the last CLUe update
-    # indicate the need for new CLUes
+    # ResponseClue records keep track of which Responses have been used in CLUes and
+    # are cleared after every ecosystem update
     new_responses = Response.left_outer_joins(:response_clue)
                             .where(response_clues: { uuid: nil })
                             .to_a
@@ -253,7 +253,7 @@ class Services::UpdateClues::Service
     OpenStax::Biglearn::Api.update_student_clues(student_clues) if student_clues.any?
     OpenStax::Biglearn::Api.update_teacher_clues(teacher_clues) if teacher_clues.any?
 
-    # Store the fact that the CLUes are up-to-date
+    # Record the fact that the CLUes are up-to-date
     ResponseClue.import response_clues, validate: false, on_duplicate_key_ignore: {
       conflict_target: [ :uuid ]
     }
