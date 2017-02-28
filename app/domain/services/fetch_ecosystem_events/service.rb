@@ -22,8 +22,8 @@ class Services::FetchEcosystemEvents::Service
                                .map(&:deep_symbolize_keys)
 
       exercise_pools = []
-      exercises = []
       ecosystem_exercises = []
+      exercises = []
       ecosystems = ecosystem_event_responses.map do |ecosystem_event_response|
         events = ecosystem_event_response.fetch :events
         next if events.empty?

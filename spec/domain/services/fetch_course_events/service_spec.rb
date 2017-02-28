@@ -7,6 +7,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
     it 'does not modify any records' do
       expect { subject.process }.to  not_change { Course.count }
                                 .and not_change { EcosystemPreparation.count }
+                                .and not_change { BookContainerMapping.count }
                                 .and not_change { CourseContainer.count }
                                 .and not_change { Student.count }
                                 .and not_change { Assignment.count }
@@ -50,11 +51,12 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       let(:event_type)              { 'prepare_course_ecosystem' }
       let(:preparation_uuid)        { event_uuid }
       let(:ecosystem_uuid)          { SecureRandom.uuid }
-      let(:cnx_pagemodule_mappings) do
-        3.times.map do
+      let(:num_bc_mappings)         { 3 }
+      let(:book_container_mappings) do
+        num_bc_mappings.times.map do
           {
-            from_cnx_pagemodule_identity: "#{SecureRandom.uuid}@#{rand(10) + 1}.#{rand(10)}",
-            to_cnx_pagemodule_identity: "#{SecureRandom.uuid}@#{rand(10) + 1}.#{rand(10)}"
+            from_book_container_uuid: SecureRandom.uuid,
+            to_book_container_uuid: SecureRandom.uuid
           }
         end
       end
@@ -62,7 +64,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         5.times.map do
           {
             from_exercise_uuid: SecureRandom.uuid,
-            to_cnx_pagemodule_identity: "#{SecureRandom.uuid}@#{rand(10) + 1}.#{rand(10)}"
+            to_book_container_uuid: SecureRandom.uuid
           }
         end
       end
@@ -70,7 +72,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         {
           from_ecosystem_uuid: course.ecosystem_uuid,
           to_ecosystem_uuid: ecosystem_uuid,
-          cnx_pagemodule_mappings: cnx_pagemodule_mappings,
+          book_container_mappings: book_container_mappings,
           exercise_mappings: exercise_mappings
         }
       end
@@ -87,6 +89,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       it 'creates only an EcosystemPreparation for the Course' do
         expect { subject.process }.to  not_change { Course.count }
                                   .and change     { EcosystemPreparation.count }.by(1)
+                                  .and change     { BookContainerMapping.count }.by(num_bc_mappings)
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
@@ -124,6 +127,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
 
         expect { subject.process }.to  not_change { Course.count }
                                   .and not_change { EcosystemPreparation.count }
+                                  .and not_change { BookContainerMapping.count }
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
@@ -185,6 +189,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
 
         expect { subject.process }.to  not_change { Course.count }
                                   .and not_change { EcosystemPreparation.count }
+                                  .and not_change { BookContainerMapping.count }
                                   .and change     { CourseContainer.count }.by(num_containers)
                                   .and change     { Student.count }.by(num_students)
                                   .and not_change { Assignment.count }
@@ -231,6 +236,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       it "updates the Course's global exclusions" do
         expect { subject.process }.to  not_change { Course.count }
                                   .and not_change { EcosystemPreparation.count }
+                                  .and not_change { BookContainerMapping.count }
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
@@ -282,6 +288,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       it "updates the Course's course exclusions" do
         expect { subject.process }.to  not_change { Course.count }
                                   .and not_change { EcosystemPreparation.count }
+                                  .and not_change { BookContainerMapping.count }
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
@@ -358,6 +365,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
 
         expect { subject.process }.to  not_change { Course.count }
                                   .and not_change { EcosystemPreparation.count }
+                                  .and not_change { BookContainerMapping.count }
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and change     { Assignment.count }.by(1)
@@ -378,10 +386,13 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         expect(assignment.assignment_type).to eq assignment_type
         expect(assignment.assigned_book_container_uuids).to eq assigned_book_container_uuids
         expect(assignment.assigned_exercise_uuids).to eq assigned_exercise_uuids
+
         expect(assignment.goal_num_tutor_assigned_spes).to eq goal_num_tutor_assigned_spes
-        expect(assignment.spes_are_assigned).to eq spes_are_assigned
+        expect(assignment.num_assigned_spes).to(
+          eq spes_are_assigned ? goal_num_tutor_assigned_spes : 0
+        )
         expect(assignment.goal_num_tutor_assigned_pes).to eq goal_num_tutor_assigned_pes
-        expect(assignment.pes_are_assigned).to eq pes_are_assigned
+        expect(assignment.num_assigned_pes).to eq pes_are_assigned ? goal_num_tutor_assigned_pes : 0
       end
     end
 
@@ -408,6 +419,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       it 'creates a Response for the Course' do
         expect { subject.process }.to  not_change { Course.count }
                                   .and not_change { EcosystemPreparation.count }
+                                  .and not_change { BookContainerMapping.count }
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }

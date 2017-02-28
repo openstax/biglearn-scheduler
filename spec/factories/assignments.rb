@@ -13,8 +13,8 @@ FactoryGirl.define do
     assigned_book_container_uuids { book_containers_count.times.map { SecureRandom.uuid } }
     assigned_exercise_uuids       { exercises_count.times.map { SecureRandom.uuid } }
     goal_num_tutor_assigned_spes  { rand(10) }
-    spes_are_assigned             { [true, false].sample }
+    num_assigned_spes             { rand(goal_num_tutor_assigned_spes + 1) }
     goal_num_tutor_assigned_pes   { rand(10) }
-    pes_are_assigned              { [true, false].sample }
+    num_assigned_pes              { rand(goal_num_tutor_assigned_pes + 1) }
   end
 end

@@ -32,6 +32,7 @@ class Services::FetchCourseEvents::Service
                                                       .map(&:deep_symbolize_keys)
 
       ecosystem_preparations = []
+      book_container_mappings = []
       course_containers = []
       students = []
       assignments = []
@@ -50,6 +51,19 @@ class Services::FetchCourseEvents::Service
         prepare_ecosystems = events_by_type['prepare_course_ecosystem'] || []
         course_ecosystem_preparations = prepare_ecosystems.map do |prepare_course_ecosystem|
           data = prepare_course_ecosystem.fetch(:event_data)
+
+          ecosystem_map = data.fetch(:ecosystem_map)
+          from_ecosystem_uuid = ecosystem_map.fetch(:from_ecosystem_uuid)
+          to_ecosystem_uuid = ecosystem_map.fetch(:to_ecosystem_uuid)
+          ecosystem_map.fetch(:book_container_mappings).each do |mapping|
+            book_container_mappings << BookContainerMapping.new(
+              uuid: SecureRandom.uuid,
+              from_ecosystem_uuid: from_ecosystem_uuid,
+              to_ecosystem_uuid: to_ecosystem_uuid,
+              from_book_container_uuid: mapping.fetch(:from_book_container_uuid),
+              to_book_container_uuid: mapping.fetch(:to_book_container_uuid)
+            )
+          end
 
           ecosystem_preparations << EcosystemPreparation.new(
             uuid: data.fetch(:preparation_uuid),
@@ -164,18 +178,27 @@ class Services::FetchCourseEvents::Service
           exercises = data.fetch(:assigned_exercises)
           exercise_uuids = exercises.map { |exercise| exercise.fetch(:exercise_uuid) }
 
+          exclusion_info = data.fetch(:exclusion_info, {})
+          opens_at = exclusion_info[:opens_at]
+          due_at = exclusion_info[:due_at]
+
+          goal_num_spes = data.fetch(:goal_num_tutor_assigned_spes)
+          goal_num_pes = data.fetch(:goal_num_tutor_assigned_pes)
+
           assignments << Assignment.new(
             uuid: assignment_uuid,
             course_uuid: course_uuid,
             ecosystem_uuid: ecosystem_uuid,
             student_uuid: data.fetch(:student_uuid),
             assignment_type: data.fetch(:assignment_type),
+            opens_at: opens_at.nil? ? nil : DateTime.parse(opens_at),
+            due_at: due_at.nil? ? nil : DateTime.parse(due_at),
             assigned_book_container_uuids: data.fetch(:assigned_book_container_uuids),
             assigned_exercise_uuids: exercise_uuids,
-            goal_num_tutor_assigned_spes: data.fetch(:goal_num_tutor_assigned_spes),
-            spes_are_assigned: data.fetch(:spes_are_assigned),
-            goal_num_tutor_assigned_pes: data.fetch(:goal_num_tutor_assigned_pes),
-            pes_are_assigned: data.fetch(:pes_are_assigned)
+            goal_num_tutor_assigned_spes: goal_num_spes,
+            num_assigned_spes: data.fetch(:spes_are_assigned) ? goal_num_spes : 0,
+            goal_num_tutor_assigned_pes: goal_num_pes,
+            num_assigned_pes: data.fetch(:pes_are_assigned) ? goal_num_pes : 0
           )
         end
 
@@ -219,8 +242,14 @@ class Services::FetchCourseEvents::Service
       )
 
       results << EcosystemPreparation.import(
-        ecosystem_preparations, validate: false, on_duplicate_key_update: {
-          conflict_target: [ :uuid ], columns: [ :course_uuid, :ecosystem_uuid ]
+        ecosystem_preparations, validate: false, on_duplicate_key_ignore: {
+          conflict_target: [ :uuid ]
+        }
+      )
+
+      results << BookContainerMapping.import(
+        book_container_mappings, validate: false, on_duplicate_key_ignore: {
+          conflict_target: [ :from_book_container_uuid, :from_ecosystem_uuid, :to_ecosystem_uuid ]
         }
       )
 
@@ -244,15 +273,22 @@ class Services::FetchCourseEvents::Service
             :ecosystem_uuid,
             :student_uuid,
             :assignment_type,
+            :opens_at,
+            :due_at,
             :assigned_book_container_uuids,
             :assigned_exercise_uuids,
             :goal_num_tutor_assigned_spes,
-            :spes_are_assigned,
+            :num_assigned_spes,
             :goal_num_tutor_assigned_pes,
-            :pes_are_assigned
+            :num_assigned_pes
           ]
         }
       )
+
+      # Remove the records that track which exercises were picked as SPE/PE for updated Assignments
+      assignment_uuids = assignments.map(&:uuid)
+      AssignmentSpe.where(assignment_uuid: assignment_uuids).delete_all
+      AssignmentPe.where(assignment_uuid: assignment_uuids).delete_all
 
       results << Response.import(
         responses, validate: false, on_duplicate_key_update: {

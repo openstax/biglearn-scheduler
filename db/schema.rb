@@ -11,7 +11,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170223231504) do
+ActiveRecord::Schema.define(version: 20170228164357) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -20,24 +20,28 @@ ActiveRecord::Schema.define(version: 20170223231504) do
     t.uuid     "uuid",            null: false
     t.uuid     "assignment_uuid", null: false
     t.uuid     "exercise_uuid",   null: false
+    t.uuid     "student_uuid",    null: false
     t.datetime "created_at",      null: false
     t.datetime "updated_at",      null: false
   end
 
   add_index "assignment_pes", ["assignment_uuid"], name: "index_assignment_pes_on_assignment_uuid", using: :btree
   add_index "assignment_pes", ["exercise_uuid", "assignment_uuid"], name: "index_assignment_pes_on_exercise_uuid_and_assignment_uuid", unique: true, using: :btree
+  add_index "assignment_pes", ["student_uuid"], name: "index_assignment_pes_on_student_uuid", using: :btree
   add_index "assignment_pes", ["uuid"], name: "index_assignment_pes_on_uuid", unique: true, using: :btree
 
   create_table "assignment_spes", force: :cascade do |t|
     t.uuid     "uuid",            null: false
     t.uuid     "assignment_uuid", null: false
     t.uuid     "exercise_uuid",   null: false
+    t.uuid     "student_uuid",    null: false
     t.datetime "created_at",      null: false
     t.datetime "updated_at",      null: false
   end
 
   add_index "assignment_spes", ["assignment_uuid"], name: "index_assignment_spes_on_assignment_uuid", using: :btree
   add_index "assignment_spes", ["exercise_uuid", "assignment_uuid"], name: "index_assignment_spes_on_exercise_uuid_and_assignment_uuid", unique: true, using: :btree
+  add_index "assignment_spes", ["student_uuid"], name: "index_assignment_spes_on_student_uuid", using: :btree
   add_index "assignment_spes", ["uuid"], name: "index_assignment_spes_on_uuid", unique: true, using: :btree
 
   create_table "assignments", force: :cascade do |t|
@@ -46,22 +50,41 @@ ActiveRecord::Schema.define(version: 20170223231504) do
     t.uuid     "ecosystem_uuid",                null: false
     t.uuid     "student_uuid",                  null: false
     t.string   "assignment_type",               null: false
+    t.datetime "opens_at"
+    t.datetime "due_at"
     t.uuid     "assigned_book_container_uuids", null: false, array: true
     t.uuid     "assigned_exercise_uuids",       null: false, array: true
     t.integer  "goal_num_tutor_assigned_spes",  null: false
-    t.boolean  "spes_are_assigned",             null: false
+    t.integer  "num_assigned_spes",             null: false
     t.integer  "goal_num_tutor_assigned_pes",   null: false
-    t.boolean  "pes_are_assigned",              null: false
+    t.integer  "num_assigned_pes",              null: false
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
   end
 
   add_index "assignments", ["course_uuid"], name: "index_assignments_on_course_uuid", using: :btree
+  add_index "assignments", ["due_at", "opens_at", "created_at"], name: "index_assignments_on_due_at_and_opens_at_and_created_at", using: :btree
   add_index "assignments", ["ecosystem_uuid"], name: "index_assignments_on_ecosystem_uuid", using: :btree
   add_index "assignments", ["goal_num_tutor_assigned_pes"], name: "index_assignments_on_goal_num_tutor_assigned_pes", using: :btree
   add_index "assignments", ["goal_num_tutor_assigned_spes"], name: "index_assignments_on_goal_num_tutor_assigned_spes", using: :btree
   add_index "assignments", ["student_uuid"], name: "index_assignments_on_student_uuid", using: :btree
   add_index "assignments", ["uuid"], name: "index_assignments_on_uuid", unique: true, using: :btree
+
+  create_table "book_container_mappings", force: :cascade do |t|
+    t.uuid     "uuid",                     null: false
+    t.uuid     "from_ecosystem_uuid",      null: false
+    t.uuid     "to_ecosystem_uuid",        null: false
+    t.uuid     "from_book_container_uuid", null: false
+    t.uuid     "to_book_container_uuid",   null: false
+    t.datetime "created_at",               null: false
+    t.datetime "updated_at",               null: false
+  end
+
+  add_index "book_container_mappings", ["from_book_container_uuid", "from_ecosystem_uuid", "to_ecosystem_uuid"], name: "index_bcms_on_from_bc_uuid_from_eco_uuid_to_eco_uuid_unique", unique: true, using: :btree
+  add_index "book_container_mappings", ["from_ecosystem_uuid"], name: "index_book_container_mappings_on_from_ecosystem_uuid", using: :btree
+  add_index "book_container_mappings", ["to_book_container_uuid"], name: "index_book_container_mappings_on_to_book_container_uuid", using: :btree
+  add_index "book_container_mappings", ["to_ecosystem_uuid"], name: "index_book_container_mappings_on_to_ecosystem_uuid", using: :btree
+  add_index "book_container_mappings", ["uuid"], name: "index_book_container_mappings_on_uuid", unique: true, using: :btree
 
   create_table "course_containers", force: :cascade do |t|
     t.uuid     "uuid",          null: false
