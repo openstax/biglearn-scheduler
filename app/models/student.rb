@@ -1,8 +1,4 @@
-class Student < ActiveRecord::Base
-  include HasUniqueUuid
-
-  belongs_to :course, primary_key: :uuid, foreign_key: :course_uuid
-
+class Student < ApplicationRecord
   validates :course_uuid,            presence: true
   validates :course_container_uuids, presence: true
 end

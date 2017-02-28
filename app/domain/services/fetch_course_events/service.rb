@@ -32,6 +32,7 @@ class Services::FetchCourseEvents::Service
                                                       .map(&:deep_symbolize_keys)
 
       ecosystem_preparations = []
+      course_uuids_with_changed_ecosystems = []
       book_container_mappings = []
       course_containers = []
       students = []
@@ -83,6 +84,7 @@ class Services::FetchCourseEvents::Service
           preparation = course_ecosystem_preparations.find{ |prep| prep.uuid == preparation_uuid }
           preparation ||= EcosystemPreparation.find_by uuid: preparation_uuid
           course.ecosystem_uuid = preparation.ecosystem_uuid
+          course_uuids_with_changed_ecosystems << course.uuid
         end
 
         # Update roster changes the students and periods we compute CLUes for
@@ -215,8 +217,7 @@ class Services::FetchCourseEvents::Service
             student_uuid: data.fetch(:student_uuid),
             exercise_uuid: data.fetch(:exercise_uuid),
             responded_at: data.fetch(:responded_at),
-            is_correct: data.fetch(:is_correct),
-            used_in_clues_for_ecosystem_uuid: nil
+            is_correct: data.fetch(:is_correct)
           )
         end
 
@@ -224,6 +225,8 @@ class Services::FetchCourseEvents::Service
 
         course
       end.compact
+
+      # Update all the records in as few queries as possible
 
       results = []
 
@@ -285,7 +288,10 @@ class Services::FetchCourseEvents::Service
         }
       )
 
-      # Remove the records that track which exercises were picked as SPE/PE for updated Assignments
+      # Mark CLUes for recalculation for updated course ecosystems
+      ResponseClue.where(course_uuid: course_uuids_with_changed_ecosystems).delete_all
+
+      # Mark SPEs/PEs for recalculation for updated Assignments
       assignment_uuids = assignments.map(&:uuid)
       AssignmentSpe.where(assignment_uuid: assignment_uuids).delete_all
       AssignmentPe.where(assignment_uuid: assignment_uuids).delete_all
@@ -297,8 +303,7 @@ class Services::FetchCourseEvents::Service
             :student_uuid,
             :exercise_uuid,
             :responded_at,
-            :is_correct,
-            :used_in_clues_for_ecosystem_uuid
+            :is_correct
           ]
         }
       )

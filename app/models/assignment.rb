@@ -1,6 +1,4 @@
-class Assignment < ActiveRecord::Base
-  include HasUniqueUuid
-
+class Assignment < ApplicationRecord
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
   scope :with_instructor_based_sequence_numbers, -> do
     from(

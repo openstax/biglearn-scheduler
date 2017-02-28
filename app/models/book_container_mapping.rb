@@ -1,6 +1,4 @@
-class BookContainerMapping < ActiveRecord::Base
-  include HasUniqueUuid
-
+class BookContainerMapping < ApplicationRecord
   validates :uuid,                     presence: true
   validates :from_ecosystem_uuid,      presence: true
   validates :to_ecosystem_uuid,        presence: true

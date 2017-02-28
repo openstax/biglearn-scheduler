@@ -1,4 +1,3 @@
-# encoding: UTF-8
 # This file is auto-generated from the current state of the database. Instead
 # of editing this file, please use the migrations feature of Active Record to
 # incrementally modify your database, and then regenerate this schema definition.
@@ -11,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170228164357) do
+ActiveRecord::Schema.define(version: 20170228194744) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -23,12 +22,11 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.uuid     "student_uuid",    null: false
     t.datetime "created_at",      null: false
     t.datetime "updated_at",      null: false
+    t.index ["assignment_uuid"], name: "index_assignment_pes_on_assignment_uuid", using: :btree
+    t.index ["exercise_uuid", "assignment_uuid"], name: "index_assignment_pes_on_exercise_uuid_and_assignment_uuid", unique: true, using: :btree
+    t.index ["student_uuid"], name: "index_assignment_pes_on_student_uuid", using: :btree
+    t.index ["uuid"], name: "index_assignment_pes_on_uuid", unique: true, using: :btree
   end
-
-  add_index "assignment_pes", ["assignment_uuid"], name: "index_assignment_pes_on_assignment_uuid", using: :btree
-  add_index "assignment_pes", ["exercise_uuid", "assignment_uuid"], name: "index_assignment_pes_on_exercise_uuid_and_assignment_uuid", unique: true, using: :btree
-  add_index "assignment_pes", ["student_uuid"], name: "index_assignment_pes_on_student_uuid", using: :btree
-  add_index "assignment_pes", ["uuid"], name: "index_assignment_pes_on_uuid", unique: true, using: :btree
 
   create_table "assignment_spes", force: :cascade do |t|
     t.uuid     "uuid",            null: false
@@ -37,12 +35,11 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.uuid     "student_uuid",    null: false
     t.datetime "created_at",      null: false
     t.datetime "updated_at",      null: false
+    t.index ["assignment_uuid"], name: "index_assignment_spes_on_assignment_uuid", using: :btree
+    t.index ["exercise_uuid", "assignment_uuid"], name: "index_assignment_spes_on_exercise_uuid_and_assignment_uuid", unique: true, using: :btree
+    t.index ["student_uuid"], name: "index_assignment_spes_on_student_uuid", using: :btree
+    t.index ["uuid"], name: "index_assignment_spes_on_uuid", unique: true, using: :btree
   end
-
-  add_index "assignment_spes", ["assignment_uuid"], name: "index_assignment_spes_on_assignment_uuid", using: :btree
-  add_index "assignment_spes", ["exercise_uuid", "assignment_uuid"], name: "index_assignment_spes_on_exercise_uuid_and_assignment_uuid", unique: true, using: :btree
-  add_index "assignment_spes", ["student_uuid"], name: "index_assignment_spes_on_student_uuid", using: :btree
-  add_index "assignment_spes", ["uuid"], name: "index_assignment_spes_on_uuid", unique: true, using: :btree
 
   create_table "assignments", force: :cascade do |t|
     t.uuid     "uuid",                          null: false
@@ -60,15 +57,14 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.integer  "num_assigned_pes",              null: false
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
+    t.index ["course_uuid"], name: "index_assignments_on_course_uuid", using: :btree
+    t.index ["due_at", "opens_at", "created_at"], name: "index_assignments_on_due_at_and_opens_at_and_created_at", using: :btree
+    t.index ["ecosystem_uuid"], name: "index_assignments_on_ecosystem_uuid", using: :btree
+    t.index ["goal_num_tutor_assigned_pes"], name: "index_assignments_on_goal_num_tutor_assigned_pes", using: :btree
+    t.index ["goal_num_tutor_assigned_spes"], name: "index_assignments_on_goal_num_tutor_assigned_spes", using: :btree
+    t.index ["student_uuid"], name: "index_assignments_on_student_uuid", using: :btree
+    t.index ["uuid"], name: "index_assignments_on_uuid", unique: true, using: :btree
   end
-
-  add_index "assignments", ["course_uuid"], name: "index_assignments_on_course_uuid", using: :btree
-  add_index "assignments", ["due_at", "opens_at", "created_at"], name: "index_assignments_on_due_at_and_opens_at_and_created_at", using: :btree
-  add_index "assignments", ["ecosystem_uuid"], name: "index_assignments_on_ecosystem_uuid", using: :btree
-  add_index "assignments", ["goal_num_tutor_assigned_pes"], name: "index_assignments_on_goal_num_tutor_assigned_pes", using: :btree
-  add_index "assignments", ["goal_num_tutor_assigned_spes"], name: "index_assignments_on_goal_num_tutor_assigned_spes", using: :btree
-  add_index "assignments", ["student_uuid"], name: "index_assignments_on_student_uuid", using: :btree
-  add_index "assignments", ["uuid"], name: "index_assignments_on_uuid", unique: true, using: :btree
 
   create_table "book_container_mappings", force: :cascade do |t|
     t.uuid     "uuid",                     null: false
@@ -78,13 +74,12 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.uuid     "to_book_container_uuid",   null: false
     t.datetime "created_at",               null: false
     t.datetime "updated_at",               null: false
+    t.index ["from_book_container_uuid", "from_ecosystem_uuid", "to_ecosystem_uuid"], name: "index_bcms_on_from_bc_uuid_from_eco_uuid_to_eco_uuid_unique", unique: true, using: :btree
+    t.index ["from_ecosystem_uuid"], name: "index_book_container_mappings_on_from_ecosystem_uuid", using: :btree
+    t.index ["to_book_container_uuid"], name: "index_book_container_mappings_on_to_book_container_uuid", using: :btree
+    t.index ["to_ecosystem_uuid"], name: "index_book_container_mappings_on_to_ecosystem_uuid", using: :btree
+    t.index ["uuid"], name: "index_book_container_mappings_on_uuid", unique: true, using: :btree
   end
-
-  add_index "book_container_mappings", ["from_book_container_uuid", "from_ecosystem_uuid", "to_ecosystem_uuid"], name: "index_bcms_on_from_bc_uuid_from_eco_uuid_to_eco_uuid_unique", unique: true, using: :btree
-  add_index "book_container_mappings", ["from_ecosystem_uuid"], name: "index_book_container_mappings_on_from_ecosystem_uuid", using: :btree
-  add_index "book_container_mappings", ["to_book_container_uuid"], name: "index_book_container_mappings_on_to_book_container_uuid", using: :btree
-  add_index "book_container_mappings", ["to_ecosystem_uuid"], name: "index_book_container_mappings_on_to_ecosystem_uuid", using: :btree
-  add_index "book_container_mappings", ["uuid"], name: "index_book_container_mappings_on_uuid", unique: true, using: :btree
 
   create_table "course_containers", force: :cascade do |t|
     t.uuid     "uuid",          null: false
@@ -93,9 +88,8 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.uuid     "student_uuids", null: false, array: true
     t.datetime "created_at",    null: false
     t.datetime "updated_at",    null: false
+    t.index ["uuid"], name: "index_course_containers_on_uuid", unique: true, using: :btree
   end
-
-  add_index "course_containers", ["uuid"], name: "index_course_containers_on_uuid", unique: true, using: :btree
 
   create_table "courses", force: :cascade do |t|
     t.uuid     "uuid",                                 null: false
@@ -107,10 +101,9 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.uuid     "global_excluded_exercise_group_uuids", null: false, array: true
     t.datetime "created_at",                           null: false
     t.datetime "updated_at",                           null: false
+    t.index ["ecosystem_uuid"], name: "index_courses_on_ecosystem_uuid", using: :btree
+    t.index ["uuid"], name: "index_courses_on_uuid", unique: true, using: :btree
   end
-
-  add_index "courses", ["ecosystem_uuid"], name: "index_courses_on_ecosystem_uuid", using: :btree
-  add_index "courses", ["uuid"], name: "index_courses_on_uuid", unique: true, using: :btree
 
   create_table "ecosystem_exercises", force: :cascade do |t|
     t.uuid     "uuid",                 null: false
@@ -119,11 +112,10 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.uuid     "book_container_uuids", null: false, array: true
     t.datetime "created_at",           null: false
     t.datetime "updated_at",           null: false
+    t.index ["ecosystem_uuid"], name: "index_ecosystem_exercises_on_ecosystem_uuid", using: :btree
+    t.index ["exercise_group_uuid", "ecosystem_uuid"], name: "index_eco_exercises_on_exercise_group_uuid_and_eco_uuid", unique: true, using: :btree
+    t.index ["uuid"], name: "index_ecosystem_exercises_on_uuid", unique: true, using: :btree
   end
-
-  add_index "ecosystem_exercises", ["ecosystem_uuid"], name: "index_ecosystem_exercises_on_ecosystem_uuid", using: :btree
-  add_index "ecosystem_exercises", ["exercise_group_uuid", "ecosystem_uuid"], name: "index_eco_exercises_on_exercise_group_uuid_and_eco_uuid", unique: true, using: :btree
-  add_index "ecosystem_exercises", ["uuid"], name: "index_ecosystem_exercises_on_uuid", unique: true, using: :btree
 
   create_table "ecosystem_preparations", force: :cascade do |t|
     t.uuid     "uuid",           null: false
@@ -131,20 +123,18 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.uuid     "ecosystem_uuid", null: false
     t.datetime "created_at",     null: false
     t.datetime "updated_at",     null: false
+    t.index ["course_uuid", "ecosystem_uuid"], name: "index_ecosystem_preparations_on_course_uuid_and_ecosystem_uuid", using: :btree
+    t.index ["ecosystem_uuid"], name: "index_ecosystem_preparations_on_ecosystem_uuid", using: :btree
+    t.index ["uuid"], name: "index_ecosystem_preparations_on_uuid", unique: true, using: :btree
   end
-
-  add_index "ecosystem_preparations", ["course_uuid", "ecosystem_uuid"], name: "index_ecosystem_preparations_on_course_uuid_and_ecosystem_uuid", using: :btree
-  add_index "ecosystem_preparations", ["ecosystem_uuid"], name: "index_ecosystem_preparations_on_ecosystem_uuid", using: :btree
-  add_index "ecosystem_preparations", ["uuid"], name: "index_ecosystem_preparations_on_uuid", unique: true, using: :btree
 
   create_table "ecosystems", force: :cascade do |t|
     t.uuid     "uuid",            null: false
     t.integer  "sequence_number", null: false
     t.datetime "created_at",      null: false
     t.datetime "updated_at",      null: false
+    t.index ["uuid"], name: "index_ecosystems_on_uuid", unique: true, using: :btree
   end
-
-  add_index "ecosystems", ["uuid"], name: "index_ecosystems_on_uuid", unique: true, using: :btree
 
   create_table "exercise_pools", force: :cascade do |t|
     t.uuid     "uuid",                                      null: false
@@ -155,12 +145,11 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.uuid     "exercise_uuids",                            null: false, array: true
     t.datetime "created_at",                                null: false
     t.datetime "updated_at",                                null: false
+    t.index ["book_container_uuid"], name: "index_exercise_pools_on_book_container_uuid", using: :btree
+    t.index ["ecosystem_uuid"], name: "index_exercise_pools_on_ecosystem_uuid", using: :btree
+    t.index ["use_for_clue"], name: "index_exercise_pools_on_use_for_clue", using: :btree
+    t.index ["uuid"], name: "index_exercise_pools_on_uuid", unique: true, using: :btree
   end
-
-  add_index "exercise_pools", ["book_container_uuid"], name: "index_exercise_pools_on_book_container_uuid", using: :btree
-  add_index "exercise_pools", ["ecosystem_uuid"], name: "index_exercise_pools_on_ecosystem_uuid", using: :btree
-  add_index "exercise_pools", ["use_for_clue"], name: "index_exercise_pools_on_use_for_clue", using: :btree
-  add_index "exercise_pools", ["uuid"], name: "index_exercise_pools_on_uuid", unique: true, using: :btree
 
   create_table "exercises", force: :cascade do |t|
     t.uuid     "uuid",       null: false
@@ -168,27 +157,32 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.integer  "version",    null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["group_uuid", "version"], name: "index_exercises_on_group_uuid_and_version", using: :btree
+    t.index ["uuid"], name: "index_exercises_on_uuid", unique: true, using: :btree
   end
 
-  add_index "exercises", ["group_uuid", "version"], name: "index_exercises_on_group_uuid_and_version", using: :btree
-  add_index "exercises", ["uuid"], name: "index_exercises_on_uuid", unique: true, using: :btree
+  create_table "response_clues", force: :cascade do |t|
+    t.uuid     "uuid",        null: false
+    t.uuid     "course_uuid", null: false
+    t.datetime "created_at",  null: false
+    t.datetime "updated_at",  null: false
+    t.index ["course_uuid"], name: "index_response_clues_on_course_uuid", using: :btree
+    t.index ["uuid"], name: "index_response_clues_on_uuid", unique: true, using: :btree
+  end
 
   create_table "responses", force: :cascade do |t|
-    t.uuid     "uuid",                             null: false
-    t.uuid     "student_uuid",                     null: false
-    t.uuid     "exercise_uuid",                    null: false
-    t.datetime "responded_at",                     null: false
-    t.boolean  "is_correct",                       null: false
-    t.uuid     "used_in_clues_for_ecosystem_uuid"
-    t.datetime "created_at",                       null: false
-    t.datetime "updated_at",                       null: false
+    t.uuid     "uuid",          null: false
+    t.uuid     "student_uuid",  null: false
+    t.uuid     "exercise_uuid", null: false
+    t.datetime "responded_at",  null: false
+    t.boolean  "is_correct",    null: false
+    t.datetime "created_at",    null: false
+    t.datetime "updated_at",    null: false
+    t.index ["exercise_uuid"], name: "index_responses_on_exercise_uuid", using: :btree
+    t.index ["responded_at"], name: "index_responses_on_responded_at", using: :btree
+    t.index ["student_uuid"], name: "index_responses_on_student_uuid", using: :btree
+    t.index ["uuid"], name: "index_responses_on_uuid", unique: true, using: :btree
   end
-
-  add_index "responses", ["exercise_uuid"], name: "index_responses_on_exercise_uuid", using: :btree
-  add_index "responses", ["responded_at"], name: "index_responses_on_responded_at", using: :btree
-  add_index "responses", ["student_uuid"], name: "index_responses_on_student_uuid", using: :btree
-  add_index "responses", ["used_in_clues_for_ecosystem_uuid"], name: "index_responses_on_used_in_clues_for_ecosystem_uuid", using: :btree
-  add_index "responses", ["uuid"], name: "index_responses_on_uuid", unique: true, using: :btree
 
   create_table "student_pes", force: :cascade do |t|
     t.uuid     "uuid",          null: false
@@ -196,11 +190,10 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.uuid     "exercise_uuid", null: false
     t.datetime "created_at",    null: false
     t.datetime "updated_at",    null: false
+    t.index ["exercise_uuid", "student_uuid"], name: "index_student_pes_on_exercise_uuid_and_student_uuid", unique: true, using: :btree
+    t.index ["student_uuid"], name: "index_student_pes_on_student_uuid", using: :btree
+    t.index ["uuid"], name: "index_student_pes_on_uuid", unique: true, using: :btree
   end
-
-  add_index "student_pes", ["exercise_uuid", "student_uuid"], name: "index_student_pes_on_exercise_uuid_and_student_uuid", unique: true, using: :btree
-  add_index "student_pes", ["student_uuid"], name: "index_student_pes_on_student_uuid", using: :btree
-  add_index "student_pes", ["uuid"], name: "index_student_pes_on_uuid", unique: true, using: :btree
 
   create_table "students", force: :cascade do |t|
     t.uuid     "uuid",                   null: false
@@ -208,9 +201,8 @@ ActiveRecord::Schema.define(version: 20170228164357) do
     t.uuid     "course_container_uuids", null: false, array: true
     t.datetime "created_at",             null: false
     t.datetime "updated_at",             null: false
+    t.index ["course_uuid"], name: "index_students_on_course_uuid", using: :btree
+    t.index ["uuid"], name: "index_students_on_uuid", unique: true, using: :btree
   end
-
-  add_index "students", ["course_uuid"], name: "index_students_on_course_uuid", using: :btree
-  add_index "students", ["uuid"], name: "index_students_on_uuid", unique: true, using: :btree
 
 end
