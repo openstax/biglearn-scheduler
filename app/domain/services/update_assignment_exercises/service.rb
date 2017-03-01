@@ -121,6 +121,21 @@ class Services::UpdateAssignmentExercises::Service
         @exercise_uuids_map[book_container_uuid][assignment_type].concat exercise_uuids
       end
 
+      # Get any exercises that are already assigned as SPEs or PEs
+      assignment_uuids = assignment_by_assignment_uuid.keys
+      @assigned_spes_by_assignment_uuid = Hash.new { |hash, key| hash[key] = [] }
+      AssignmentSpe.where(assignment_uuid: assignment_uuids)
+                   .pluck(:assignment_uuid, :exercise_uuid)
+                   .each do |assignment_uuid, exercise_uuid|
+        @assigned_spes_by_assignment_uuid[assignment_uuid] << exercise_uuid
+      end
+      @assigned_pes_by_assignment_uuid = Hash.new { |hash, key| hash[key] = [] }
+      AssignmentPe.where(assignment_uuid: assignment_uuids)
+                  .pluck(:assignment_uuid, :exercise_uuid)
+                  .each do |assignment_uuid, exercise_uuid|
+        @assigned_pes_by_assignment_uuid[assignment_uuid] << exercise_uuid
+      end
+
       # Get exercise exclusions for each course
       course_uuids = assignment_by_assignment_uuid.values.map(&:course_uuid)
       exclusions = Course.where(uuid: course_uuids).pluck(
@@ -192,13 +207,15 @@ class Services::UpdateAssignmentExercises::Service
             k_ago_exercise_uuids = get_exercise_uuids(
               book_container_uuids: k_ago_book_container_uuids,
               assignment_type: assignment_type,
+              excluded_uuids: excluded_uuids_set,
               count: num_exercises
             )
 
             remaining_exercises = k_ago_exercise_uuids.size - num_exercises
-            k_ago_exercise_uuids = k_ago_exercise_uuids + get_exercise_uuids(
+            k_ago_exercise_uuids += get_exercise_uuids(
               book_container_uuids: assigned_book_container_uuids,
               assignment_type: assignment_type,
+              excluded_uuids: excluded_uuids_set,
               count: remaining_exercises
             ) if remaining_exercises > 0
 
@@ -209,6 +226,8 @@ class Services::UpdateAssignmentExercises::Service
             k_ago_exercise_uuids
           end
 
+          assignment.num_assigned_spes += spaced_practice_exercise_uuids.size
+
           spe_updates << {
             assignment_uuid: assignment_uuid, exercise_uuids: spaced_practice_exercise_uuids
           }
@@ -217,6 +236,7 @@ class Services::UpdateAssignmentExercises::Service
           personalized_exercise_uuids = get_exercise_uuids(
             book_container_uuids: assigned_book_container_uuids,
             assignment_type: assignment_type,
+            excluded_uuids: excluded_uuids_set,
             count: assignment.goal_num_tutor_assigned_pes - assignment.num_assigned_pes
           )
 
@@ -224,11 +244,20 @@ class Services::UpdateAssignmentExercises::Service
             AssignmentPe.new assignment_uuid: assignment_uuid, exercise_uuid: pe_uuid
           end
 
+          assignment.num_assigned_pes += personalized_exercise_uuids.size
+
           pe_updates << {
             assignment_uuid: assignment_uuid, exercise_uuids: personalized_exercise_uuids
           }
         end
       end
+
+      Assignment.import(
+        assignments, validate: false, on_duplicate_key_update: {
+          conflict_target: [ :uuid ],
+          columns: [ :num_assigned_spes, :num_assigned_pes ]
+        }
+      )
 
       AssignmentSpe.import(
         assignment_spes, validate: false, on_duplicate_key_ignore: {
@@ -268,9 +297,10 @@ class Services::UpdateAssignmentExercises::Service
     end
   end
 
-  def get_exercise_uuids(assignment:, book_container_uuids:, count:)
+  def get_exercise_uuids(assignment:, book_container_uuids:, excluded_uuids:, count:)
     return [] if count == 0
 
+    assignment_uuid = assignment.uuid
     assignment_type = assignment.assignment_type
 
     # Get exercises in relevant book containers for relevant assignment type
@@ -278,9 +308,15 @@ class Services::UpdateAssignmentExercises::Service
       @exercise_uuids_map[book_container_uuid][assignment_type]
     end
 
-    # Remove duplicates (same assignment) and exclusions
+    assigned_spes = @assigned_spes_by_assignment_uuid[assignment_uuid]
+    assigned_pes = @assigned_pes_by_assignment_uuid[assignment_uuid]
+
+    # Remove duplicates (same assignment - already assigned and already PEs/SPEs) and exclusions
     candidate_exercise_uuids = book_container_exercise_uuids.reject do |uuid|
-      assignment.assigned_exercise_uuids.include?(uuid) || excluded_uuids_set.include?(uuid)
+      assignment.assigned_exercise_uuids.include?(uuid) ||
+      assigned_spes.include?(uuid) ||
+      assigned_pes.include?(uuid) ||
+      excluded_uuids.include?(uuid)
     end
 
     # Partition remaining exercises into used and unused
