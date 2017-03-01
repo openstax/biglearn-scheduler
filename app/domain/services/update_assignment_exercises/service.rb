@@ -1,10 +1,14 @@
 class Services::UpdateAssignmentExercises::Service
+  BATCH_SIZE = 1000
+
   def process
     aa = Assignment.arel_table
     query = aa[:goal_num_tutor_assigned_spes].gt(0).and(aa[:spes_are_assigned].eq(false))
               .or(aa[:goal_num_tutor_assigned_pes].gt(0).and(aa[:pes_are_assigned].eq(false)))
 
-    Assignment.with_instructor_based_sequence_numbers.where(query).find_in_batches do |assignments|
+    Assignment.with_instructor_based_sequence_numbers
+              .where(query)
+              .find_in_batches(batch_size: BATCH_SIZE) do |assignments|
       assignment_by_assignment_uuid = assignments.index_by(&:uuid)
 
       # Build assignment histories so we can find SPE book_container_uuids
