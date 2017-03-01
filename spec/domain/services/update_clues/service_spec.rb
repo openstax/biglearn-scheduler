@@ -5,10 +5,12 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
 
   context 'with no Responses' do
     it 'does not update any CLUes' do
-      expect(OpenStax::Biglearn::Api).not_to receive(:update_student_clues)
-      expect(OpenStax::Biglearn::Api).not_to receive(:update_teacher_clues)
+      expect(OpenStax::Biglearn::Api).to receive(:update_student_clues).with([])
+      expect(OpenStax::Biglearn::Api).to receive(:update_teacher_clues).with([])
 
-      expect { subject.process }.to not_change { Response.count }
+      expect { subject.process }.to  not_change { Response.count     }
+                                .and not_change { ResponseClue.count }
+                                .and not_change { StudentClue.count  }
     end
   end
 
@@ -91,13 +93,14 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
     after(:all)  { DatabaseCleaner.clean }
 
     it 'marks the Response objects as processed' do
-      expect(OpenStax::Biglearn::Api).not_to receive(:update_student_clues)
-      expect(OpenStax::Biglearn::Api).not_to receive(:update_teacher_clues)
+      expect(OpenStax::Biglearn::Api).to receive(:update_student_clues).with([])
+      expect(OpenStax::Biglearn::Api).to receive(:update_teacher_clues).with([])
 
       expect do
         subject.process
       end.to  not_change { Response.count     }
          .and change     { ResponseClue.count }.by(@unprocessed_responses.size)
+         .and not_change { StudentClue.count  }
 
       new_response_clue_uuids = ResponseClue.order(:created_at)
                                             .last(@unprocessed_responses.size)
@@ -173,6 +176,11 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
         FactoryGirl.create :ecosystem_exercise, ecosystem_uuid: @ecosystem_2.uuid,
                                                 exercise_group_uuid: @exercise_5.group_uuid,
                                                 book_container_uuids: book_container_uuids_2
+
+        FactoryGirl.create :student_clue, student_uuid: @student_1.uuid,
+                                          book_container_uuid: @ep_1.book_container_uuid
+        FactoryGirl.create :student_clue, student_uuid: @student_2.uuid,
+                                          book_container_uuid: @ep_1.book_container_uuid
       end
 
       after(:all)  { DatabaseCleaner.clean }
@@ -246,6 +254,7 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
           subject.process
         end.to  not_change { Response.count     }
            .and change     { ResponseClue.count }.by(@unprocessed_responses.size)
+           .and change     { StudentClue.count  }.by(2)
 
         new_response_clue_uuids = ResponseClue.order(:created_at)
                                               .last(@unprocessed_responses.size)

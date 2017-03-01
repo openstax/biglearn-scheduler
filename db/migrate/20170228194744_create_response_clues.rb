@@ -1,4 +1,4 @@
-class CreateResponseClues < ActiveRecord::Migration
+class CreateResponseClues < ActiveRecord::Migration[5.0]
   def change
     create_table :response_clues do |t|
       t.uuid :uuid,        null: false, index: { unique: true }

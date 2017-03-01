@@ -1,4 +1,4 @@
-class CreateEcosystemPreparations < ActiveRecord::Migration
+class CreateEcosystemPreparations < ActiveRecord::Migration[5.0]
   def change
     create_table :ecosystem_preparations do |t|
       t.uuid :uuid,           null: false, index: { unique: true }

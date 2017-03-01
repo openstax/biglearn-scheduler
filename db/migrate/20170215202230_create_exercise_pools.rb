@@ -1,4 +1,4 @@
-class CreateExercisePools < ActiveRecord::Migration
+class CreateExercisePools < ActiveRecord::Migration[5.0]
   def change
     create_table :exercise_pools do |t|
       t.uuid    :uuid,                                      null: false, index: { unique: true }

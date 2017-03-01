@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170228194744) do
+ActiveRecord::Schema.define(version: 20170301233311) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -183,6 +183,18 @@ ActiveRecord::Schema.define(version: 20170228194744) do
     t.index ["responded_at"], name: "index_responses_on_responded_at", using: :btree
     t.index ["student_uuid"], name: "index_responses_on_student_uuid", using: :btree
     t.index ["uuid"], name: "index_responses_on_uuid", unique: true, using: :btree
+  end
+
+  create_table "student_clues", force: :cascade do |t|
+    t.uuid     "uuid",                null: false
+    t.uuid     "student_uuid",        null: false
+    t.uuid     "book_container_uuid", null: false
+    t.decimal  "value",               null: false
+    t.datetime "created_at",          null: false
+    t.datetime "updated_at",          null: false
+    t.index ["book_container_uuid"], name: "index_student_clues_on_book_container_uuid", using: :btree
+    t.index ["student_uuid", "book_container_uuid"], name: "index_student_clues_on_student_uuid_and_book_container_uuid", unique: true, using: :btree
+    t.index ["uuid"], name: "index_student_clues_on_uuid", unique: true, using: :btree
   end
 
   create_table "student_pes", force: :cascade do |t|

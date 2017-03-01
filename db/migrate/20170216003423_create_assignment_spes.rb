@@ -1,4 +1,4 @@
-class CreateAssignmentSpes < ActiveRecord::Migration
+class CreateAssignmentSpes < ActiveRecord::Migration[5.0]
   def change
     create_table :assignment_spes do |t|
       t.uuid    :uuid,            null: false, index: { unique: true }

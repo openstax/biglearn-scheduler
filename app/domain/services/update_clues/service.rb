@@ -158,7 +158,9 @@ class Services::UpdateClues::Service
       end unless response_queries.nil?
 
       # Calculate student CLUes
-      student_clues = student_clues_to_update.flat_map do |book_container_uuid, student_uuids|
+      student_clues = []
+      student_clue_requests = []
+      student_clues_to_update.each do |book_container_uuid, student_uuids|
         ecosystem_uuid = ecosystem_uuid_by_book_container_uuid[book_container_uuid]
         if ecosystem_uuid.nil?
           Rails.logger.tagged('UpdateClues') do |logger|
@@ -177,22 +179,29 @@ class Services::UpdateClues::Service
                                                                    .compact
                                                                    .uniq
 
-        student_uuids.uniq.map do |student_uuid|
+        student_uuids.uniq.each do |student_uuid|
           student_responses = responses_map[student_uuid]
           responses = student_responses.values_at(*exercise_group_uuids).compact.flatten
           clue_data = calculate_clue_data(responses).merge(ecosystem_uuid: ecosystem_uuid)
 
-          {
+          student_clues << StudentClue.new(
+            uuid: SecureRandom.uuid,
+            student_uuid: student_uuid,
+            book_container_uuid: book_container_uuid,
+            value: clue_data.fetch(:most_likely)
+          )
+
+          student_clue_requests << {
             student_uuid: student_uuid,
             book_container_uuid: book_container_uuid,
             clue_data: clue_data
           }
         end
-      end.compact
+      end
 
       # Calculate teacher CLUes
-      teacher_clues = \
-        teacher_clues_to_update.flat_map do |book_container_uuid, course_container_uuids|
+      teacher_clue_requests = []
+      teacher_clues_to_update.each do |book_container_uuid, course_container_uuids|
         ecosystem_uuid = ecosystem_uuid_by_book_container_uuid[book_container_uuid]
         if ecosystem_uuid.nil?
           Rails.logger.tagged('UpdateClues') do |logger|
@@ -211,7 +220,7 @@ class Services::UpdateClues::Service
                                                                    .compact
                                                                    .uniq
 
-        course_container_uuids.uniq.map do |course_container_uuid|
+        course_container_uuids.uniq.each do |course_container_uuid|
           student_uuids = student_uuids_by_course_container_uuids[course_container_uuid]
           if student_uuids.nil?
             Rails.logger.tagged('UpdateClues') do |logger|
@@ -233,19 +242,25 @@ class Services::UpdateClues::Service
           end.flatten.compact
           clue_data = calculate_clue_data(responses).merge(ecosystem_uuid: ecosystem_uuid)
 
-          {
+          teacher_clue_requests << {
             course_container_uuid: course_container_uuid,
             book_container_uuid: book_container_uuid,
             clue_data: clue_data
           }
         end
-      end.compact
+      end
 
       # Send CLUes to biglearn-api
-      OpenStax::Biglearn::Api.update_student_clues(student_clues) if student_clues.any?
-      OpenStax::Biglearn::Api.update_teacher_clues(teacher_clues) if teacher_clues.any?
+      OpenStax::Biglearn::Api.update_student_clues(student_clue_requests)
+      OpenStax::Biglearn::Api.update_teacher_clues(teacher_clue_requests)
 
-      # Record the fact that the CLUes are up-to-date
+      # Record the student CLUe values
+      StudentClue.import student_clues, validate: false, on_duplicate_key_update: {
+        conflict_target: [ :student_uuid, :book_container_uuid ],
+        columns: [ :value ]
+      }
+
+      # Record the fact that the CLUes are up-to-date with the latest Responses
       response_clues = used_responses.map do |uuid, course_uuid|
         ResponseClue.new uuid: uuid, course_uuid: course_uuid
       end

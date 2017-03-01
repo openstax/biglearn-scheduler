@@ -141,6 +141,8 @@ module OpenStax::Biglearn::Api
 
     def bulk_api_request(method:, requests:, keys:, optional_keys: [],
                          result_class: Hash, uuid_key: :request_uuid, perform_later: false)
+      return {} if requests.blank?
+
       requests_map = {}
       [requests].flatten.map do |request|
         requests_map[SecureRandom.uuid] = verify_and_slice_request(

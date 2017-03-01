@@ -1,4 +1,4 @@
-class CreateEcosystemExercises < ActiveRecord::Migration
+class CreateEcosystemExercises < ActiveRecord::Migration[5.0]
   def change
     create_table :ecosystem_exercises do |t|
       t.uuid :uuid,                 null: false, index: { unique: true }
