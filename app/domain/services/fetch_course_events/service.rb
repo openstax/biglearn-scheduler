@@ -185,9 +185,6 @@ class Services::FetchCourseEvents::Service
           opens_at = exclusion_info[:opens_at]
           due_at = exclusion_info[:due_at]
 
-          goal_num_spes = data.fetch(:goal_num_tutor_assigned_spes)
-          goal_num_pes = data.fetch(:goal_num_tutor_assigned_pes)
-
           assignments << Assignment.new(
             uuid: assignment_uuid,
             course_uuid: course_uuid,
@@ -198,10 +195,10 @@ class Services::FetchCourseEvents::Service
             due_at: due_at.nil? ? nil : DateTime.parse(due_at),
             assigned_book_container_uuids: data.fetch(:assigned_book_container_uuids),
             assigned_exercise_uuids: exercise_uuids,
-            goal_num_tutor_assigned_spes: goal_num_spes,
-            num_assigned_spes: data.fetch(:spes_are_assigned) ? goal_num_spes : 0,
-            goal_num_tutor_assigned_pes: goal_num_pes,
-            num_assigned_pes: data.fetch(:pes_are_assigned) ? goal_num_pes : 0
+            goal_num_tutor_assigned_spes: data.fetch(:goal_num_tutor_assigned_spes),
+            spes_are_assigned: data.fetch(:spes_are_assigned),
+            goal_num_tutor_assigned_pes: data.fetch(:goal_num_tutor_assigned_pes),
+            pes_are_assigned: data.fetch(:pes_are_assigned)
           )
         end
 
@@ -284,9 +281,9 @@ class Services::FetchCourseEvents::Service
             :assigned_book_container_uuids,
             :assigned_exercise_uuids,
             :goal_num_tutor_assigned_spes,
-            :num_assigned_spes,
+            :spes_are_assigned,
             :goal_num_tutor_assigned_pes,
-            :num_assigned_pes
+            :pes_are_assigned
           ]
         }
       )
@@ -296,6 +293,8 @@ class Services::FetchCourseEvents::Service
       AssignmentSpe.where(assignment_uuid: assignment_uuids).delete_all
       AssignmentPe.where(assignment_uuid: assignment_uuids).delete_all
 
+      # Find other affected assignments and mark their SPEs/PEs for recalculation
+      # if their Exercises have just been assigned
       spe = AssignmentSpe.arel_table
       pe = AssignmentPe.arel_table
       spe_queries = []
@@ -313,32 +312,17 @@ class Services::FetchCourseEvents::Service
                       )
       end
 
-      # Mark SPEs/PEs for recalculation if their Exercises have just been assigned
       if spe_queries.any?
-        spe_query = spe_queries.reduce(:or)
+        spe_query = spe[:assignment_uuid].not_in(assignment_uuids).and(spe_queries.reduce(:or))
         affected_spe_assignment_uuids = AssignmentSpe.where(spe_query).pluck(:assignment_uuid)
-        if affected_spe_assignment_uuids.any?
-          spe_cases = affected_spe_assignment_uuids.group_by(&:itself)
-                                                   .map do |assignment_uuid, spes|
-            "WHEN '#{assignment_uuid}' THEN \"num_assigned_spes\" - #{spes.size}"
-          end.join("\n")
-          Assignment.where(uuid: affected_spe_assignment_uuids)
-                    .update_all("\"num_assigned_spes\" = CASE \"uuid\" #{spe_cases} END")
-        end
+        Assignment.where(uuid: affected_spe_assignment_uuids).update_all(spes_are_assigned: false)
         AssignmentSpe.where(spe_query).delete_all
       end
 
       if pe_queries.any?
-        pe_query = pe_queries.reduce(:or)
+        pe_query = pe[:assignment_uuid].not_in(assignment_uuids).and(pe_queries.reduce(:or))
         affected_pe_assignment_uuids = AssignmentPe.where(pe_query).pluck(:assignment_uuid)
-        if affected_pe_assignment_uuids.any?
-          pe_cases = affected_pe_assignment_uuids.group_by(&:itself)
-                                                 .map do |assignment_uuid, pes|
-            "WHEN '#{assignment_uuid}' THEN \"num_assigned_pes\" - #{pes.size}"
-          end.join("\n")
-          Assignment.where(uuid: affected_pe_assignment_uuids)
-                    .update_all("\"num_assigned_pes\" = CASE \"uuid\" #{pe_cases} END")
-        end
+        Assignment.where(uuid: affected_pe_assignment_uuids).update_all(pes_are_assigned: false)
         AssignmentPe.where(pe_query).delete_all
       end
 

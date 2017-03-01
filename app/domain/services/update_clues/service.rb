@@ -93,7 +93,7 @@ class Services::UpdateClues::Service
                      .pluck(:ecosystem_uuid, :exercise_group_uuid, :book_container_uuids)
                      .each do |ecosystem_uuid, exercise_group_uuid, book_container_uuids|
       book_container_uuids_map[ecosystem_uuid][exercise_group_uuid] = book_container_uuids
-    end
+    end unless ee_queries.nil?
 
     # Map the book_container_uuids to ecosystem_uuids and back to exercise_uuids
     book_container_uuids = book_container_uuids_map.values.map(&:values).flatten
@@ -169,7 +169,7 @@ class Services::UpdateClues::Service
       end
 
       responses_map[student_uuid][exercise_group_uuid] = is_correct
-    end
+    end unless response_queries.nil?
 
     # Calculate student CLUes
     student_clues = student_clues_to_update.flat_map do |book_container_uuid, student_uuids|

@@ -388,9 +388,9 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       let!(:other_assignment)      do
         FactoryGirl.create :assignment, student_uuid: student_uuid,
                                         goal_num_tutor_assigned_spes: num_assigned_exercises,
-                                        num_assigned_spes: num_assigned_exercises,
+                                        spes_are_assigned: true,
                                         goal_num_tutor_assigned_pes: num_assigned_exercises,
-                                        num_assigned_pes: num_assigned_exercises
+                                        pes_are_assigned: true
       end
       let!(:other_assignment_spes) do
         assigned_exercises.map do |assigned_exercise|
@@ -424,11 +424,11 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   end.by(-num_assigned_exercises))
                                   .and not_change { ResponseClue.count }
                                   .and(change     do
-                                    other_assignment.reload.num_assigned_spes
-                                  end.by(-num_assigned_exercises))
+                                    other_assignment.reload.spes_are_assigned
+                                  end.from(true).to(false))
                                   .and(change     do
-                                    other_assignment.num_assigned_pes
-                                  end.by(-num_assigned_exercises))
+                                    other_assignment.pes_are_assigned
+                                  end.from(true).to(false))
                                   .and not_change { Response.count }
                                   .and(change     do
                                     course.reload.sequence_number
@@ -448,11 +448,9 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         expect(assignment.assigned_exercise_uuids).to eq assigned_exercise_uuids
 
         expect(assignment.goal_num_tutor_assigned_spes).to eq goal_num_tutor_assigned_spes
-        expect(assignment.num_assigned_spes).to(
-          eq spes_are_assigned ? goal_num_tutor_assigned_spes : 0
-        )
+        expect(assignment.spes_are_assigned).to eq spes_are_assigned
         expect(assignment.goal_num_tutor_assigned_pes).to eq goal_num_tutor_assigned_pes
-        expect(assignment.num_assigned_pes).to eq pes_are_assigned ? goal_num_tutor_assigned_pes : 0
+        expect(assignment.pes_are_assigned).to eq pes_are_assigned
       end
     end
 
