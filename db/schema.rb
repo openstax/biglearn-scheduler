@@ -192,8 +192,8 @@ ActiveRecord::Schema.define(version: 20170301233311) do
     t.decimal  "value",               null: false
     t.datetime "created_at",          null: false
     t.datetime "updated_at",          null: false
-    t.index ["book_container_uuid"], name: "index_student_clues_on_book_container_uuid", using: :btree
-    t.index ["student_uuid", "book_container_uuid"], name: "index_student_clues_on_student_uuid_and_book_container_uuid", unique: true, using: :btree
+    t.index ["book_container_uuid", "student_uuid"], name: "index_student_clues_on_book_container_uuid_and_student_uuid", unique: true, using: :btree
+    t.index ["student_uuid", "value"], name: "index_student_clues_on_student_uuid_and_value", using: :btree
     t.index ["uuid"], name: "index_student_clues_on_uuid", unique: true, using: :btree
   end
 
@@ -209,11 +209,13 @@ ActiveRecord::Schema.define(version: 20170301233311) do
   end
 
   create_table "students", force: :cascade do |t|
-    t.uuid     "uuid",                   null: false
-    t.uuid     "course_uuid",            null: false
-    t.uuid     "course_container_uuids", null: false, array: true
-    t.datetime "created_at",             null: false
-    t.datetime "updated_at",             null: false
+    t.uuid     "uuid",                           null: false
+    t.uuid     "course_uuid",                    null: false
+    t.uuid     "course_container_uuids",         null: false, array: true
+    t.uuid     "worst_clue_book_container_uuid"
+    t.decimal  "worst_clue_value"
+    t.datetime "created_at",                     null: false
+    t.datetime "updated_at",                     null: false
     t.index ["course_uuid"], name: "index_students_on_course_uuid", using: :btree
     t.index ["uuid"], name: "index_students_on_uuid", unique: true, using: :btree
   end

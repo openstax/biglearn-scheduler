@@ -5,8 +5,8 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
 
   context 'with no Assignments' do
     it 'does not update any SPEs or PEs' do
-      expect(OpenStax::Biglearn::Api).not_to receive(:update_assignment_spes)
-      expect(OpenStax::Biglearn::Api).not_to receive(:update_assignment_pes)
+      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes).with([])
+      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes).with([])
 
       expect { subject.process }.to  not_change { Assignment.count    }
                                 .and not_change { AssignmentSpe.count }

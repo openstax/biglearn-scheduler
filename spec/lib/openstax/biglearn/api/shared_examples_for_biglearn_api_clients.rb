@@ -139,9 +139,8 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_assignment_pes,
       [
         {
-          assignment: dummy_assignment,
-          book_container_uuid: dummy_book_container_uuid,
-          exercises: dummy_exercises
+          assignment_uuid: dummy_assignment.uuid,
+          exercise_uuids: dummy_exercises.map(&:uuid)
         }
       ],
       [
@@ -152,9 +151,8 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_assignment_spes,
       [
         {
-          assignment: dummy_assignment,
-          book_container_uuid: dummy_book_container_uuid,
-          exercises: dummy_exercises
+          assignment_uuid: dummy_assignment.uuid,
+          exercise_uuids: dummy_exercises.map(&:uuid)
         }
       ],
       [
@@ -165,8 +163,8 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_practice_worst_areas,
       [
         {
-          student: dummy_student,
-          exercises: dummy_exercises
+          student_uuid: dummy_student.uuid,
+          exercise_uuids: dummy_exercises.map(&:uuid)
         }
       ],
       [

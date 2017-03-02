@@ -460,7 +460,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       let(:student_uuid)   { SecureRandom.uuid }
       let(:exercise_uuid)  { SecureRandom.uuid }
       let(:is_correct)     { [true, false].sample }
-      let(:responded_at)   { Time.now.utc.iso8601 }
+      let(:responded_at)   { DateTime.now.utc.iso8601 }
       let(:event_data)     do
         {
           response_uuid: event_uuid,

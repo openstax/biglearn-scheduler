@@ -54,19 +54,19 @@ module OpenStax::Biglearn::Api
     def update_assignment_pes(pe_updates)
       bulk_api_request method: :update_assignment_pes,
                        requests: pe_updates,
-                       keys: [ :assignment, :exercises ]
+                       keys: [ :assignment_uuid, :exercise_uuids ]
     end
 
     def update_assignment_spes(spe_updates)
       bulk_api_request method: :update_assignment_spes,
                        requests: spe_updates,
-                       keys: [ :assignment, :exercises ]
+                       keys: [ :assignment_uuid, :exercise_uuids ]
     end
 
     def update_practice_worst_areas(practice_worst_areas_updates)
       bulk_api_request method: :update_practice_worst_areas,
                        requests: practice_worst_areas_updates,
-                       keys: [ :student, :exercises ]
+                       keys: [ :student_uuid, :exercise_uuids ]
     end
 
     def use_fake_client

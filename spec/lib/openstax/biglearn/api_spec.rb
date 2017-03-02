@@ -122,9 +122,8 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
         -> {
           [
             {
-              assignment: @assignment,
-              book_container_uuid: @book_container_uuid,
-              exercises: @exercises
+              assignment_uuid: @assignment.uuid,
+              exercise_uuids: @exercises.map(&:uuid)
             }
           ]
         },
@@ -135,9 +134,8 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
         -> {
           [
             {
-              assignment: @assignment,
-              book_container_uuid: @book_container_uuid,
-              exercises: @exercises
+              assignment_uuid: @assignment.uuid,
+              exercise_uuids: @exercises.map(&:uuid)
             }
           ]
         },
@@ -148,8 +146,8 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
         -> {
           [
             {
-              student: @student,
-              exercises: @exercises
+              student_uuid: @student.uuid,
+              exercise_uuids: @exercises.map(&:uuid)
             }
           ]
         },
