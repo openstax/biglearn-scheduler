@@ -28,27 +28,17 @@ class Services::UpdateClues::Service
         student_uuids = responses.map(&:student_uuid)
         course_uuid_by_student_uuid = {}
         course_container_uuids_by_student_uuids = {}
-        worst_clue_book_container_uuid_by_student_uuid = {}
-        worst_clue_value_by_student_uuid = {}
-        Student.where(uuid: student_uuids)
-               .with_worst_clues
-               .pluck(
-                 :uuid,
-                 :course_uuid,
-                 :course_container_uuids,
-                 :worst_clue_book_container_uuid,
-                 :worst_clue_value
-               ).each do |
-                 uuid,
-                 course_uuid,
-                 course_container_uuids,
-                 worst_clue_book_container_uuid,
-                 worst_clue_value
-               |
-          course_uuid_by_student_uuid[uuid] = course_uuid
-          course_container_uuids_by_student_uuids[uuid] = course_container_uuids
-          worst_clue_book_container_uuid_by_student_uuid[uuid] = worst_clue_book_container_uuid
-          worst_clue_value_by_student_uuid[uuid] = worst_clue_value
+        worst_clue_book_container_uuids_by_student_uuids = {}
+        worst_clue_values_by_student_uuids = {}
+        Student.where(uuid: student_uuids).preload(:worst_student_clues).each do |student|
+          uuid = student.uuid
+          course_uuid_by_student_uuid[uuid] = student.course_uuid
+          course_container_uuids_by_student_uuids[uuid] = student.course_container_uuids
+          worst_student_clues = student.worst_student_clues
+          worst_clue_book_container_uuids = worst_student_clues.map(&:book_container_uuid)
+          worst_clue_book_container_uuids_by_student_uuids[uuid] = worst_clue_book_container_uuids
+          worst_clue_values = worst_student_clues.map(&:value)
+          worst_clue_values_by_student_uuids[uuid] = worst_clue_values
         end
 
         # Map the course containers back to students
@@ -203,9 +193,9 @@ class Services::UpdateClues::Service
                                                                      .uniq
 
           student_uuids.uniq.each do |student_uuid|
-            worst_clue_book_container_uuid = \
-              worst_clue_book_container_uuid_by_student_uuid[student_uuid]
-            worst_clue_value = worst_clue_value_by_student_uuid[student_uuid]
+            worst_clue_book_container_uuids = \
+              worst_clue_book_container_uuids_by_student_uuids[student_uuid]
+            worst_clue_values = worst_clue_values_by_student_uuids[student_uuid]
 
             student_responses = responses_map[student_uuid]
             clue_responses = student_responses.values_at(*exercise_group_uuids).compact.flatten
@@ -215,9 +205,10 @@ class Services::UpdateClues::Service
 
             student_uuids_to_update_worst_areas_exercises << student_uuid \
               if is_real && (
-                   worst_clue_book_container_uuid.nil? || worst_clue_value.nil? ||
-                   worst_clue_book_container_uuid == book_container_uuid ||
-                   worst_clue_value >= clue_value
+                   worst_clue_book_container_uuids.size < Student::NUM_WORST_CLUES ||
+                   worst_clue_values.size < Student::NUM_WORST_CLUES ||
+                   worst_clue_book_container_uuids.include?(book_container_uuid) ||
+                   worst_clue_values.any? { |worst_clue_value| worst_clue_value >= clue_value }
                  )
 
             student_clues << StudentClue.new(

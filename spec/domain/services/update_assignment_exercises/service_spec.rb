@@ -247,6 +247,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       # 0 SPEs, 0 PEs requested
       @homework_1 = FactoryGirl.create(
         :assignment,
+        course_uuid: course.uuid,
         student_uuid: student_uuid,
         assignment_type: 'homework',
         ecosystem_uuid: ecosystem_uuid_1,
@@ -264,6 +265,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       # 1 SPE, 1 PE requested; No exercises available to fill either
       @homework_2 = FactoryGirl.create(
         :assignment,
+        course_uuid: course.uuid,
         student_uuid: student_uuid,
         assignment_type: 'homework',
         ecosystem_uuid: ecosystem_uuid_2,
@@ -281,6 +283,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       # 2 SPE, 1 PE requested; Only 1 SPE can be filled from homework 1
       @homework_3 = FactoryGirl.create(
         :assignment,
+        course_uuid: course.uuid,
         student_uuid: student_uuid,
         assignment_type: 'homework',
         ecosystem_uuid: ecosystem_uuid_2,
@@ -357,7 +360,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       ]
     end
 
-    it 'assigns the correct numbers of SPEs and PEs from the correct book containers' do
+    it 'assigns the correct numbers of SPEs and PEs from the correct pools' do
       expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
         expect(requests).to match_array expected_spe_requests
       end
@@ -404,7 +407,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
 
       after(:all)  { DatabaseCleaner.clean }
 
-      it 'assigns only the missing SPEs and PEs' do
+      it 'assigns only the missing SPEs and PEs from the correct pools' do
         expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
           expect(requests).to match_array expected_spe_requests
         end

@@ -1,5 +1,4 @@
 class Services::UpdatePracticeWorstAreasExercises::Service
-  NUM_PRACTICE_EXERCISES = 5
   BATCH_SIZE = 1000
 
   def process
@@ -11,20 +10,26 @@ class Services::UpdatePracticeWorstAreasExercises::Service
     total_students = 0
     loop do
       num_students = Student.transaction do
-        # Process only students whose worst clue value or book container changed
-        students = Student.where(pes_are_assigned: false).with_worst_clues.take(BATCH_SIZE)
+        # Process only students that are new or whose worst clue value or book container changed
+        students = Student.where(pes_are_assigned: false)
+                          .preload(:worst_student_clues)
+                          .take(BATCH_SIZE)
 
         # Get PEs that are already assigned
         student_uuids = students.map(&:uuid)
-        assigned_student_pe_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
+        assigned_pe_uuids_map = Hash.new do |hash, key|
+          hash[key] = Hash.new { |hash, key| hash[key] = [] }
+        end
         StudentPe.where(student_uuid: student_uuids)
-                 .pluck(:student_uuid, :exercise_uuid)
-                 .each do |student_uuid, exercise_uuid|
-          assigned_student_pe_uuids_by_student_uuids[student_uuid] << exercise_uuid
+                 .pluck(:book_container_uuid, :student_uuid, :exercise_uuid)
+                 .each do |book_container_uuid, student_uuid, exercise_uuid|
+          assigned_pe_uuids_map[student_uuid][book_container_uuid] << exercise_uuid
         end
 
         # Get all practice exercises in the relevant book containers
-        relevant_book_container_uuids = students.map(&:worst_clue_book_container_uuid)
+        relevant_book_container_uuids = students.flat_map do |student|
+          student.worst_student_clues.map(&:book_container_uuid)
+        end
         exercise_uuids_by_book_container_uuids = Hash.new { |hash, key| hash[key] = [] }
         ExercisePool.where(book_container_uuid: relevant_book_container_uuids).pluck(
           :book_container_uuid,
@@ -76,7 +81,6 @@ class Services::UpdatePracticeWorstAreasExercises::Service
           )
         end
 
-        student_uuids = changed_container_student_uuids + unchanged_container_student_uuids
         current_time = DateTime.now
         assigned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
         assigned_but_not_due_exercise_uuids_by_student_uuids = Hash.new do |hash, key|
@@ -104,60 +108,109 @@ class Services::UpdatePracticeWorstAreasExercises::Service
         students.each do |student|
           student_uuid = student.uuid
 
-          assigned_student_pe_uuids = assigned_student_pe_uuids_by_student_uuids[student_uuid]
-          pes_needed = NUM_PRACTICE_EXERCISES - assigned_student_pe_uuids.size
-          worst_book_container_uuids = [ student.worst_clue_book_container_uuid ]
+          assigned_student_pe_uuids_map = assigned_pe_uuids_map[student_uuid]
 
-          # Get practice exercises in relevant book containers
-          book_container_exercise_uuids = \
-            worst_book_container_uuids.flat_map do |book_container_uuid|
-            exercise_uuids_by_book_container_uuids[book_container_uuid]
-          end
-
-          # Remove course and global exclusions and exercises in assignments not yet due
           course_uuid = course_uuid_by_student_uuid[student_uuid]
           course_excluded_uuids = excluded_uuids_by_course_uuid[course_uuid]
           assigned_but_not_due_exercise_uuids = \
             assigned_but_not_due_exercise_uuids_by_student_uuids[student_uuid]
-          candidate_exercise_uuids = book_container_exercise_uuids -
-                                     course_excluded_uuids -
-                                     assigned_but_not_due_exercise_uuids
 
-          # Partition remaining exercises into used and unused by group uuid
+          student_excluded_uuids = course_excluded_uuids +
+                                   assigned_student_pe_uuids_map.values.flatten +
+                                   assigned_but_not_due_exercise_uuids
+
+          worst_student_clues = student.worst_student_clues.to_a
+
+          # Create a map of candidate exercises for each worst CLUe
+          candidate_exercise_uuids = []
+          worst_student_clues.each_with_index do |student_clue, index|
+            book_container_uuid = student_clue.book_container_uuid
+
+            # Get exercises already assigned for this CLUe
+            assigned_clue_pe_uuids = assigned_student_pe_uuids_map[book_container_uuid]
+
+            # Get practice exercises in the CLUe's book container
+            book_container_exercise_uuids = \
+              exercise_uuids_by_book_container_uuids[book_container_uuid]
+
+            # Remove course, global exclusions, exercises in assignments not yet due
+            # and exercises already assigned for this CLUe from the candidates
+            candidate_exercise_uuids[index] = \
+              book_container_exercise_uuids - student_excluded_uuids - assigned_clue_pe_uuids
+          end
+
+          num_worst_student_clues = worst_student_clues.size
+          worst_clue_pes_map = get_worst_clue_pes_map(worst_student_clues.size)
+
+          # Collect exercise group_uuids that have already been assigned to this student
           assigned_exercise_uuids = assigned_exercise_uuids_by_student_uuids[student_uuid]
           assigned_exercise_group_uuids = assigned_exercise_uuids.map do |assigned_exercise_uuid|
             exercise_group_uuid_by_uuid[assigned_exercise_uuid]
           end.compact
-          assigned_candidate_exercise_uuids, unassigned_candidate_exercise_uuids = \
-            candidate_exercise_uuids.partition do |exercise_uuid|
-            group_uuid = exercise_group_uuid_by_uuid[exercise_uuid]
-            assigned_exercise_group_uuids.include?(group_uuid)
-          end
 
-          # Randomly pick candidate exercises, preferring unassigned ones
-          unassigned_count = unassigned_candidate_exercise_uuids.size
-          new_student_pe_uuids = if pes_needed <= unassigned_count
-            unassigned_candidate_exercise_uuids.sample(pes_needed)
-          else
-            ( unassigned_candidate_exercise_uuids +
-              assigned_candidate_exercise_uuids.sample(pes_needed - unassigned_count) ).shuffle
-          end
+          # Assign the candidate exercises for each position in the worst_clue_pes_map
+          # based on the priority of each CLUe
+          student_pe_uuids = []
+          worst_student_clues.each_with_index do |student_clue, index|
+            book_container_uuid = student_clue.book_container_uuid
+            assigned_clue_pe_uuids = assigned_student_pe_uuids_map[book_container_uuid]
+            student_pe_uuids.concat assigned_clue_pe_uuids
 
-          new_student_pes = new_student_pe_uuids.map do |pe_uuid|
-            StudentPe.new uuid: SecureRandom.uuid,
-                          student_uuid: student.uuid,
-                          exercise_uuid: pe_uuid
+            num_pes_needed = worst_clue_pes_map[index] - assigned_clue_pe_uuids.size
+
+            next if num_pes_needed <= 0
+
+            # Prioritize the CLUes for filling this slot
+            prioritized_candidate_exercise_uuids = \
+              [candidate_exercise_uuids[index]] +
+              candidate_exercise_uuids.first(index) +
+              candidate_exercise_uuids.last(num_worst_student_clues-index-1)
+
+            new_clue_pe_uuids = []
+            prioritized_candidate_exercise_uuids.each do |candidate_exercise_uuids|
+              # Remove any candidate exercises that might have already been chosen
+              available_candidate_exercise_uuids = candidate_exercise_uuids - student_pe_uuids
+
+              # Partition remaining exercises into used and unused by group uuid
+              assigned_candidate_exercise_uuids, unassigned_candidate_exercise_uuids = \
+                available_candidate_exercise_uuids.partition do |exercise_uuid|
+                group_uuid = exercise_group_uuid_by_uuid[exercise_uuid]
+                assigned_exercise_group_uuids.include?(group_uuid)
+              end
+
+              # Randomly pick candidate exercises, preferring unassigned ones
+              unassigned_count = unassigned_candidate_exercise_uuids.size
+
+              new_clue_pe_uuids.concat(
+                if num_pes_needed <= unassigned_count
+                  unassigned_candidate_exercise_uuids.sample(num_pes_needed)
+                else
+                  unassigned_candidate_exercise_uuids +
+                  assigned_candidate_exercise_uuids.sample(num_pes_needed - unassigned_count)
+                end
+              )
+
+              num_pes_needed -= available_candidate_exercise_uuids.size
+
+              break if num_pes_needed <= 0
+            end
+
+            new_clue_pes = new_clue_pe_uuids.map do |pe_uuid|
+              StudentPe.new uuid: SecureRandom.uuid,
+                            book_container_uuid: book_container_uuid,
+                            student_uuid: student.uuid,
+                            exercise_uuid: pe_uuid
+            end
+            student_pes.concat new_clue_pes
+
+            student_pe_uuids.concat new_clue_pe_uuids
           end
 
           student.pes_are_assigned = true
 
-          student_pes.concat new_student_pes
-
-          student_pe_uuids = assigned_student_pe_uuids + new_student_pe_uuids
-
           practice_worst_areas_updates << {
             student_uuid: student.uuid,
-            exercise_uuids: student_pe_uuids
+            exercise_uuids: student_pe_uuids.shuffle
           }
         end
 
@@ -185,6 +238,27 @@ class Services::UpdatePracticeWorstAreasExercises::Service
 
         "Updated: #{total_students} student(s) - Took: #{time} second(s)"
       end
+    end
+  end
+
+  protected
+
+  # TODO: Decide on the mapping...
+  def get_worst_clue_pes_map(num_clues)
+    case num_clues
+    when 1
+      [5]
+    when 2
+      [3, 2]
+    when 3
+      [2, 2, 1]
+    when 4
+      [2, 1, 1, 1]
+    when 5
+      # 5 is the max
+      [1, 1, 1, 1, 1]
+    else
+      []
     end
   end
 end

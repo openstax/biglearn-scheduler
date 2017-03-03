@@ -245,7 +245,9 @@ class Services::UpdateAssignmentExercises::Service
             assigned_spe_uuids = assigned_spe_uuids_map.values.flatten
             assigned_pe_uuids = assigned_pes_by_assignment_uuid[assignment_uuid]
 
-            assignment_excluded_uuids = course_excluded_uuids + assigned_spe_uuids + assigned_pe_uuids
+            assignment_excluded_uuids = course_excluded_uuids +
+                                        assigned_spe_uuids +
+                                        assigned_pe_uuids
 
             # Spaced Practice
             spaced_practice_exercise_uuids = k_ago_map.flat_map do |k_ago, num_exercises|

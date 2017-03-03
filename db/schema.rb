@@ -198,11 +198,13 @@ ActiveRecord::Schema.define(version: 20170301233311) do
   end
 
   create_table "student_pes", force: :cascade do |t|
-    t.uuid     "uuid",          null: false
-    t.uuid     "student_uuid",  null: false
-    t.uuid     "exercise_uuid", null: false
-    t.datetime "created_at",    null: false
-    t.datetime "updated_at",    null: false
+    t.uuid     "uuid",                null: false
+    t.uuid     "book_container_uuid", null: false
+    t.uuid     "student_uuid",        null: false
+    t.uuid     "exercise_uuid",       null: false
+    t.datetime "created_at",          null: false
+    t.datetime "updated_at",          null: false
+    t.index ["book_container_uuid"], name: "index_student_pes_on_book_container_uuid", using: :btree
     t.index ["exercise_uuid", "student_uuid"], name: "index_student_pes_on_exercise_uuid_and_student_uuid", unique: true, using: :btree
     t.index ["student_uuid"], name: "index_student_pes_on_student_uuid", using: :btree
     t.index ["uuid"], name: "index_student_pes_on_uuid", unique: true, using: :btree
