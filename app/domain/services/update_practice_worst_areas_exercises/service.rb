@@ -12,30 +12,19 @@ class Services::UpdatePracticeWorstAreasExercises::Service
     loop do
       num_students = Student.transaction do
         # Process only students whose worst clue value or book container changed
-        students = Student.where_worst_clues_are_outdated.take(BATCH_SIZE)
+        students = Student.where(pes_are_assigned: false).with_worst_clues.take(BATCH_SIZE)
 
-        relevant_book_container_uuids = []
-        unchanged_container_students, changed_container_students = students.partition do |student|
-          relevant_book_container_uuids << student.recalculated_worst_clue_book_container_uuid
-
-          student.worst_clue_book_container_uuid == \
-            student.recalculated_worst_clue_book_container_uuid
-        end
-
-        # If the worst clue book container changed, delete all assigned PEs and start from scratch
-        changed_container_student_uuids = changed_container_students.map(&:uuid)
-        StudentPe.where(student_uuid: changed_container_student_uuids).delete_all
-
-        # Otherwise, get the PEs that are already assigned
-        unchanged_container_student_uuids = unchanged_container_students.map(&:uuid)
+        # Get PEs that are already assigned
+        student_uuids = students.map(&:uuid)
         assigned_student_pe_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
-        StudentPe.where(student_uuid: unchanged_container_student_uuids)
+        StudentPe.where(student_uuid: student_uuids)
                  .pluck(:student_uuid, :exercise_uuid)
                  .each do |student_uuid, exercise_uuid|
           assigned_student_pe_uuids_by_student_uuids[student_uuid] << exercise_uuid
         end
 
         # Get all practice exercises in the relevant book containers
+        relevant_book_container_uuids = students.map(&:worst_clue_book_container_uuid)
         exercise_uuids_by_book_container_uuids = Hash.new { |hash, key| hash[key] = [] }
         ExercisePool.where(book_container_uuid: relevant_book_container_uuids).pluck(
           :book_container_uuid,
@@ -114,9 +103,6 @@ class Services::UpdatePracticeWorstAreasExercises::Service
         practice_worst_areas_updates = []
         students.each do |student|
           student_uuid = student.uuid
-          student.worst_clue_book_container_uuid = \
-            student.recalculated_worst_clue_book_container_uuid
-          student.worst_clue_value = student.recalculated_worst_clue_value
 
           assigned_student_pe_uuids = assigned_student_pe_uuids_by_student_uuids[student_uuid]
           pes_needed = NUM_PRACTICE_EXERCISES - assigned_student_pe_uuids.size
@@ -163,6 +149,8 @@ class Services::UpdatePracticeWorstAreasExercises::Service
                           exercise_uuid: pe_uuid
           end
 
+          student.pes_are_assigned = true
+
           student_pes.concat new_student_pes
 
           student_pe_uuids = assigned_student_pe_uuids + new_student_pe_uuids
@@ -176,8 +164,7 @@ class Services::UpdatePracticeWorstAreasExercises::Service
         OpenStax::Biglearn::Api.update_practice_worst_areas practice_worst_areas_updates
 
         Student.import students, validate: false, on_duplicate_key_update: {
-          conflict_target: [ :uuid ],
-          columns: [ :worst_clue_book_container_uuid, :worst_clue_value ]
+          conflict_target: [ :uuid ], columns: [ :pes_are_assigned ]
         }
 
         StudentPe.import student_pes, validate: false, on_duplicate_key_ignore: {

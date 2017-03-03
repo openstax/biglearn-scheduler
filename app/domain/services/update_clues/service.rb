@@ -24,15 +24,31 @@ class Services::UpdateClues::Service
 
         # Build some hashes to minimize the number of queries
 
-        # Map the students to courses and course containers
+        # Map the students to courses, course containers and worst CLUes
         student_uuids = responses.map(&:student_uuid)
         course_uuid_by_student_uuid = {}
         course_container_uuids_by_student_uuids = {}
+        worst_clue_book_container_uuid_by_student_uuid = {}
+        worst_clue_value_by_student_uuid = {}
         Student.where(uuid: student_uuids)
-               .pluck(:uuid, :course_uuid, :course_container_uuids)
-               .each do |uuid, course_uuid, course_container_uuids|
+               .with_worst_clues
+               .pluck(
+                 :uuid,
+                 :course_uuid,
+                 :course_container_uuids,
+                 :worst_clue_book_container_uuid,
+                 :worst_clue_value
+               ).each do |
+                 uuid,
+                 course_uuid,
+                 course_container_uuids,
+                 worst_clue_book_container_uuid,
+                 worst_clue_value
+               |
           course_uuid_by_student_uuid[uuid] = course_uuid
           course_container_uuids_by_student_uuids[uuid] = course_container_uuids
+          worst_clue_book_container_uuid_by_student_uuid[uuid] = worst_clue_book_container_uuid
+          worst_clue_value_by_student_uuid[uuid] = worst_clue_value
         end
 
         # Map the course containers back to students
@@ -56,8 +72,8 @@ class Services::UpdateClues::Service
 
         # Build a query to obtain the book_container_uuids for the new Responses
         # Mark the responses as used in CLUe calculations
-        # (in case we don't use them later because they got removed from the book or some other case)
-        used_responses = Set.new
+        # (in case we don't use them later because they got removed from the book or something)
+        used_responses = []
         ee_queries = responses.map do |response|
           student_uuid = response.student_uuid
           course_uuid = course_uuid_by_student_uuid[student_uuid]
@@ -68,7 +84,9 @@ class Services::UpdateClues::Service
 
           used_responses << [response.uuid, course_uuid]
 
-          ee[:ecosystem_uuid].eq(ecosystem_uuid).and(ee[:exercise_group_uuid].eq(exercise_group_uuid))
+          ee[:ecosystem_uuid].eq(ecosystem_uuid).and(
+            ee[:exercise_group_uuid].eq(exercise_group_uuid)
+          )
         end.compact.reduce(:or)
 
         # Map the ecosystem_uuids and exercise_group_uuids to book_container_uuids
@@ -164,6 +182,7 @@ class Services::UpdateClues::Service
         # Calculate student CLUes
         student_clues = []
         student_clue_requests = []
+        student_uuids_to_update_worst_areas_exercises = []
         student_clues_to_update.each do |book_container_uuid, student_uuids|
           ecosystem_uuid = ecosystem_uuid_by_book_container_uuid[book_container_uuid]
           if ecosystem_uuid.nil?
@@ -184,16 +203,29 @@ class Services::UpdateClues::Service
                                                                      .uniq
 
           student_uuids.uniq.each do |student_uuid|
+            worst_clue_book_container_uuid = \
+              worst_clue_book_container_uuid_by_student_uuid[student_uuid]
+            worst_clue_value = worst_clue_value_by_student_uuid[student_uuid]
+
             student_responses = responses_map[student_uuid]
             clue_responses = student_responses.values_at(*exercise_group_uuids).compact.flatten
             clue_data = calculate_clue_data(clue_responses).merge(ecosystem_uuid: ecosystem_uuid)
+            clue_value = clue_data.fetch(:most_likely)
+            is_real = clue_data.fetch(:is_real)
+
+            student_uuids_to_update_worst_areas_exercises << student_uuid \
+              if is_real && (
+                   worst_clue_book_container_uuid.nil? || worst_clue_value.nil? ||
+                   worst_clue_book_container_uuid == book_container_uuid ||
+                   worst_clue_value >= clue_value
+                 )
 
             student_clues << StudentClue.new(
               uuid: SecureRandom.uuid,
               student_uuid: student_uuid,
               book_container_uuid: book_container_uuid,
-              value: clue_data.fetch(:most_likely)
-            )
+              value: clue_value
+            ) if is_real
 
             student_clue_requests << {
               student_uuid: student_uuid,
@@ -271,6 +303,11 @@ class Services::UpdateClues::Service
         ResponseClue.import response_clues, validate: false, on_duplicate_key_ignore: {
           conflict_target: [ :uuid ]
         }
+
+        # Mark relevant Students for PracticeWorstAreasExercises updates
+        StudentPe.where(student_uuid: student_uuids_to_update_worst_areas_exercises).delete_all
+        Student.where(uuid: student_uuids_to_update_worst_areas_exercises)
+               .update_all(pes_are_assigned: false)
 
         responses.size
       end

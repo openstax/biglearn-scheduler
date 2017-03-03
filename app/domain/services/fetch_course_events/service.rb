@@ -100,15 +100,15 @@ class Services::FetchCourseEvents::Service
 
           student_uuids_by_container_uuid = Hash.new { |hash, key| hash[key] = [] }
           data.fetch(:students).each do |student|
-            container_uuids_set = Set.new
+            container_uuids = []
             current_container_uuid = student.fetch(:container_uuid)
             student_uuid = student.fetch(:student_uuid)
 
             # Flatten the course tree structure into arrays of uuids
             until current_container_uuid.nil? ||
                   current_container_uuid == course_uuid ||
-                  container_uuids_set.include?(current_container_uuid) do
-              container_uuids_set << current_container_uuid
+                  container_uuids.include?(current_container_uuid) do
+              container_uuids << current_container_uuid
               student_uuids_by_container_uuid[current_container_uuid] << student_uuid
 
               current_container_uuid = parent_uuids_by_container_uuid[current_container_uuid]
@@ -117,7 +117,8 @@ class Services::FetchCourseEvents::Service
             students << Student.new(
               uuid: student_uuid,
               course_uuid: course_uuid,
-              course_container_uuids: container_uuids_set.to_a
+              course_container_uuids: container_uuids,
+              pes_are_assigned: false
             )
           end
 
@@ -264,7 +265,8 @@ class Services::FetchCourseEvents::Service
 
       results << Student.import(
         students, validate: false, on_duplicate_key_update: {
-          conflict_target: [ :uuid ], columns: [ :course_uuid, :course_container_uuids ]
+          conflict_target: [ :uuid ],
+          columns: [ :course_uuid, :course_container_uuids, :pes_are_assigned ]
         }
       )
 
@@ -293,37 +295,50 @@ class Services::FetchCourseEvents::Service
       AssignmentSpe.where(assignment_uuid: assignment_uuids).delete_all
       AssignmentPe.where(assignment_uuid: assignment_uuids).delete_all
 
-      # Find other affected assignments and mark their SPEs/PEs for recalculation
-      # if their Exercises have just been assigned
-      spe = AssignmentSpe.arel_table
-      pe = AssignmentPe.arel_table
+      # Find other affected assignments and PracticeWorstAreasExercises
+      # and mark their SPEs/PEs for recalculation if their Exercises have just been assigned
+      aspe = AssignmentSpe.arel_table
+      ape = AssignmentPe.arel_table
+      spe = StudentPe.arel_table
+      aspe_queries = []
+      ape_queries = []
       spe_queries = []
-      pe_queries = []
       assignments.each do |assignment|
         student_uuid = assignment.student_uuid
         assigned_exercise_uuids = assignment.assigned_exercise_uuids
 
+        aspe_queries << aspe[:student_uuid].eq(student_uuid).and(
+                          aspe[:exercise_uuid].in(assigned_exercise_uuids)
+                        )
+
+        ape_queries << ape[:student_uuid].eq(student_uuid).and(
+                         ape[:exercise_uuid].in(assigned_exercise_uuids)
+                       )
+
         spe_queries << spe[:student_uuid].eq(student_uuid).and(
                          spe[:exercise_uuid].in(assigned_exercise_uuids)
                        )
+      end
 
-        pe_queries << pe[:student_uuid].eq(student_uuid).and(
-                        pe[:exercise_uuid].in(assigned_exercise_uuids)
-                      )
+      if aspe_queries.any?
+        aspe_query = aspe_queries.reduce(:or)
+        affected_spe_assignment_uuids = AssignmentSpe.where(aspe_query).pluck(:assignment_uuid)
+        Assignment.where(uuid: affected_spe_assignment_uuids).update_all(spes_are_assigned: false)
+        AssignmentSpe.where(aspe_query).delete_all
+      end
+
+      if ape_queries.any?
+        ape_query = ape_queries.reduce(:or)
+        affected_pe_assignment_uuids = AssignmentPe.where(ape_query).pluck(:assignment_uuid)
+        Assignment.where(uuid: affected_pe_assignment_uuids).update_all(pes_are_assigned: false)
+        AssignmentPe.where(ape_query).delete_all
       end
 
       if spe_queries.any?
-        spe_query = spe[:assignment_uuid].not_in(assignment_uuids).and(spe_queries.reduce(:or))
-        affected_spe_assignment_uuids = AssignmentSpe.where(spe_query).pluck(:assignment_uuid)
-        Assignment.where(uuid: affected_spe_assignment_uuids).update_all(spes_are_assigned: false)
-        AssignmentSpe.where(spe_query).delete_all
-      end
-
-      if pe_queries.any?
-        pe_query = pe[:assignment_uuid].not_in(assignment_uuids).and(pe_queries.reduce(:or))
-        affected_pe_assignment_uuids = AssignmentPe.where(pe_query).pluck(:assignment_uuid)
-        Assignment.where(uuid: affected_pe_assignment_uuids).update_all(pes_are_assigned: false)
-        AssignmentPe.where(pe_query).delete_all
+        spe_query = spe_queries.reduce(:or)
+        affected_pe_student_uuids = StudentPe.where(spe_query).pluck(:student_uuid)
+        Student.where(uuid: affected_pe_student_uuids).update_all(pes_are_assigned: false)
+        StudentPe.where(spe_query).delete_all
       end
 
       results << Response.import(

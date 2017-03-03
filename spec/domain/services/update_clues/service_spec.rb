@@ -11,6 +11,7 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
       expect { subject.process }.to  not_change { Response.count     }
                                 .and not_change { ResponseClue.count }
                                 .and not_change { StudentClue.count  }
+                                .and not_change { StudentPe.count    }
     end
   end
 
@@ -98,9 +99,12 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
 
       expect do
         subject.process
-      end.to  not_change { Response.count     }
-         .and change     { ResponseClue.count }.by(@unprocessed_responses.size)
-         .and not_change { StudentClue.count  }
+      end.to  not_change { Response.count                     }
+         .and change     { ResponseClue.count                 }.by(@unprocessed_responses.size)
+         .and not_change { StudentClue.count                  }
+         .and not_change { StudentPe.count                    }
+         .and not_change { @student_1.reload.pes_are_assigned }
+         .and not_change { @student_2.reload.pes_are_assigned }
 
       new_response_clue_uuids = ResponseClue.order(:created_at)
                                             .last(@unprocessed_responses.size)
@@ -178,9 +182,16 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
                                                 book_container_uuids: book_container_uuids_2
 
         FactoryGirl.create :student_clue, student_uuid: @student_1.uuid,
-                                          book_container_uuid: @ep_1.book_container_uuid
+                                          book_container_uuid: @ep_1.book_container_uuid,
+                                          value: 1
         FactoryGirl.create :student_clue, student_uuid: @student_2.uuid,
-                                          book_container_uuid: @ep_1.book_container_uuid
+                                          book_container_uuid: @ep_2.book_container_uuid,
+                                          value: 1
+
+        5.times { FactoryGirl.create :student_pe, student_uuid: @student_1.uuid }
+        5.times { FactoryGirl.create :student_pe, student_uuid: @student_2.uuid }
+        @student_1.update_attribute :pes_are_assigned, true
+        @student_2.update_attribute :pes_are_assigned, true
       end
 
       after(:all)  { DatabaseCleaner.clean }
@@ -250,16 +261,27 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
           )
         end
 
+        # Student 1 has no new responses on the first book container,
+        # so his PracticeWorstAreasExercises are not cleared and he gets no StudentClue there
+        # Not enough responses on the second book container,
+        # so StudentClues there are not created there either
         expect do
           subject.process
-        end.to  not_change { Response.count     }
-           .and change     { ResponseClue.count }.by(@unprocessed_responses.size)
-           .and change     { StudentClue.count  }.by(2)
+        end.to  not_change { Response.count                     }
+           .and change     { ResponseClue.count                 }.by(@unprocessed_responses.size)
+           .and change     { StudentClue.count                  }.by(1)
+           .and change     { StudentPe.count                    }.by(-5)
+           .and not_change { @student_1.reload.pes_are_assigned }
+           .and change     { @student_2.reload.pes_are_assigned }.from(true).to(false)
 
         new_response_clue_uuids = ResponseClue.order(:created_at)
                                               .last(@unprocessed_responses.size)
                                               .map(&:uuid)
         expect(@unprocessed_responses.map(&:uuid)).to match_array(new_response_clue_uuids)
+
+        new_student_clue = StudentClue.order(:created_at).last
+        expect(new_student_clue.student_uuid).to eq @student_2.uuid
+        expect(new_student_clue.book_container_uuid).to eq @ep_1.book_container_uuid
       end
     end
   end

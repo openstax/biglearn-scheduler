@@ -209,13 +209,12 @@ ActiveRecord::Schema.define(version: 20170301233311) do
   end
 
   create_table "students", force: :cascade do |t|
-    t.uuid     "uuid",                           null: false
-    t.uuid     "course_uuid",                    null: false
-    t.uuid     "course_container_uuids",         null: false, array: true
-    t.uuid     "worst_clue_book_container_uuid"
-    t.decimal  "worst_clue_value"
-    t.datetime "created_at",                     null: false
-    t.datetime "updated_at",                     null: false
+    t.uuid     "uuid",                   null: false
+    t.uuid     "course_uuid",            null: false
+    t.uuid     "course_container_uuids", null: false, array: true
+    t.boolean  "pes_are_assigned",       null: false
+    t.datetime "created_at",             null: false
+    t.datetime "updated_at",             null: false
     t.index ["course_uuid"], name: "index_students_on_course_uuid", using: :btree
     t.index ["uuid"], name: "index_students_on_uuid", unique: true, using: :btree
   end
