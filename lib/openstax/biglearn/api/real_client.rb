@@ -2,7 +2,7 @@ class OpenStax::Biglearn::Api::RealClient
 
   HEADER_OPTIONS = { headers: { 'Content-Type' => 'application/json' } }.freeze
 
-  ALGORITHM_NAME = 'LOCAL_QUERY'.freeze
+  ALGORITHM_NAME = 'local_query'.freeze
 
   def initialize(biglearn_configuration)
     @server_url   = biglearn_configuration.server_url
