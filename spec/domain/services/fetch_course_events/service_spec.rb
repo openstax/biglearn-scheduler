@@ -11,6 +11,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                 .and not_change { CourseContainer.count }
                                 .and not_change { Student.count }
                                 .and not_change { Assignment.count }
+                                .and not_change { AssignedExercise.count }
                                 .and not_change { AssignmentSpe.count }
                                 .and not_change { AssignmentPe.count }
                                 .and not_change { Response.count }
@@ -96,6 +97,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignedExercise.count }
                                   .and not_change { AssignmentSpe.count }
                                   .and not_change { AssignmentPe.count }
                                   .and not_change { Response.count }
@@ -144,6 +146,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignedExercise.count }
                                   .and not_change { AssignmentSpe.count }
                                   .and not_change { AssignmentPe.count }
                                   .and not_change { Response.count }
@@ -209,6 +212,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { CourseContainer.count }.by(num_containers)
                                   .and change     { Student.count }.by(num_students)
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignedExercise.count }
                                   .and not_change { AssignmentSpe.count }
                                   .and not_change { AssignmentPe.count }
                                   .and not_change { Response.count }
@@ -259,6 +263,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignedExercise.count }
                                   .and not_change { AssignmentSpe.count }
                                   .and not_change { AssignmentPe.count }
                                   .and not_change { Response.count }
@@ -314,6 +319,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignedExercise.count }
                                   .and not_change { AssignmentSpe.count }
                                   .and not_change { AssignmentPe.count }
                                   .and not_change { Response.count }
@@ -417,6 +423,9 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { Student.count }
                                   .and change     { Assignment.count }.by(1)
                                   .and(change     do
+                                    AssignedExercise.count
+                                  end.by(num_assigned_exercises))
+                                  .and(change     do
                                     AssignmentSpe.count
                                   end.by(-num_assigned_exercises))
                                   .and(change     do
@@ -483,6 +492,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
+                                  .and not_change { AssignedExercise.count }
                                   .and not_change { AssignmentSpe.count }
                                   .and not_change { AssignmentPe.count }
                                   .and change     { Response.count }.by(1)

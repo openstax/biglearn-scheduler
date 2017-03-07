@@ -81,7 +81,6 @@ class Services::UpdatePracticeWorstAreasExercises::Service
           )
         end
 
-        current_time = DateTime.now
         assigned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
         assigned_but_not_due_exercise_uuids_by_student_uuids = Hash.new do |hash, key|
           hash[key] = []
@@ -93,7 +92,7 @@ class Services::UpdatePracticeWorstAreasExercises::Service
 
           assigned_but_not_due_exercise_uuids_by_student_uuids[student_uuid].concat(
             assigned_exercise_uuids
-          ) if due_at.present? && due_at > current_time
+          ) if due_at.present? && due_at > start_time
         end
         assigned_exercise_uuids = assigned_exercise_uuids_by_student_uuids.values.flatten
 

@@ -37,6 +37,7 @@ class Services::FetchCourseEvents::Service
       course_containers = []
       students = []
       assignments = []
+      assigned_exercises = []
       responses = []
       response_uuids = []
       courses = course_event_responses.map do |course_event_response|
@@ -201,6 +202,13 @@ class Services::FetchCourseEvents::Service
             goal_num_tutor_assigned_pes: data.fetch(:goal_num_tutor_assigned_pes),
             pes_are_assigned: data.fetch(:pes_are_assigned)
           )
+
+          data.fetch(:assigned_exercises).each do |assigned_exercise|
+            assigned_exercises << AssignedExercise.new(
+              uuid: assigned_exercise.fetch(:trial_uuid),
+              assignment_uuid: assignment_uuid
+            )
+          end
         end
 
         # Record response saves a student response used to compute the CLUes
@@ -288,6 +296,10 @@ class Services::FetchCourseEvents::Service
             :pes_are_assigned
           ]
         }
+      )
+
+      results << AssignedExercise.import(
+        assigned_exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
       )
 
       # Mark SPEs/PEs for recalculation for updated Assignments

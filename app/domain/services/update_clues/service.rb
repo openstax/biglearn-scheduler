@@ -110,6 +110,19 @@ class Services::UpdateClues::Service
                                                        .pluck(:uuid, :group_uuid)
                                                        .to_h
 
+        trial_uuids = responses.map(&:uuid)
+        assignment_uuid_by_trial_uuid = AssignedExercise.where(uuid: trial_uuids)
+                                                        .pluck(:uuid, :assignment_uuid)
+                                                        .to_h
+
+        # Collect ongoing assignment uuids so we can exclude them from the student CLUes
+        ongoing_assignment_uuids = []
+        Assignment.where(student_uuid: student_uuids)
+                  .pluck(:uuid, :due_at)
+                  .each do |assignment_uuid, due_at|
+          ongoing_assignment_uuids << assignment_uuid if due_at > start_time
+        end
+
         # Collect the CLUes that need to be updated and build the final Response query
         student_clues_to_update = Hash.new { |hash, key| hash[key] = [] }
         teacher_clues_to_update = Hash.new { |hash, key| hash[key] = [] }
@@ -147,11 +160,12 @@ class Services::UpdateClues::Service
         # Map student_uuids and exercise_group_uuids to correctness information
         # Take only the latest answer for each exercise_group_uuid
         # Mark responses found here as used in CLUe calculations
-        responses_map = Hash.new { |hash, key| hash[key] = {} }
+        student_responses_map = Hash.new { |hash, key| hash[key] = {} }
+        teacher_responses_map = Hash.new { |hash, key| hash[key] = {} }
         Response.where(response_queries)
                 .order(:responded_at)
                 .pluck(:uuid, :student_uuid, :exercise_uuid, :is_correct)
-                .each do |uuid, student_uuid, exercise_uuid, is_correct|
+                .each do |trial_uuid, student_uuid, exercise_uuid, is_correct|
           exercise_group_uuid = exercise_group_uuid_by_exercise_uuid[exercise_uuid]
           if exercise_group_uuid.nil?
             Rails.logger.tagged('UpdateClues') do |logger|
@@ -163,10 +177,13 @@ class Services::UpdateClues::Service
             next
           end
 
-          responses_map[student_uuid][exercise_group_uuid] = is_correct
+          assignment_uuid = assignment_uuid_by_trial_uuid[trial_uuid]
+          student_responses_map[student_uuid][exercise_group_uuid] = is_correct \
+            unless ongoing_assignment_uuids.include?(assignment_uuid)
+          teacher_responses_map[student_uuid][exercise_group_uuid] = is_correct
 
           course_uuid = course_uuid_by_student_uuid[student_uuid]
-          used_responses << [uuid, course_uuid]
+          used_responses << [trial_uuid, course_uuid]
         end unless response_queries.nil?
 
         # Calculate student CLUes
@@ -197,7 +214,7 @@ class Services::UpdateClues::Service
               worst_clue_book_container_uuids_by_student_uuids[student_uuid]
             worst_clue_values = worst_clue_values_by_student_uuids[student_uuid]
 
-            student_responses = responses_map[student_uuid]
+            student_responses = student_responses_map[student_uuid]
             clue_responses = student_responses.values_at(*exercise_group_uuids).compact.flatten
             clue_data = calculate_clue_data(clue_responses).merge(ecosystem_uuid: ecosystem_uuid)
             clue_value = clue_data.fetch(:most_likely)
@@ -263,9 +280,9 @@ class Services::UpdateClues::Service
               next
             end
 
-            student_response_maps = responses_map.values_at(*student_uuids).compact
-            clue_responses = student_response_maps.map do |student_response_map|
-              student_response_map.values_at(*exercise_group_uuids)
+            teacher_response_maps = teacher_responses_map.values_at(*student_uuids).compact
+            clue_responses = teacher_response_maps.map do |teacher_response_map|
+              teacher_response_map.values_at(*exercise_group_uuids)
             end.flatten.compact
             clue_data = calculate_clue_data(clue_responses).merge(ecosystem_uuid: ecosystem_uuid)
 

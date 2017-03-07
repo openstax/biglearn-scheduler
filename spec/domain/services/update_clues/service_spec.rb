@@ -192,6 +192,12 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
         5.times { FactoryGirl.create :student_pe, student_uuid: @student_2.uuid }
         @student_1.update_attribute :pes_are_assigned, true
         @student_2.update_attribute :pes_are_assigned, true
+
+        # Exclude @response_8 from the Student CLUe (but not the Teacher CLUe)
+        assignment = FactoryGirl.create :assignment, student_uuid: @student_2.uuid,
+                                                     due_at: DateTime.now.tomorrow
+        FactoryGirl.create :assigned_exercise, uuid: @response_10.uuid,
+                                               assignment_uuid: assignment.uuid
       end
 
       after(:all)  { DatabaseCleaner.clean }
@@ -231,7 +237,7 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
             request.fetch(:book_container_uuid) == @ep_2.book_container_uuid
           end.fetch :clue_data
           expect(clue_data_3).to(
-            eq subject.send(:calculate_clue_data, [ true, false ])
+            eq subject.send(:calculate_clue_data, [ true ])
                       .merge(ecosystem_uuid: @ecosystem_2.uuid)
           )
         end
