@@ -35,9 +35,9 @@ http_interactions:
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 48db6ce2-92d4-4790-990b-f7d4d702ccc3
+      - b78212c9-602a-4f0c-b802-86de000a44f0
       X-Runtime:
-      - '0.030012'
+      - '0.037504'
       Connection:
       - close
       Server:
@@ -46,5 +46,5 @@ http_interactions:
       encoding: UTF-8
       string: '{"course_responses":[]}'
     http_version: 
-  recorded_at: Fri, 17 Feb 2017 19:46:59 GMT
+  recorded_at: Tue, 07 Mar 2017 00:32:00 GMT
 recorded_with: VCR 2.9.3

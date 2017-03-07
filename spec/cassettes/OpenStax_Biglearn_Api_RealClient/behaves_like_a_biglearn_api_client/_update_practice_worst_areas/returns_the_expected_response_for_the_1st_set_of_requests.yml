@@ -6,7 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"practice_worst_areas_updates":[{"request_uuid":"<UPDATE_PRACTICE_WORST_AREAS
-        EXAMPLE 1 REQUEST 1 UUID>","student_uuid":"<STUDENT UUID>","exercise_uuids":["7ae3d514-882e-4ab2-97e9-2520bbc9e647","622d547e-32d9-4c97-954d-928083c8163e","e0b9b83b-5125-4c12-b8ce-aa09f087d6a3","d53556e8-9f26-4a71-a0ac-464846c40321","c8d88849-7c28-41bd-87da-523b85632f9a","4c93a911-cc77-4c97-a954-1fae8cf29b16"]}]}'
+        EXAMPLE 1 REQUEST 1 UUID>","student_uuid":"<STUDENT UUID>","exercise_uuids":["57f8e907-b368-4b57-afaa-37085104e548","6ec87d97-fd13-42f3-bac1-9075ce9ddd7e","d8acc06f-3173-4561-b16f-04c066b8e2f2","6663b8a3-4d69-44ee-9014-4c3e423c52d6","cc3dc89a-6c66-468f-9153-1279ba9a14e0"],"algorithm_name":"LOCAL_QUERY"}]}'
     headers:
       User-Agent:
       - Faraday v0.9.2
@@ -30,13 +30,13 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"8371fc67db221b733913dd16264fa2ea"
+      - W/"faa29a0588b8be4ef88ccb84bb0bbc58"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 05ce5897-2b0b-4df1-b6a7-3f3432466ade
+      - 8a34b10b-1d5e-4c67-82b1-618ef146ae46
       X-Runtime:
-      - '0.046662'
+      - '0.044146'
       Connection:
       - close
       Server:
@@ -46,5 +46,5 @@ http_interactions:
       string: '{"practice_worst_areas_update_responses":[{"request_uuid":"<UPDATE_PRACTICE_WORST_AREAS
         EXAMPLE 1 REQUEST 1 UUID>","update_status":"accepted"}]}'
     http_version: 
-  recorded_at: Fri, 17 Feb 2017 19:47:00 GMT
+  recorded_at: Tue, 07 Mar 2017 00:32:00 GMT
 recorded_with: VCR 2.9.3

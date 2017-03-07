@@ -6,8 +6,9 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"student_clue_updates":[{"request_uuid":"<UPDATE_STUDENT_CLUES EXAMPLE
-        1 REQUEST 1 UUID>","book_container_uuid":"<BOOK CONTAINER UUID>","clue_data":{"minimum":0.3247668992807933,"most_likely":0.5848690257000516,"maximum":0.7473825195596738,"is_real":true,"ecosystem_uuid":"<ECOSYSTEM
-        UUID>"},"student_uuid":"<STUDENT UUID>"}]}'
+        1 REQUEST 1 UUID>","book_container_uuid":"<BOOK CONTAINER UUID>","student_uuid":"<STUDENT
+        UUID>","clue_data":{"minimum":0.0950411351989291,"most_likely":0.12915402213876548,"maximum":0.8276084867318947,"is_real":false,"ecosystem_uuid":"<ECOSYSTEM
+        UUID>"},"algorithm_name":"LOCAL_QUERY"}]}'
     headers:
       User-Agent:
       - Faraday v0.9.2
@@ -31,13 +32,13 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"c2de656e46f88f0a9321d8c35c3da7b5"
+      - W/"059f8799177a4d726cd1dc088dc9459b"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - d45e006a-bc5c-45f0-a1ce-b86a6e48788a
+      - 47792154-6746-46bc-a7c3-a6fa4e89d4b0
       X-Runtime:
-      - '0.031050'
+      - '0.048459'
       Connection:
       - close
       Server:
@@ -47,5 +48,5 @@ http_interactions:
       string: '{"student_clue_update_responses":[{"request_uuid":"<UPDATE_STUDENT_CLUES
         EXAMPLE 1 REQUEST 1 UUID>","update_status":"accepted"}]}'
     http_version: 
-  recorded_at: Fri, 17 Feb 2017 19:47:00 GMT
+  recorded_at: Tue, 07 Mar 2017 00:32:00 GMT
 recorded_with: VCR 2.9.3
