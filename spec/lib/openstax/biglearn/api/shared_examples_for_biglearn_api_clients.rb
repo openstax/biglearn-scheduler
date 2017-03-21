@@ -115,7 +115,8 @@ RSpec.shared_examples 'a biglearn api client' do
         {
           student_uuid: dummy_student.uuid,
           book_container_uuid: dummy_book_container_uuid,
-          clue_data: dummy_clue_data
+          clue_data: dummy_clue_data,
+          algorithm_name: 'local_query'
         }
       ],
       [
@@ -128,7 +129,8 @@ RSpec.shared_examples 'a biglearn api client' do
         {
           course_container_uuid: dummy_course_container.uuid,
           book_container_uuid: dummy_book_container_uuid,
-          clue_data: dummy_clue_data
+          clue_data: dummy_clue_data,
+          algorithm_name: 'local_query'
         }
       ],
       [
@@ -140,7 +142,8 @@ RSpec.shared_examples 'a biglearn api client' do
       [
         {
           assignment_uuid: dummy_assignment.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid)
+          exercise_uuids: dummy_exercises.map(&:uuid),
+          algorithm_name: 'local_query'
         }
       ],
       [
@@ -152,7 +155,8 @@ RSpec.shared_examples 'a biglearn api client' do
       [
         {
           assignment_uuid: dummy_assignment.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid)
+          exercise_uuids: dummy_exercises.map(&:uuid),
+          algorithm_name: 'local_query_teacher'
         }
       ],
       [
@@ -164,7 +168,8 @@ RSpec.shared_examples 'a biglearn api client' do
       [
         {
           student_uuid: dummy_student.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid)
+          exercise_uuids: dummy_exercises.map(&:uuid),
+          algorithm_name: 'local_query'
         }
       ],
       [

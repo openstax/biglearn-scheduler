@@ -345,7 +345,7 @@ class Services::UpdateAssignmentExercises::Service
           }
         )
 
-        OpenStax::Biglearn::Api.update_assignment_spes spe_updates
+        OpenStax::Biglearn::Api.update_assignment_spes spe_updates, 'local_query_teacher'
         OpenStax::Biglearn::Api.update_assignment_pes  pe_updates
 
         assignments.size

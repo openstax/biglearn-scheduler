@@ -2,8 +2,6 @@ class OpenStax::Biglearn::Api::RealClient
 
   HEADER_OPTIONS = { headers: { 'Content-Type' => 'application/json' } }.freeze
 
-  ALGORITHM_NAME = 'local_query'.freeze
-
   def initialize(biglearn_configuration)
     @server_url   = biglearn_configuration.server_url
     @client_id    = biglearn_configuration.client_id
@@ -63,7 +61,6 @@ class OpenStax::Biglearn::Api::RealClient
   def update_student_clues(student_clue_updates)
     requests = student_clue_updates.map do |request|
       request.slice(:request_uuid, :book_container_uuid, :student_uuid, :clue_data)
-             .merge(algorithm_name: ALGORITHM_NAME)
     end
 
     bulk_api_request url: :update_student_clues,
@@ -75,7 +72,6 @@ class OpenStax::Biglearn::Api::RealClient
   def update_teacher_clues(teacher_clue_updates)
     requests = teacher_clue_updates.map do |request|
       request.slice(:request_uuid, :book_container_uuid, :course_container_uuid, :clue_data)
-             .merge(algorithm_name: ALGORITHM_NAME)
     end
 
     bulk_api_request url: :update_teacher_clues,
@@ -87,7 +83,6 @@ class OpenStax::Biglearn::Api::RealClient
   def update_assignment_pes(pe_updates)
     requests = pe_updates.map do |request|
       request.slice(:request_uuid, :assignment_uuid, :exercise_uuids)
-             .merge(algorithm_name: ALGORITHM_NAME)
     end
 
     bulk_api_request url: :update_assignment_pes,
@@ -99,7 +94,6 @@ class OpenStax::Biglearn::Api::RealClient
   def update_assignment_spes(spe_updates)
     requests = spe_updates.map do |request|
       request.slice(:request_uuid, :assignment_uuid, :exercise_uuids)
-             .merge(algorithm_name: ALGORITHM_NAME)
     end
 
     bulk_api_request url: :update_assignment_spes,
@@ -111,7 +105,6 @@ class OpenStax::Biglearn::Api::RealClient
   def update_practice_worst_areas(practice_worst_areas_updates)
     requests = practice_worst_areas_updates.map do |request|
       request.slice(:request_uuid, :student_uuid, :exercise_uuids)
-             .merge(algorithm_name: ALGORITHM_NAME)
     end
 
     bulk_api_request url: :update_practice_worst_areas_exercises,

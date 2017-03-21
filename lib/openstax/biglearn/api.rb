@@ -5,6 +5,9 @@ require_relative 'api/malformed_request'
 require_relative 'api/result_type_error'
 
 module OpenStax::Biglearn::Api
+
+  DEFAULT_ALGORITHM_NAME = 'local_query'.freeze
+
   mattr_accessor :client
 
   class << self
@@ -39,33 +42,41 @@ module OpenStax::Biglearn::Api
                        optional_keys: [ :event_limit ]
     end
 
-    def update_student_clues(student_clue_updates)
+    def update_student_clues(student_clue_updates, algorithm_name = DEFAULT_ALGORITHM_NAME)
+      requests = student_clue_updates.map { |update| update.merge(algorithm_name: algorithm_name) }
       bulk_api_request method: :update_student_clues,
-                       requests: student_clue_updates,
+                       requests: requests,
                        keys: [ :student_uuid, :book_container_uuid, :clue_data ]
     end
 
-    def update_teacher_clues(teacher_clue_updates)
+    def update_teacher_clues(teacher_clue_updates, algorithm_name = DEFAULT_ALGORITHM_NAME)
+      requests = teacher_clue_updates.map { |update| update.merge(algorithm_name: algorithm_name) }
       bulk_api_request method: :update_teacher_clues,
-                       requests: teacher_clue_updates,
+                       requests: requests,
                        keys: [ :course_container_uuid, :book_container_uuid, :clue_data ]
     end
 
-    def update_assignment_pes(pe_updates)
+    def update_assignment_pes(pe_updates, algorithm_name = DEFAULT_ALGORITHM_NAME)
+      requests = pe_updates.map { |update| update.merge(algorithm_name: algorithm_name) }
       bulk_api_request method: :update_assignment_pes,
-                       requests: pe_updates,
+                       requests: requests,
                        keys: [ :assignment_uuid, :exercise_uuids ]
     end
 
-    def update_assignment_spes(spe_updates)
+    def update_assignment_spes(spe_updates, algorithm_name = DEFAULT_ALGORITHM_NAME)
+      requests = spe_updates.map { |update| update.merge(algorithm_name: algorithm_name) }
       bulk_api_request method: :update_assignment_spes,
-                       requests: spe_updates,
+                       requests: requests,
                        keys: [ :assignment_uuid, :exercise_uuids ]
     end
 
-    def update_practice_worst_areas(practice_worst_areas_updates)
+    def update_practice_worst_areas(practice_worst_areas_updates,
+                                    algorithm_name = DEFAULT_ALGORITHM_NAME)
+      requests = practice_worst_areas_updates.map do |update|
+        update.merge(algorithm_name: algorithm_name)
+      end
       bulk_api_request method: :update_practice_worst_areas,
-                       requests: practice_worst_areas_updates,
+                       requests: requests,
                        keys: [ :student_uuid, :exercise_uuids ]
     end
 

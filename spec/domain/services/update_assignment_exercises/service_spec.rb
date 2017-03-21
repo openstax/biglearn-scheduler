@@ -5,7 +5,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
 
   context 'with no Assignments' do
     it 'does not update any SPEs or PEs' do
-      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes).with([])
+      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes).with([], 'local_query_teacher')
       expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes).with([])
 
       expect { subject.process }.to  not_change { Assignment.count    }
@@ -361,9 +361,12 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
     end
 
     it 'assigns the correct numbers of SPEs and PEs from the correct pools' do
-      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
-        expect(requests).to match_array expected_spe_requests
-      end
+      expect(OpenStax::Biglearn::Api).to(
+        receive(:update_assignment_spes) do |requests, algorithm_name|
+          expect(requests).to match_array expected_spe_requests
+          expect(algorithm_name).to eq 'local_query_teacher'
+        end
+      )
       expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes) do |requests|
         expect(requests).to match_array expected_pe_requests
       end
@@ -408,9 +411,12 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       after(:all)  { DatabaseCleaner.clean }
 
       it 'assigns only the missing SPEs and PEs from the correct pools' do
-        expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
-          expect(requests).to match_array expected_spe_requests
-        end
+        expect(OpenStax::Biglearn::Api).to(
+          receive(:update_assignment_spes) do |requests, algorithm_name|
+            expect(requests).to match_array expected_spe_requests
+            expect(algorithm_name).to eq 'local_query_teacher'
+          end
+        )
         expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes) do |requests|
           expect(requests).to match_array expected_pe_requests
         end

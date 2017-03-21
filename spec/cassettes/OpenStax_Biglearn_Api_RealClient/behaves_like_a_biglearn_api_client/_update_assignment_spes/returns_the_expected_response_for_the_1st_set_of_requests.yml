@@ -6,7 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"spe_updates":[{"request_uuid":"<UPDATE_ASSIGNMENT_SPES EXAMPLE 1
-        REQUEST 1 UUID>","assignment_uuid":"<ASSIGNMENT UUID>","exercise_uuids":["57f8e907-b368-4b57-afaa-37085104e548","6ec87d97-fd13-42f3-bac1-9075ce9ddd7e","d8acc06f-3173-4561-b16f-04c066b8e2f2","6663b8a3-4d69-44ee-9014-4c3e423c52d6","cc3dc89a-6c66-468f-9153-1279ba9a14e0"],"algorithm_name":"local_query"}]}'
+        REQUEST 1 UUID>","assignment_uuid":"<ASSIGNMENT UUID>","exercise_uuids":["57f8e907-b368-4b57-afaa-37085104e548","6ec87d97-fd13-42f3-bac1-9075ce9ddd7e","d8acc06f-3173-4561-b16f-04c066b8e2f2","6663b8a3-4d69-44ee-9014-4c3e423c52d6","cc3dc89a-6c66-468f-9153-1279ba9a14e0"],"algorithm_name":"local_query_teacher"}]}'
     headers:
       User-Agent:
       - Faraday v0.9.2
