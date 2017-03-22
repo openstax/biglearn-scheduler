@@ -12,9 +12,9 @@ FactoryGirl.define do
     assignment_type               { ['reading', 'homework', 'practice', 'concept-coach'].sample }
     assigned_book_container_uuids { book_containers_count.times.map { SecureRandom.uuid } }
     assigned_exercise_uuids       { exercises_count.times.map { SecureRandom.uuid } }
-    goal_num_tutor_assigned_spes  { rand(10) }
+    goal_num_tutor_assigned_spes  { [rand(10), nil].sample }
     spes_are_assigned             { [true, false].sample }
-    goal_num_tutor_assigned_pes   { rand(10) }
+    goal_num_tutor_assigned_pes   { [rand(10), nil].sample }
     pes_are_assigned              { [true, false].sample }
   end
 end

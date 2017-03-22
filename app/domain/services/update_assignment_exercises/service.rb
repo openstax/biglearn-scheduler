@@ -8,8 +8,13 @@ class Services::UpdateAssignmentExercises::Service
     end
 
     aa = Assignment.arel_table
-    query = aa[:goal_num_tutor_assigned_spes].gt(0).and(aa[:spes_are_assigned].eq(false))
-              .or(aa[:goal_num_tutor_assigned_pes].gt(0).and(aa[:pes_are_assigned].eq(false)))
+    query = aa[:spes_are_assigned].eq(false).and(
+              aa[:goal_num_tutor_assigned_spes].eq(nil).or(aa[:goal_num_tutor_assigned_spes].gt(0))
+            ).or(
+              aa[:pes_are_assigned].eq(false).and(
+                aa[:goal_num_tutor_assigned_pes].eq(nil).or(aa[:goal_num_tutor_assigned_pes].gt(0))
+              )
+            )
 
     total_assignments = 0
     loop do
@@ -21,7 +26,7 @@ class Services::UpdateAssignmentExercises::Service
         # Build assignment histories so we can find SPE book_container_uuids
         history_queries = assignments.map do |assignment|
           # Don't consider assignments that need more SPEs than we can handle
-          k_ago_map = get_k_ago_map(assignment.goal_num_tutor_assigned_spes)
+          k_ago_map = get_k_ago_map(assignment)
           next if k_ago_map.blank?
 
           instructor_based_sequence_number = assignment.instructor_based_sequence_number
@@ -62,7 +67,7 @@ class Services::UpdateAssignmentExercises::Service
           assignment_type = assignment.assignment_type
           assignment_history = assignment_histories[student_uuid][assignment_type]
 
-          k_ago_map = get_k_ago_map(assignment.goal_num_tutor_assigned_spes)
+          k_ago_map = get_k_ago_map(assignment)
 
           instructor_based_sequence_number = assignment.instructor_based_sequence_number
           to_ecosystem_uuid = assignment.ecosystem_uuid
@@ -104,7 +109,7 @@ class Services::UpdateAssignmentExercises::Service
           assignment_type = assignment.assignment_type
           assignment_history = assignment_histories[student_uuid][assignment_type]
 
-          k_ago_map = get_k_ago_map(assignment.goal_num_tutor_assigned_spes)
+          k_ago_map = get_k_ago_map(assignment)
 
           instructor_based_sequence_number = assignment.instructor_based_sequence_number
           to_ecosystem_uuid = assignment.ecosystem_uuid
@@ -237,7 +242,7 @@ class Services::UpdateAssignmentExercises::Service
             assignment_type = assignment.assignment_type
             student_uuid = assignment.student_uuid
 
-            k_ago_map = get_k_ago_map(assignment.goal_num_tutor_assigned_spes)
+            k_ago_map = get_k_ago_map(assignment)
 
             assigned_book_container_uuids = assignment.assigned_book_container_uuids
 
@@ -367,22 +372,50 @@ class Services::UpdateAssignmentExercises::Service
 
   protected
 
-  def get_k_ago_map(num_spes)
+  def get_k_ago_map(assignment)
     # Entries in the list have the form:
     # [from-this-many-assignments-ago, pick-this-many-exercises]
+    num_spes = assignment.goal_num_tutor_assigned_spes
     case num_spes
-    when 0
-      []
-    when 1
-      [ [2, 1] ]
-    when 2
-      [ [2, 1], [4, 1] ]
-    when 3
-      [ [2, 2], [4, 1] ]
-    when 4
-      [ [2, 2], [4, 2] ]
+    when Integer
+      # Tutor decides
+      [].tap do |k_ago_map|
+        num_2_ago = (num_spes/2.0).ceil
+        num_4_ago = (num_spes/2.0).floor
+
+        k_ago_map << [2, num_2_ago] if num_2_ago > 0
+        k_ago_map << [4, num_4_ago] if num_4_ago > 0
+      end
+    when NilClass
+      # Biglearn decides
+      # Instructor-driven Spaced Practice
+      aa = Assignment.arel_table
+      student_uuid = assignment.student_uuid
+      due_at = assignment.due_at
+      opens_at = assignment.opens_at
+      created_at = assignment.created_at
+      assignment_query = aa[:student_uuid].eq(student_uuid).and(
+                           aa[:due_at].lt(due_at).or(
+                             aa[:due_at].eq(due_at).and(
+                               aa[:opens_at].lt(opens_at).or(
+                                 aa[:opens_at].eq(opens_at).and(
+                                   aa[:created_at].lt(created_at)
+                                 )
+                               )
+                             )
+                           )
+                         )
+      previous_assignments = Assignment.where(assignment_query)
+                                       .order(due_at: :desc, opens_at: :desc, created_at: :desc)
+
+      [2, 4].map do |k_ago|
+        assignment = previous_assignments.offset(k_ago - 1).first
+        next unless assignment.present?
+
+        [k_ago, assignment.assigned_book_container_uuids.size]
+      end.compact
     else
-      nil
+      raise ArgumentError, "Invalid num_spes: #{num_spes.inspect}", caller
     end
   end
 

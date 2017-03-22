@@ -19,7 +19,7 @@ class Assignment < ApplicationRecord
   validates :student_uuid,    presence: true
   validates :assignment_type, presence: true
   validates :goal_num_tutor_assigned_spes,
-            presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+            numericality: { only_integer: true, greater_than_or_equal_to: 0, allow_nil: true }
   validates :goal_num_tutor_assigned_pes,
-            presence: true, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+            numericality: { only_integer: true, greater_than_or_equal_to: 0, allow_nil: true }
 end
