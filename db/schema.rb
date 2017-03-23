@@ -25,28 +25,33 @@ ActiveRecord::Schema.define(version: 20170307172053) do
   end
 
   create_table "assignment_pes", force: :cascade do |t|
-    t.uuid     "uuid",            null: false
-    t.uuid     "student_uuid",    null: false
-    t.uuid     "assignment_uuid", null: false
-    t.uuid     "exercise_uuid",   null: false
-    t.datetime "created_at",      null: false
-    t.datetime "updated_at",      null: false
+    t.uuid     "uuid",                null: false
+    t.uuid     "student_uuid",        null: false
+    t.uuid     "assignment_uuid",     null: false
+    t.uuid     "book_container_uuid", null: false
+    t.uuid     "exercise_uuid",       null: false
+    t.datetime "created_at",          null: false
+    t.datetime "updated_at",          null: false
     t.index ["assignment_uuid"], name: "index_assignment_pes_on_assignment_uuid", using: :btree
+    t.index ["book_container_uuid"], name: "index_assignment_pes_on_book_container_uuid", using: :btree
     t.index ["exercise_uuid", "assignment_uuid"], name: "index_assignment_pes_on_exercise_uuid_and_assignment_uuid", unique: true, using: :btree
     t.index ["student_uuid"], name: "index_assignment_pes_on_student_uuid", using: :btree
     t.index ["uuid"], name: "index_assignment_pes_on_uuid", unique: true, using: :btree
   end
 
   create_table "assignment_spes", force: :cascade do |t|
-    t.uuid     "uuid",            null: false
-    t.uuid     "student_uuid",    null: false
-    t.uuid     "assignment_uuid", null: false
-    t.uuid     "exercise_uuid",   null: false
-    t.integer  "k_ago",           null: false
-    t.datetime "created_at",      null: false
-    t.datetime "updated_at",      null: false
+    t.uuid     "uuid",                null: false
+    t.uuid     "student_uuid",        null: false
+    t.uuid     "assignment_uuid",     null: false
+    t.integer  "history_type",        null: false
+    t.uuid     "exercise_uuid",       null: false
+    t.uuid     "book_container_uuid"
+    t.integer  "k_ago"
+    t.datetime "created_at",          null: false
+    t.datetime "updated_at",          null: false
     t.index ["assignment_uuid"], name: "index_assignment_spes_on_assignment_uuid", using: :btree
-    t.index ["exercise_uuid", "assignment_uuid"], name: "index_assignment_spes_on_exercise_uuid_and_assignment_uuid", unique: true, using: :btree
+    t.index ["book_container_uuid"], name: "index_assignment_spes_on_book_container_uuid", using: :btree
+    t.index ["exercise_uuid", "assignment_uuid", "history_type"], name: "index_assignment_spes_on_ex_uuid_and_assign_uuid_and_hist_type", unique: true, using: :btree
     t.index ["student_uuid"], name: "index_assignment_spes_on_student_uuid", using: :btree
     t.index ["uuid"], name: "index_assignment_spes_on_uuid", unique: true, using: :btree
   end

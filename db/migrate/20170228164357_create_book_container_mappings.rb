@@ -11,7 +11,7 @@ class CreateBookContainerMappings < ActiveRecord::Migration[5.0]
     end
 
     add_index :book_container_mappings,
-              [:from_book_container_uuid, :from_ecosystem_uuid, :to_ecosystem_uuid],
+              [ :from_book_container_uuid, :from_ecosystem_uuid, :to_ecosystem_uuid ],
               unique: true,
               name: 'index_bcms_on_from_bc_uuid_from_eco_uuid_to_eco_uuid_unique'
   end

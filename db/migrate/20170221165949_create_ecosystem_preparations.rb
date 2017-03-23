@@ -8,6 +8,6 @@ class CreateEcosystemPreparations < ActiveRecord::Migration[5.0]
       t.timestamps            null: false
     end
 
-    add_index :ecosystem_preparations, [:course_uuid, :ecosystem_uuid]
+    add_index :ecosystem_preparations, [ :course_uuid, :ecosystem_uuid ]
   end
 end

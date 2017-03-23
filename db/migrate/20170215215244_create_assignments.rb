@@ -18,6 +18,6 @@ class CreateAssignments < ActiveRecord::Migration[5.0]
       t.timestamps                               null: false
     end
 
-    add_index :assignments, [:due_at, :opens_at, :created_at]
+    add_index :assignments, [ :due_at, :opens_at, :created_at ]
   end
 end

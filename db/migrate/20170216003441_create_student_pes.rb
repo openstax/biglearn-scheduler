@@ -9,6 +9,6 @@ class CreateStudentPes < ActiveRecord::Migration[5.0]
       t.timestamps                 null: false
     end
 
-    add_index :student_pes, [:exercise_uuid, :student_uuid], unique: true
+    add_index :student_pes, [ :exercise_uuid, :student_uuid ], unique: true
   end
 end

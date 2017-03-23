@@ -5,7 +5,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
 
   context 'with no Assignments' do
     it 'does not update any SPEs or PEs' do
-      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes).with([], 'local_query_teacher')
+      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes).with([])
       expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes).with([])
 
       expect { subject.process }.to  not_change { Assignment.count    }
@@ -184,18 +184,18 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       exercise_uuids.each { |exercise_uuid| FactoryGirl.create :exercise, uuid: exercise_uuid }
 
       course = FactoryGirl.create :course
+      course_uuid = course.uuid
       student_uuid = SecureRandom.uuid
 
       # 0 SPEs, 0 PEs requested
       @reading_1 = FactoryGirl.create(
         :assignment,
-        course_uuid: course.uuid,
+        course_uuid: course_uuid,
         student_uuid: student_uuid,
         assignment_type: 'reading',
         ecosystem_uuid: ecosystem_uuid_1,
-        assigned_exercise_uuids: (
-          @reading_pool_1_old.exercise_uuids + @reading_pool_2_old.exercise_uuids
-        ).sample(10),
+        assigned_exercise_uuids: @reading_pool_1_old.exercise_uuids.sample(5) +
+                                 @reading_pool_2_old.exercise_uuids.sample(5),
         assigned_book_container_uuids: [
           @reading_pool_1_old.book_container_uuid, @reading_pool_2_old.book_container_uuid
         ],
@@ -208,13 +208,12 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       # 1 SPEs, 1 PEs requested; 1 SPE filled as PE since no 2-ago reading
       @reading_2 = FactoryGirl.create(
         :assignment,
-        course_uuid: course.uuid,
+        course_uuid: course_uuid,
         student_uuid: student_uuid,
         assignment_type: 'reading',
         ecosystem_uuid: ecosystem_uuid_2,
-        assigned_exercise_uuids: (
-          @reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids
-        ).sample(10),
+        assigned_exercise_uuids: @reading_pool_3_new.exercise_uuids.sample(5) +
+                                 @reading_pool_4_new.exercise_uuids.sample(5),
         assigned_book_container_uuids: [
           @reading_pool_3_new.book_container_uuid, @reading_pool_4_new.book_container_uuid
         ],
@@ -227,13 +226,12 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       # 2 SPEs, 2 PEs requested; 1 SPE from reading 1, 1 SPE filled as PE since no 4-ago reading
       @reading_3 = FactoryGirl.create(
         :assignment,
-        course_uuid: course.uuid,
+        course_uuid: course_uuid,
         student_uuid: student_uuid,
         assignment_type: 'reading',
         ecosystem_uuid: ecosystem_uuid_2,
-        assigned_exercise_uuids: (
-          @reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids
-        ).sample(10),
+        assigned_exercise_uuids: @reading_pool_4_new.exercise_uuids.sample(5) +
+                                 @reading_pool_5_new.exercise_uuids.sample(5),
         assigned_book_container_uuids: [
           @reading_pool_4_new.book_container_uuid, @reading_pool_5_new.book_container_uuid
         ],
@@ -247,7 +245,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       # 0 SPEs, 0 PEs requested
       @homework_1 = FactoryGirl.create(
         :assignment,
-        course_uuid: course.uuid,
+        course_uuid: course_uuid,
         student_uuid: student_uuid,
         assignment_type: 'homework',
         ecosystem_uuid: ecosystem_uuid_1,
@@ -265,7 +263,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       # 1 SPE, 1 PE requested; No exercises available to fill either
       @homework_2 = FactoryGirl.create(
         :assignment,
-        course_uuid: course.uuid,
+        course_uuid: course_uuid,
         student_uuid: student_uuid,
         assignment_type: 'homework',
         ecosystem_uuid: ecosystem_uuid_2,
@@ -280,10 +278,10 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # 2 SPE, 1 PE requested; Only 1 SPE can be filled from homework 1
+      # 2 SPEs, 1 PE requested; Only 1 SPE can be filled from homework 1
       @homework_3 = FactoryGirl.create(
         :assignment,
-        course_uuid: course.uuid,
+        course_uuid: course_uuid,
         student_uuid: student_uuid,
         assignment_type: 'homework',
         ecosystem_uuid: ecosystem_uuid_2,
@@ -294,7 +292,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
         ],
         goal_num_tutor_assigned_spes: 2,
         spes_are_assigned: false,
-        goal_num_tutor_assigned_pes: 2,
+        goal_num_tutor_assigned_pes: 1,
         pes_are_assigned: false
       )
     end
@@ -305,30 +303,57 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       [
         {
           assignment_uuid: @reading_2.uuid,
-          exercise_uuids: [ be_in(
-            @reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids
-          ) ]
+          exercise_uuids: [
+            be_in(@reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids)
+          ],
+          algorithm_name: 'local_query_instructor_driven'
         },
         {
           assignment_uuid: @reading_3.uuid,
           exercise_uuids: match_array([
-            be_in(
-              @reading_pool_1_new.exercise_uuids + @reading_pool_2_new.exercise_uuids
-            ),
-            be_in(
-              @reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids
-            )
-          ])
+            be_in(@reading_pool_1_new.exercise_uuids + @reading_pool_2_new.exercise_uuids),
+            be_in(@reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids)
+          ]),
+          algorithm_name: 'local_query_instructor_driven'
         },
         {
           assignment_uuid: @homework_2.uuid,
-          exercise_uuids: []
+          exercise_uuids: [],
+          algorithm_name: 'local_query_instructor_driven'
         },
         {
           assignment_uuid: @homework_3.uuid,
-          exercise_uuids: [ be_in(
-            @homework_pool_1_new.exercise_uuids + @homework_pool_2_new.exercise_uuids
-          ) ]
+          exercise_uuids: [
+            be_in(@homework_pool_1_new.exercise_uuids + @homework_pool_2_new.exercise_uuids)
+          ],
+          algorithm_name: 'local_query_instructor_driven'
+        },
+        {
+          assignment_uuid: @reading_2.uuid,
+          exercise_uuids: [
+            be_in(@reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids)
+          ],
+          algorithm_name: 'local_query_student_driven'
+        },
+        {
+          assignment_uuid: @reading_3.uuid,
+          exercise_uuids: match_array([
+            be_in(@reading_pool_1_new.exercise_uuids + @reading_pool_2_new.exercise_uuids),
+            be_in(@reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids)
+          ]),
+          algorithm_name: 'local_query_student_driven'
+        },
+        {
+          assignment_uuid: @homework_2.uuid,
+          exercise_uuids: [],
+          algorithm_name: 'local_query_student_driven'
+        },
+        {
+          assignment_uuid: @homework_3.uuid,
+          exercise_uuids: [
+            be_in(@homework_pool_1_new.exercise_uuids + @homework_pool_2_new.exercise_uuids)
+          ],
+          algorithm_name: 'local_query_student_driven'
         }
       ]
     end
@@ -337,16 +362,14 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       [
         {
           assignment_uuid: @reading_2.uuid,
-          exercise_uuids: [ be_in(
-            @reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids
-          ) ]
+          exercise_uuids: [
+            be_in(@reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids)
+          ]
         },
         {
           assignment_uuid: @reading_3.uuid,
           exercise_uuids: match_array([
-            be_in(
-              @reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids
-            )
+            be_in(@reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids)
           ] * 2)
         },
         {
@@ -361,18 +384,15 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
     end
 
     it 'assigns the correct numbers of SPEs and PEs from the correct pools' do
-      expect(OpenStax::Biglearn::Api).to(
-        receive(:update_assignment_spes) do |requests, algorithm_name|
-          expect(requests).to match_array expected_spe_requests
-          expect(algorithm_name).to eq 'local_query_teacher'
-        end
-      )
+      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
+        expect(requests).to match_array expected_spe_requests
+      end
       expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes) do |requests|
         expect(requests).to match_array expected_pe_requests
       end
 
       expect { subject.process }.to  not_change { Assignment.count    }
-                                .and change     { AssignmentSpe.count }.by(4)
+                                .and change     { AssignmentSpe.count }.by(8)
                                 .and change     { AssignmentPe.count  }.by(3)
     end
 
@@ -380,49 +400,53 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       before(:all) do
         DatabaseCleaner.start
 
-        reading_3_available_spe_uuids = @reading_pool_1_new.exercise_uuids +
-                                        @reading_pool_2_new.exercise_uuids
-        reading_3_assigned_spe_uuid = reading_3_available_spe_uuids.sample
-        FactoryGirl.create :assignment_spe,
-                           student_uuid: @reading_3.student_uuid,
-                           assignment_uuid: @reading_3.uuid,
-                           exercise_uuid: reading_3_assigned_spe_uuid,
-                           k_ago: 2
+        reading_3_assigned_spe_pool = @reading_pool_1_new
+        reading_3_assigned_spe_uuid = reading_3_assigned_spe_pool.exercise_uuids.sample
+        [ :instructor_driven, :student_driven ].each do |history_type|
+          FactoryGirl.create :assignment_spe,
+                             student_uuid: @reading_3.student_uuid,
+                             assignment_uuid: @reading_3.uuid,
+                             history_type: history_type,
+                             book_container_uuid: reading_3_assigned_spe_pool.book_container_uuid,
+                             exercise_uuid: reading_3_assigned_spe_uuid,
+                             k_ago: 2
+        end
 
-        reading_3_available_pe_uuids = @reading_pool_4_new.exercise_uuids +
-                                       @reading_pool_5_new.exercise_uuids -
+        reading_3_assigned_pe_pool = [@reading_pool_4_new, @reading_pool_5_new].sample
+        reading_3_available_pe_uuids = reading_3_assigned_pe_pool.exercise_uuids -
                                        @reading_3.assigned_exercise_uuids
         reading_3_assigned_pe_uuid = reading_3_available_pe_uuids.sample
         FactoryGirl.create :assignment_pe,
                            student_uuid: @reading_3.student_uuid,
                            assignment_uuid: @reading_3.uuid,
+                           book_container_uuid: reading_3_assigned_pe_pool.book_container_uuid,
                            exercise_uuid: reading_3_assigned_pe_uuid
 
-        homework_3_available_spe_uuids = @homework_pool_1_new.exercise_uuids +
-                                         @homework_pool_2_new.exercise_uuids
-        homework_3_assigned_spe_uuid = homework_3_available_spe_uuids.sample
-        FactoryGirl.create :assignment_spe,
-                           student_uuid: @homework_3.student_uuid,
-                           assignment_uuid: @homework_3.uuid,
-                           exercise_uuid: homework_3_assigned_spe_uuid,
-                           k_ago: 2
+        homework_3_assigned_spe_pool = @homework_pool_1_new
+        homework_3_assigned_spe_uuid = homework_3_assigned_spe_pool.exercise_uuids.sample
+        [ :instructor_driven, :student_driven ].each do |history_type|
+          FactoryGirl.create :assignment_spe,
+                             student_uuid: @homework_3.student_uuid,
+                             assignment_uuid: @homework_3.uuid,
+                             history_type: history_type,
+                             book_container_uuid: homework_3_assigned_spe_pool.book_container_uuid,
+                             exercise_uuid: homework_3_assigned_spe_uuid,
+                             k_ago: 2
+        end
       end
 
       after(:all)  { DatabaseCleaner.clean }
 
       it 'assigns only the missing SPEs and PEs from the correct pools' do
-        expect(OpenStax::Biglearn::Api).to(
-          receive(:update_assignment_spes) do |requests, algorithm_name|
-            expect(requests).to match_array expected_spe_requests
-            expect(algorithm_name).to eq 'local_query_teacher'
-          end
-        )
+        expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
+          expect(requests).to match_array expected_spe_requests
+        end
         expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes) do |requests|
           expect(requests).to match_array expected_pe_requests
         end
 
         expect { subject.process }.to  not_change { Assignment.count    }
-                                  .and change     { AssignmentSpe.count }.by(2)
+                                  .and change     { AssignmentSpe.count }.by(4)
                                   .and change     { AssignmentPe.count  }.by(2)
       end
     end

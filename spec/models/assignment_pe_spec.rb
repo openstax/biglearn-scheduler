@@ -5,6 +5,7 @@ RSpec.describe AssignmentPe, type: :model do
 
   it { is_expected.to validate_presence_of :student_uuid }
   it { is_expected.to validate_presence_of :assignment_uuid }
+  it { is_expected.to validate_presence_of :book_container_uuid }
   it { is_expected.to validate_presence_of :exercise_uuid }
 
   it do

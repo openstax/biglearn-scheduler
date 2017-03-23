@@ -156,10 +156,16 @@ RSpec.shared_examples 'a biglearn api client' do
         {
           assignment_uuid: dummy_assignment.uuid,
           exercise_uuids: dummy_exercises.map(&:uuid),
-          algorithm_name: 'local_query_teacher'
+          algorithm_name: 'local_query_instructor_driven'
+        },
+        {
+          assignment_uuid: dummy_assignment.uuid,
+          exercise_uuids: dummy_exercises.map(&:uuid),
+          algorithm_name: 'local_query_student_driven'
         }
       ],
       [
+        { update_status: 'accepted' },
         { update_status: 'accepted' }
       ]
     ],
@@ -183,8 +189,8 @@ RSpec.shared_examples 'a biglearn api client' do
 
         if requests.is_a?(Array)
           request_uuids = requests.map { SecureRandom.uuid }
-          requests = requests.each_with_index.map do |request, index|
-            request.merge(uuid_key => request_uuids[index])
+          requests = requests.each_with_index.map do |request, request_index|
+            request.merge(uuid_key => request_uuids[request_index])
           end
 
           before(:all, when_tagged_with_vcr) do
@@ -192,7 +198,7 @@ RSpec.shared_examples 'a biglearn api client' do
               requests.each_with_index do |request, request_index|
                 config.define_cassette_placeholder(
                   "<#{method.to_s.upcase} EXAMPLE #{index + 1} REQUEST #{request_index + 1} UUID>"
-                ) { request_uuids[index] }
+                ) { request_uuids[request_index] }
               end
             end
           end

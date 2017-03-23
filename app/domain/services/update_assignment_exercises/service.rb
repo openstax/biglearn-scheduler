@@ -1,6 +1,9 @@
 class Services::UpdateAssignmentExercises::Service
   BATCH_SIZE = 1000
 
+  DEFAULT_NUM_PES_PER_PAGE = 3
+  DEFAULT_NUM_SPES_PER_K_AGO_PAGE = 1
+
   def process
     start_time = Time.now
     Rails.logger.tagged 'UpdateAssignmentExercises' do |logger|
@@ -19,44 +22,50 @@ class Services::UpdateAssignmentExercises::Service
     total_assignments = 0
     loop do
       num_assignments = Assignment.transaction do
-        assignments = Assignment.with_instructor_based_sequence_numbers
+        assignments = Assignment.with_instructor_and_student_driven_sequence_numbers
                                 .where(query)
                                 .take(BATCH_SIZE)
 
         # Build assignment histories so we can find SPE book_container_uuids
         history_queries = assignments.map do |assignment|
-          # Don't consider assignments that need more SPEs than we can handle
-          k_ago_map = get_k_ago_map(assignment)
-          next if k_ago_map.blank?
-
-          instructor_based_sequence_number = assignment.instructor_based_sequence_number
-          sequence_number_queries = k_ago_map.map do |k_ago, num_exercises|
-            aa[:instructor_based_sequence_number].eq(instructor_based_sequence_number - k_ago)
+          instructor_driven_sequence_number = assignment.instructor_driven_sequence_number
+          student_driven_sequence_number = assignment.student_driven_sequence_number
+          sequence_number_queries = get_k_agos.map do |k_ago|
+            aa[:instructor_driven_sequence_number].eq(instructor_driven_sequence_number - k_ago).or(
+              aa[:student_driven_sequence_number].eq(student_driven_sequence_number - k_ago)
+            )
           end.reduce(:or)
 
           aa[:student_uuid].eq(assignment.student_uuid).and(
             aa[:assignment_type].eq(assignment.assignment_type).and(sequence_number_queries)
           ) unless sequence_number_queries.nil?
         end.compact.reduce(:or)
-        assignment_histories = Hash.new do |hash, key|
+        instructor_histories = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = {} }
         end
-        Assignment.with_instructor_based_sequence_numbers
+        student_histories = Hash.new do |hash, key|
+          hash[key] = Hash.new { |hash, key| hash[key] = {} }
+        end
+        Assignment.with_instructor_and_student_driven_sequence_numbers
                   .where(history_queries)
                   .pluck(
                     :student_uuid,
                     :assignment_type,
-                    :instructor_based_sequence_number,
+                    :instructor_driven_sequence_number,
+                    :student_driven_sequence_number,
                     :ecosystem_uuid,
                     :assigned_book_container_uuids
                   ).each do |
                     student_uuid,
                     assignment_type,
-                    instructor_based_sequence_number,
+                    instructor_driven_sequence_number,
+                    student_driven_sequence_number,
                     ecosystem_uuid,
                     assigned_book_container_uuids
                   |
-          assignment_histories[student_uuid][assignment_type][instructor_based_sequence_number] = \
+          instructor_histories[student_uuid][assignment_type][instructor_driven_sequence_number] = \
+            [ecosystem_uuid, assigned_book_container_uuids]
+          student_histories[student_uuid][assignment_type][student_driven_sequence_number] = \
             [ecosystem_uuid, assigned_book_container_uuids]
         end unless history_queries.nil?
 
@@ -65,19 +74,29 @@ class Services::UpdateAssignmentExercises::Service
         mapping_queries = assignments.map do |assignment|
           student_uuid = assignment.student_uuid
           assignment_type = assignment.assignment_type
-          assignment_history = assignment_histories[student_uuid][assignment_type]
+          instructor_history = instructor_histories[student_uuid][assignment_type]
+          student_history = student_histories[student_uuid][assignment_type]
 
-          k_ago_map = get_k_ago_map(assignment)
-
-          instructor_based_sequence_number = assignment.instructor_based_sequence_number
+          instructor_driven_sequence_number = assignment.instructor_driven_sequence_number
+          student_driven_sequence_number = assignment.student_driven_sequence_number
           to_ecosystem_uuid = assignment.ecosystem_uuid
 
-          spaced_assignments = k_ago_map.map do |k_ago, num_exercises|
-            spaced_sequence_number = instructor_based_sequence_number - k_ago
-            assignment_history[spaced_sequence_number]
-          end.compact
+          instructor_spaced_assignments = []
+          student_spaced_assignments = []
+          get_k_agos.each do |k_ago|
+            instructor_spaced_sequence_number = instructor_driven_sequence_number - k_ago
+            instructor_spaced_assignment = instructor_history[instructor_spaced_sequence_number]
+            instructor_spaced_assignments << instructor_spaced_assignment \
+              unless instructor_spaced_assignment.nil?
 
-          from_queries = spaced_assignments.map do |from_ecosystem_uuid, from_book_container_uuids|
+            student_spaced_sequence_number = student_driven_sequence_number - k_ago
+            student_spaced_assignment = student_history[student_spaced_sequence_number]
+            student_spaced_assignments << student_spaced_assignment \
+              unless student_spaced_assignment.nil?
+          end
+
+          from_queries = (instructor_spaced_assignments + student_spaced_assignments)
+                           .map do |from_ecosystem_uuid, from_book_container_uuids|
             next if from_ecosystem_uuid == to_ecosystem_uuid
 
             bcm[:from_ecosystem_uuid].eq(from_ecosystem_uuid).and(
@@ -102,38 +121,58 @@ class Services::UpdateAssignmentExercises::Service
         end unless mapping_queries.nil?
 
         # Map all spaced book_container_uuids to the current ecosystem for each assignment
-        spaced_practice_map = Hash.new { |hash, key| hash[key] = {} }
+        instructor_book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
+        student_book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
         assignments.each do |assignment|
           assignment_uuid = assignment.uuid
           student_uuid = assignment.student_uuid
           assignment_type = assignment.assignment_type
-          assignment_history = assignment_histories[student_uuid][assignment_type]
+          instructor_history = instructor_histories[student_uuid][assignment_type]
+          student_history = student_histories[student_uuid][assignment_type]
 
-          k_ago_map = get_k_ago_map(assignment)
-
-          instructor_based_sequence_number = assignment.instructor_based_sequence_number
+          instructor_driven_sequence_number = assignment.instructor_driven_sequence_number
+          student_driven_sequence_number = assignment.student_driven_sequence_number
           to_ecosystem_uuid = assignment.ecosystem_uuid
 
-          k_ago_map.each do |k_ago, num_exercises|
-            spaced_sequence_number = instructor_based_sequence_number - k_ago
-            from_ecosystem_uuid, spaced_book_container_uuids = \
-              assignment_history[spaced_sequence_number]
-            spaced_book_container_uuids ||= []
+          get_k_agos.each do |k_ago|
+            instructor_spaced_sequence_number = instructor_driven_sequence_number - k_ago
+            instructor_from_ecosystem_uuid, instructor_spaced_book_container_uuids = \
+              instructor_history[instructor_spaced_sequence_number]
+            instructor_spaced_book_container_uuids ||= []
 
-            mapped_book_containers = if from_ecosystem_uuid == to_ecosystem_uuid
-              spaced_book_container_uuids
+            instructor_mapped_book_containers = \
+            if instructor_from_ecosystem_uuid == to_ecosystem_uuid
+              instructor_spaced_book_container_uuids
             else
-              spaced_book_container_uuids.map do |book_container_uuid|
+              instructor_spaced_book_container_uuids.map do |book_container_uuid|
                 ecosystems_map[to_ecosystem_uuid][book_container_uuid]
               end
             end
 
-            spaced_practice_map[assignment_uuid][k_ago] = mapped_book_containers
+            instructor_book_container_uuids_map[assignment_uuid][k_ago] = \
+              instructor_mapped_book_containers
+
+            student_spaced_sequence_number = student_driven_sequence_number - k_ago
+            student_from_ecosystem_uuid, student_spaced_book_container_uuids = \
+              student_history[student_spaced_sequence_number]
+            student_spaced_book_container_uuids ||= []
+
+            student_mapped_book_containers = if student_from_ecosystem_uuid == to_ecosystem_uuid
+              student_spaced_book_container_uuids
+            else
+              student_spaced_book_container_uuids.map do |book_container_uuid|
+                ecosystems_map[to_ecosystem_uuid][book_container_uuid]
+              end
+            end
+
+            student_book_container_uuids_map[assignment_uuid][k_ago] = \
+              student_mapped_book_containers
           end
         end
 
         # Collect all relevant book container uuids for SPEs and PEs
-        book_container_uuids = spaced_practice_map.values.map(&:values).flatten +
+        book_container_uuids = instructor_book_container_uuids_map.values.map(&:values).flatten +
+                               student_book_container_uuids_map.values.map(&:values).flatten +
                                assignments.flat_map(&:assigned_book_container_uuids)
 
         # Get exercises for all relevant book_container_uuids
@@ -152,19 +191,40 @@ class Services::UpdateAssignmentExercises::Service
 
         # Get any exercises that are already assigned as SPEs or PEs
         assignment_uuids = assignments.map(&:uuid)
-        assigned_spes_by_assignment_uuid_and_k_ago = Hash.new do |hash, key|
+
+        instructor_assigned_spe_uuids_map = Hash.new do |hash, key|
+          hash[key] = Hash.new do |hash, key|
+            hash[key] = Hash.new { |hash, key| hash[key] = [] }
+          end
+        end
+        AssignmentSpe.instructor_driven
+                     .where(assignment_uuid: assignment_uuids)
+                     .pluck(:assignment_uuid, :exercise_uuid, :k_ago, :book_container_uuid)
+                     .each do |assignment_uuid, exercise_uuid, k_ago, book_container_uuid|
+          instructor_assigned_spe_uuids_map[assignment_uuid][k_ago][book_container_uuid] <<
+            exercise_uuid
+        end
+
+        student_assigned_spe_uuids_map = Hash.new do |hash, key|
+          hash[key] = Hash.new do |hash, key|
+            hash[key] = Hash.new { |hash, key| hash[key] = [] }
+          end
+        end
+        AssignmentSpe.student_driven
+                     .where(assignment_uuid: assignment_uuids)
+                     .pluck(:assignment_uuid, :exercise_uuid, :k_ago, :book_container_uuid)
+                     .each do |assignment_uuid, exercise_uuid, k_ago, book_container_uuid|
+          student_assigned_spe_uuids_map[assignment_uuid][k_ago][book_container_uuid] <<
+            exercise_uuid
+        end
+
+        assigned_pes_map = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = [] }
         end
-        AssignmentSpe.where(assignment_uuid: assignment_uuids)
-                     .pluck(:assignment_uuid, :exercise_uuid, :k_ago)
-                     .each do |assignment_uuid, exercise_uuid, k_ago|
-          assigned_spes_by_assignment_uuid_and_k_ago[assignment_uuid][k_ago] << exercise_uuid
-        end
-        assigned_pes_by_assignment_uuid = Hash.new { |hash, key| hash[key] = [] }
         AssignmentPe.where(assignment_uuid: assignment_uuids)
-                    .pluck(:assignment_uuid, :exercise_uuid)
-                    .each do |assignment_uuid, exercise_uuid|
-          assigned_pes_by_assignment_uuid[assignment_uuid] << exercise_uuid
+                    .pluck(:assignment_uuid, :exercise_uuid, :book_container_uuid)
+                    .each do |assignment_uuid, exercise_uuid, book_container_uuid|
+          assigned_pes_map[assignment_uuid][book_container_uuid] << exercise_uuid
         end
 
         # Get exercise exclusions for each course
@@ -230,10 +290,10 @@ class Services::UpdateAssignmentExercises::Service
         end
 
         # Assign Spaced Practice and Personalized exercises
-        assignment_spes = []
         assignment_pes = []
-        spe_updates = []
+        assignment_spes = []
         pe_updates = []
+        spe_updates = []
         assignments.group_by(&:course_uuid).each do |course_uuid, assignments|
           course_excluded_uuids = excluded_uuids_by_course_uuid[course_uuid]
 
@@ -242,92 +302,64 @@ class Services::UpdateAssignmentExercises::Service
             assignment_type = assignment.assignment_type
             student_uuid = assignment.student_uuid
 
-            k_ago_map = get_k_ago_map(assignment)
-
             assigned_book_container_uuids = assignment.assigned_book_container_uuids
 
-            assigned_spe_uuids_map = assigned_spes_by_assignment_uuid_and_k_ago[assignment_uuid]
-            assigned_spe_uuids = assigned_spe_uuids_map.values.flatten
-            assigned_pe_uuids = assigned_pes_by_assignment_uuid[assignment_uuid]
+            assignment_instructor_assigned_spe_uuids_map = \
+              instructor_assigned_spe_uuids_map[assignment_uuid]
+            assignment_student_assigned_spe_uuids_map = \
+              student_assigned_spe_uuids_map[assignment_uuid]
+            assigned_spe_uuids = (
+              assignment_instructor_assigned_spe_uuids_map.values +
+              assignment_student_assigned_spe_uuids_map.values
+            ).map(&:values).flatten.uniq
+            assignment_assigned_pe_uuids_map = assigned_pes_map[assignment_uuid]
+            assigned_pe_uuids = assignment_assigned_pe_uuids_map.values.flatten
+
+            assignment_instructor_book_container_uuids_map = \
+              instructor_book_container_uuids_map[assignment_uuid]
+            assignment_student_book_container_uuids_map = \
+              student_book_container_uuids_map[assignment_uuid]
 
             assignment_excluded_uuids = course_excluded_uuids +
                                         assigned_spe_uuids +
                                         assigned_pe_uuids
 
-            # Spaced Practice
-            spaced_practice_exercise_uuids = k_ago_map.flat_map do |k_ago, num_exercises|
-              assigned_k_ago_spe_uuids = assigned_spe_uuids_map[k_ago]
-              spes_needed = num_exercises - assigned_k_ago_spe_uuids.size
-
-              k_ago_book_container_uuids = spaced_practice_map[assignment_uuid][k_ago]
-
-              new_k_ago_exercise_uuids = get_exercise_uuids(
-                assignment: assignment,
-                book_container_uuids: k_ago_book_container_uuids,
-                excluded_uuids: assignment_excluded_uuids,
-                count: spes_needed
-              )
-              assignment_excluded_uuids += new_k_ago_exercise_uuids
-
-              # If not enough spaced practice exercises, fill up the rest with personalized ones
-              personalized_exercises_needed = spes_needed - new_k_ago_exercise_uuids.size
-              if personalized_exercises_needed > 0
-                new_personalized_exercise_uuids = get_exercise_uuids(
-                  assignment: assignment,
-                  book_container_uuids: assigned_book_container_uuids,
-                  excluded_uuids: assignment_excluded_uuids,
-                  count: personalized_exercises_needed
-                )
-                assignment_excluded_uuids += new_personalized_exercise_uuids
-              else
-                new_personalized_exercise_uuids = []
-              end
-
-              new_exercise_uuids = new_k_ago_exercise_uuids + new_personalized_exercise_uuids
-
-              new_assignment_spes = new_exercise_uuids.map do |spe_uuid|
-                AssignmentSpe.new uuid: SecureRandom.uuid,
-                                  student_uuid: student_uuid,
-                                  assignment_uuid: assignment_uuid,
-                                  exercise_uuid: spe_uuid,
-                                  k_ago: k_ago
-              end
-              assignment_spes.concat new_assignment_spes
-
-              assigned_k_ago_spe_uuids + new_exercise_uuids
-            end
-
-            assignment.spes_are_assigned = true
-
-            spe_updates << {
-              assignment_uuid: assignment_uuid,
-              exercise_uuids: spaced_practice_exercise_uuids
-            }
-
             # Personalized
-            new_personalized_exercise_uuids = get_exercise_uuids(
+            assign_pes(
               assignment: assignment,
-              book_container_uuids: assigned_book_container_uuids,
-              excluded_uuids: assignment_excluded_uuids,
-              count: assignment.goal_num_tutor_assigned_pes - assigned_pe_uuids.size
+              assignment_assigned_pe_uuids_map: assignment_assigned_pe_uuids_map,
+              assignment_excluded_uuids: assignment_excluded_uuids,
+              assignment_pes: assignment_pes,
+              pe_updates: pe_updates
             )
-
-            new_assignment_pes = new_personalized_exercise_uuids.map do |pe_uuid|
-              AssignmentPe.new uuid: SecureRandom.uuid,
-                               assignment_uuid: assignment_uuid,
-                               student_uuid: student_uuid,
-                               exercise_uuid: pe_uuid
-            end
-            assignment_pes.concat new_assignment_pes
-
-            personalized_exercise_uuids = assigned_pe_uuids + new_personalized_exercise_uuids
 
             assignment.pes_are_assigned = true
 
-            pe_updates << {
-              assignment_uuid: assignment_uuid,
-              exercise_uuids: personalized_exercise_uuids
-            }
+            # Spaced Practice
+
+            # Instructor-driven
+            assign_spes(
+              assignment: assignment,
+              history_type: :instructor_driven,
+              assignment_assigned_spe_uuids_map: assignment_instructor_assigned_spe_uuids_map,
+              assignment_book_container_uuids_map: assignment_instructor_book_container_uuids_map,
+              assignment_excluded_uuids: assignment_excluded_uuids,
+              assignment_spes: assignment_spes,
+              spe_updates: spe_updates
+            )
+
+            # Student-driven
+            assign_spes(
+              assignment: assignment,
+              history_type: :student_driven,
+              assignment_assigned_spe_uuids_map: assignment_student_assigned_spe_uuids_map,
+              assignment_book_container_uuids_map: assignment_student_book_container_uuids_map,
+              assignment_excluded_uuids: assignment_excluded_uuids,
+              assignment_spes: assignment_spes,
+              spe_updates: spe_updates
+            )
+
+            assignment.spes_are_assigned = true
           end
         end
 
@@ -340,7 +372,7 @@ class Services::UpdateAssignmentExercises::Service
 
         AssignmentSpe.import(
           assignment_spes, validate: false, on_duplicate_key_ignore: {
-            conflict_target: [ :assignment_uuid, :exercise_uuid ]
+            conflict_target: [ :assignment_uuid, :history_type, :exercise_uuid ]
           }
         )
 
@@ -350,7 +382,7 @@ class Services::UpdateAssignmentExercises::Service
           }
         )
 
-        OpenStax::Biglearn::Api.update_assignment_spes spe_updates, 'local_query_teacher'
+        OpenStax::Biglearn::Api.update_assignment_spes spe_updates
         OpenStax::Biglearn::Api.update_assignment_pes  pe_updates
 
         assignments.size
@@ -372,61 +404,84 @@ class Services::UpdateAssignmentExercises::Service
 
   protected
 
-  def get_k_ago_map(assignment)
+  def get_k_agos
+    [2, 4]
+  end
+
+  def get_k_ago_map(assignment, history_type)
     # Entries in the list have the form:
     # [from-this-many-assignments-ago, pick-this-many-exercises]
+    k_agos = get_k_agos
+    return [] if k_agos.empty?
+
     num_spes = assignment.goal_num_tutor_assigned_spes
+
     case num_spes
     when Integer
       # Tutor decides
-      [].tap do |k_ago_map|
-        num_2_ago = (num_spes/2.0).ceil
-        num_4_ago = (num_spes/2.0).floor
+      # Subtract 1 for random-ago if student-driven
+      #num_spes -= 1 if history_type == :student_driven
+      num_spes_per_k_ago, remainder = num_spes.divmod k_agos.size
 
-        k_ago_map << [2, num_2_ago] if num_2_ago > 0
-        k_ago_map << [4, num_4_ago] if num_4_ago > 0
+      [].tap do |k_ago_map|
+        k_agos.each_with_index do |k_ago, index|
+          num_k_ago_spes = index < remainder ? num_spes_per_k_ago + 1 : num_spes_per_k_ago
+
+          k_ago_map << [k_ago, num_k_ago_spes] if num_k_ago_spes > 0
+        end
+
+        # Add random-ago slot if student-driven
+        #k_ago_map << [nil, 1] if history_type == :student_driven
       end
     when NilClass
       # Biglearn decides
-      # Instructor-driven Spaced Practice
-      aa = Assignment.arel_table
-      student_uuid = assignment.student_uuid
-      due_at = assignment.due_at
-      opens_at = assignment.opens_at
-      created_at = assignment.created_at
-      assignment_query = aa[:student_uuid].eq(student_uuid).and(
-                           aa[:due_at].lt(due_at).or(
-                             aa[:due_at].eq(due_at).and(
-                               aa[:opens_at].lt(opens_at).or(
-                                 aa[:opens_at].eq(opens_at).and(
-                                   aa[:created_at].lt(created_at)
+      case history_type
+      when :instructor_driven
+        aa = Assignment.arel_table
+        student_uuid = assignment.student_uuid
+        due_at = assignment.due_at
+        opens_at = assignment.opens_at
+        created_at = assignment.created_at
+        assignment_query = aa[:student_uuid].eq(student_uuid).and(
+                             aa[:due_at].lt(due_at).or(
+                               aa[:due_at].eq(due_at).and(
+                                 aa[:opens_at].lt(opens_at).or(
+                                   aa[:opens_at].eq(opens_at).and(
+                                     aa[:created_at].lt(created_at)
+                                   )
                                  )
                                )
                              )
                            )
-                         )
-      previous_assignments = Assignment.where(assignment_query)
-                                       .order(due_at: :desc, opens_at: :desc, created_at: :desc)
+        previous_assignments = Assignment.where(assignment_query)
+                                         .order(due_at: :desc, opens_at: :desc, created_at: :desc)
 
-      [2, 4].map do |k_ago|
-        assignment = previous_assignments.offset(k_ago - 1).first
-        next unless assignment.present?
-
-        [k_ago, assignment.assigned_book_container_uuids.size]
-      end.compact
+        k_agos.map do |k_ago|
+          # If not enough assignments for the k-ago, assign 1 per page in the current assignment
+          # and use them as personalized exercises
+          spaced_assignment = previous_assignments.offset(k_ago - 1).first || assignment
+          num_book_containers = spaced_assignment.assigned_book_container_uuids.size
+          [k_ago, num_book_containers * DEFAULT_NUM_SPES_PER_K_AGO_PAGE]
+        end.compact
+      when :student_driven
+        # TODO
+        get_k_ago_map(assignment, :instructor_driven)
+      else
+        raise ArgumentError, "Invalid history_type: #{history_type.inspect}", caller
+      end
     else
-      raise ArgumentError, "Invalid num_spes: #{num_spes.inspect}", caller
+      raise ArgumentError, "Invalid assignment num_spes: #{num_spes.inspect}", caller
     end
   end
 
   def get_exercise_uuids(assignment:, book_container_uuids:, excluded_uuids:, count:)
-    return [] if count == 0
+    return [] if count <= 0
 
     assignment_uuid = assignment.uuid
     assignment_type = assignment.assignment_type
 
-    # Get exercises in relevant book containers for relevant assignment type
-    book_container_exercise_uuids = book_container_uuids.flat_map do |book_container_uuid|
+    # Get exercises in relevant book containers for the relevant assignment type
+    book_container_exercise_uuids = [book_container_uuids].flatten.flat_map do |book_container_uuid|
       @exercise_uuids_map[book_container_uuid][assignment_type]
     end
 
@@ -452,5 +507,172 @@ class Services::UpdateAssignmentExercises::Service
       ( unassigned_candidate_exercise_uuids +
         assigned_candidate_exercise_uuids.sample(count - unassigned_count) ).shuffle
     end
+  end
+
+  # NOTE: assignment_excluded_uuids, assignment_pes and pe_updates are all updated by this method
+  def assign_pes(assignment:, assignment_assigned_pe_uuids_map:,
+                 assignment_excluded_uuids:, assignment_pes:, pe_updates:)
+    assignment_type = assignment.assignment_type
+    # Don't look at book containers with no dynamic exercises
+    book_container_uuids = assignment.assigned_book_container_uuids.select do |book_container_uuid|
+      @exercise_uuids_map[book_container_uuid][assignment_type].any?
+    end
+    return if book_container_uuids.empty?
+
+    assignment_uuid = assignment.uuid
+
+    num_pes_per_book_container, remainder = assignment.goal_num_tutor_assigned_pes.nil? ?
+      [DEFAULT_NUM_PES_PER_BOOK_CONTAINER, 0] :
+      assignment.goal_num_tutor_assigned_pes.divmod(book_container_uuids.size)
+
+    personalized_exercise_uuids = book_container_uuids.flat_map do |book_container_uuid|
+      book_container_num_pes = remainder > 0 ?
+        num_pes_per_book_container + 1 : num_pes_per_book_container
+      book_container_assigned_pe_uuids = assignment_assigned_pe_uuids_map[book_container_uuid]
+      book_container_num_assigned_pes = book_container_assigned_pe_uuids.size
+      num_pes_needed = book_container_num_pes - book_container_num_assigned_pes
+
+      new_personalized_exercise_uuids = get_exercise_uuids(
+        assignment: assignment,
+        book_container_uuids: book_container_uuid,
+        excluded_uuids: assignment_excluded_uuids,
+        count: num_pes_needed
+      )
+      assignment_excluded_uuids.concat new_personalized_exercise_uuids
+
+      new_assignment_pes = new_personalized_exercise_uuids.map do |pe_uuid|
+        AssignmentPe.new uuid: SecureRandom.uuid,
+                         assignment_uuid: assignment_uuid,
+                         book_container_uuid: book_container_uuid,
+                         student_uuid: assignment.student_uuid,
+                         exercise_uuid: pe_uuid
+      end
+      assignment_pes.concat new_assignment_pes
+
+      assigned_pe_uuids = book_container_assigned_pe_uuids + new_personalized_exercise_uuids
+
+      remainder += num_pes_per_book_container - assigned_pe_uuids.size
+
+      assigned_pe_uuids
+    end
+
+    pe_updates << {
+      assignment_uuid: assignment_uuid,
+      exercise_uuids: personalized_exercise_uuids
+    }
+  end
+
+  # NOTE: assignment_spes and spe_updates are both updated by this method
+  # assignment_excluded_uuids are NOT updated (externally) by this method
+  # so we can call it twice in a row
+  # This means SPEs must be populated AFTER PEs (or this method will need changes)
+  def assign_spes(assignment:, history_type:, assignment_assigned_spe_uuids_map:,
+                  assignment_book_container_uuids_map:, assignment_excluded_uuids:,
+                  assignment_spes:, spe_updates:)
+    assignment_uuid = assignment.uuid
+    assignment_type = assignment.assignment_type
+
+    k_ago_map = get_k_ago_map(assignment, history_type)
+    current_assignment_excluded_uuids = assignment_excluded_uuids
+
+    spaced_practice_exercise_uuids = k_ago_map.flat_map do |k_ago, num_exercises|
+      k_ago_assigned_spe_uuids_map = assignment_assigned_spe_uuids_map[k_ago]
+      # Don't look at book containers with no dynamic exercises
+      book_container_uuids = assignment_book_container_uuids_map[k_ago]
+                               .select do |book_container_uuid|
+        @exercise_uuids_map[book_container_uuid][assignment_type].any?
+      end
+
+      num_book_containers = book_container_uuids.size
+      if num_book_containers > 0
+        # k-ago assignment exists
+        num_spes_per_book_container, remainder = num_exercises.divmod(num_book_containers)
+
+        book_container_uuids.flat_map do |book_container_uuid|
+          book_container_num_spes = remainder > 0 ?
+            num_spes_per_book_container + 1 : num_spes_per_book_container
+          book_container_assigned_spe_uuids = k_ago_assigned_spe_uuids_map[book_container_uuid]
+          book_container_num_assigned_spes = book_container_assigned_spe_uuids.size
+          num_spes_needed = book_container_num_spes - book_container_num_assigned_spes
+
+          new_spaced_exercise_uuids = get_exercise_uuids(
+            assignment: assignment,
+            book_container_uuids: book_container_uuid,
+            excluded_uuids: current_assignment_excluded_uuids,
+            count: num_spes_needed
+          )
+          current_assignment_excluded_uuids += new_spaced_exercise_uuids
+
+          # If not enough spaced practice exercises, fill up the rest with personalized ones
+          num_personalized_exercises_needed = num_spes_needed - new_spaced_exercise_uuids.size
+          if num_personalized_exercises_needed > 0
+            new_personalized_exercise_uuids = get_exercise_uuids(
+              assignment: assignment,
+              book_container_uuids: assignment.assigned_book_container_uuids,
+              excluded_uuids: current_assignment_excluded_uuids,
+              count: num_personalized_exercises_needed
+            )
+            current_assignment_excluded_uuids += new_personalized_exercise_uuids
+          else
+            new_personalized_exercise_uuids = []
+          end
+
+          new_exercise_uuids = new_spaced_exercise_uuids + new_personalized_exercise_uuids
+
+          new_assignment_spes = new_exercise_uuids.map do |spe_uuid|
+            AssignmentSpe.new uuid: SecureRandom.uuid,
+                              student_uuid: assignment.student_uuid,
+                              assignment_uuid: assignment_uuid,
+                              history_type: history_type,
+                              book_container_uuid: book_container_uuid,
+                              exercise_uuid: spe_uuid,
+                              k_ago: k_ago
+          end
+          assignment_spes.concat new_assignment_spes
+
+          assigned_spe_uuids = book_container_assigned_spe_uuids + new_exercise_uuids
+
+          remainder += num_spes_per_book_container - assigned_spe_uuids.size
+
+          assigned_spe_uuids
+        end
+      else
+        # k-ago assignment does not exist
+        # Simply assign all needed exercises as personalized
+        assigned_spe_uuids = k_ago_assigned_spe_uuids_map.values.flatten
+        num_assigned_spes = assigned_spe_uuids.size
+        num_personalized_exercises_needed = num_exercises - num_assigned_spes
+        if num_personalized_exercises_needed > 0
+          new_personalized_exercise_uuids = get_exercise_uuids(
+            assignment: assignment,
+            book_container_uuids: assignment.assigned_book_container_uuids,
+            excluded_uuids: current_assignment_excluded_uuids,
+            count: num_personalized_exercises_needed
+          )
+          current_assignment_excluded_uuids += new_personalized_exercise_uuids
+        else
+          new_personalized_exercise_uuids = []
+        end
+
+        new_assignment_spes = new_personalized_exercise_uuids.map do |spe_uuid|
+          AssignmentSpe.new uuid: SecureRandom.uuid,
+                            student_uuid: assignment.student_uuid,
+                            assignment_uuid: assignment_uuid,
+                            history_type: history_type,
+                            book_container_uuid: nil,
+                            exercise_uuid: spe_uuid,
+                            k_ago: k_ago
+        end
+        assignment_spes.concat new_assignment_spes
+
+        assigned_spe_uuids + new_personalized_exercise_uuids
+      end
+    end
+
+    spe_updates << {
+      assignment_uuid: assignment_uuid,
+      algorithm_name: "local_query_#{history_type}",
+      exercise_uuids: spaced_practice_exercise_uuids
+    }
   end
 end

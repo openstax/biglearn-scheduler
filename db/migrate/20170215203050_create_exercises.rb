@@ -8,6 +8,6 @@ class CreateExercises < ActiveRecord::Migration[5.0]
       t.timestamps           null: false
     end
 
-    add_index :exercises, [:group_uuid, :version]
+    add_index :exercises, [ :group_uuid, :version ]
   end
 end

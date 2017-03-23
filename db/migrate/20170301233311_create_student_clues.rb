@@ -9,7 +9,7 @@ class CreateStudentClues < ActiveRecord::Migration[5.0]
       t.timestamps                    null: false
     end
 
-    add_index :student_clues, [:book_container_uuid, :student_uuid], unique: true
-    add_index :student_clues, [:student_uuid, :value]
+    add_index :student_clues, [ :book_container_uuid, :student_uuid ], unique: true
+    add_index :student_clues, [ :student_uuid, :value ]
   end
 end

@@ -10,7 +10,7 @@ class CreateEcosystemExercises < ActiveRecord::Migration[5.0]
     end
 
     add_index :ecosystem_exercises,
-              [:exercise_group_uuid, :ecosystem_uuid],
+              [ :exercise_group_uuid, :ecosystem_uuid ],
               unique: true,
               name: 'index_eco_exercises_on_exercise_group_uuid_and_eco_uuid'
   end

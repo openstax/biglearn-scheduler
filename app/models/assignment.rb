@@ -1,13 +1,19 @@
 class Assignment < ApplicationRecord
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
-  scope :with_instructor_based_sequence_numbers, -> do
+  # TODO: student_driven_sequence_number
+  scope :with_instructor_and_student_driven_sequence_numbers, -> do
     from(
       <<-SQL.strip_heredoc
         (
-          SELECT *, row_number() OVER (
-            PARTITION by student_uuid, assignment_type
-            ORDER BY due_at ASC, opens_at ASC, created_at ASC
-          ) AS instructor_based_sequence_number
+          SELECT *,
+            row_number() OVER (
+              PARTITION by student_uuid, assignment_type
+              ORDER BY due_at ASC, opens_at ASC, created_at ASC
+            ) AS instructor_driven_sequence_number,
+            row_number() OVER (
+              PARTITION by student_uuid, assignment_type
+              ORDER BY due_at ASC, opens_at ASC, created_at ASC
+            ) AS student_driven_sequence_number
           FROM assignments
         ) AS assignments
       SQL
