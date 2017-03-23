@@ -206,7 +206,9 @@ class Services::FetchCourseEvents::Service
           data.fetch(:assigned_exercises).each do |assigned_exercise|
             assigned_exercises << AssignedExercise.new(
               uuid: assigned_exercise.fetch(:trial_uuid),
-              assignment_uuid: assignment_uuid
+              assignment_uuid: assignment_uuid,
+              is_spe: assigned_exercise.fetch(:is_spe),
+              is_pe: assigned_exercise.fetch(:is_pe)
             )
           end
         end

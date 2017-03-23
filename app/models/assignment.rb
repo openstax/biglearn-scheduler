@@ -5,16 +5,28 @@ class Assignment < ApplicationRecord
     from(
       <<-SQL.strip_heredoc
         (
-          SELECT *,
+          SELECT assignments.*,
             row_number() OVER (
-              PARTITION by student_uuid, assignment_type
-              ORDER BY due_at ASC, opens_at ASC, created_at ASC
+              PARTITION by assignments.student_uuid, assignments.assignment_type
+              ORDER BY assignments.due_at ASC, assignments.opens_at ASC, assignments.created_at ASC
             ) AS instructor_driven_sequence_number,
             row_number() OVER (
-              PARTITION by student_uuid, assignment_type
-              ORDER BY due_at ASC, opens_at ASC, created_at ASC
+              PARTITION by assignments.student_uuid, assignments.assignment_type
+              ORDER BY assignment_core_steps_completion.core_steps_completed_at ASC
             ) AS student_driven_sequence_number
           FROM assignments
+          LEFT OUTER JOIN (
+            SELECT assigned_exercises.assignment_uuid,
+              MAX(responses.responded_at) AS core_steps_completed_at
+            FROM assigned_exercises
+            LEFT OUTER JOIN responses
+              ON responses.uuid = assigned_exercises.uuid
+            WHERE assigned_exercises.is_spe = FALSE
+              AND assigned_exercises.is_pe = FALSE
+            GROUP BY assigned_exercises.assignment_uuid
+            HAVING COUNT(assigned_exercises.uuid) = COUNT(responses.uuid)
+          ) AS assignment_core_steps_completion
+            ON assignment_core_steps_completion.assignment_uuid = assignments.uuid
         ) AS assignments
       SQL
     )

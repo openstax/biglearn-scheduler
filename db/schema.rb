@@ -18,9 +18,11 @@ ActiveRecord::Schema.define(version: 20170307172053) do
   create_table "assigned_exercises", force: :cascade do |t|
     t.uuid     "uuid",            null: false
     t.uuid     "assignment_uuid", null: false
+    t.boolean  "is_spe",          null: false
+    t.boolean  "is_pe",           null: false
     t.datetime "created_at",      null: false
     t.datetime "updated_at",      null: false
-    t.index ["assignment_uuid"], name: "index_assigned_exercises_on_assignment_uuid", using: :btree
+    t.index ["assignment_uuid", "is_spe", "is_pe"], name: "index_assigned_exercises_on_a_uuid_and_is_spe_and_is_pe", using: :btree
     t.index ["uuid"], name: "index_assigned_exercises_on_uuid", unique: true, using: :btree
   end
 
