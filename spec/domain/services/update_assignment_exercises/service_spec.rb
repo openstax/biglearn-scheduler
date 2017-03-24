@@ -14,7 +14,8 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
     end
   end
 
-  context 'with existing Course, ExercisePools, Exercises, BookContainerMappings and Assignments' do
+  context 'with existing Course, ExercisePools, Exercises,' +
+          ' BookContainerMappings, Assignments and AssignedExercises' do
     before(:all) do
       DatabaseCleaner.start
 
@@ -38,6 +39,11 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
                          to_ecosystem_uuid: ecosystem_uuid_2,
                          from_book_container_uuid: @reading_pool_1_old.book_container_uuid,
                          to_book_container_uuid: @reading_pool_1_new.book_container_uuid
+      FactoryGirl.create :book_container_mapping,
+                         from_ecosystem_uuid: ecosystem_uuid_2,
+                         to_ecosystem_uuid: ecosystem_uuid_1,
+                         from_book_container_uuid: @reading_pool_1_new.book_container_uuid,
+                         to_book_container_uuid: @reading_pool_1_old.book_container_uuid
       @reading_pool_2_old = FactoryGirl.create(
         :exercise_pool,
         exercises_count: 9,
@@ -55,10 +61,37 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
                          to_ecosystem_uuid: ecosystem_uuid_2,
                          from_book_container_uuid: @reading_pool_2_old.book_container_uuid,
                          to_book_container_uuid: @reading_pool_2_new.book_container_uuid
+      FactoryGirl.create :book_container_mapping,
+                         from_ecosystem_uuid: ecosystem_uuid_2,
+                         to_ecosystem_uuid: ecosystem_uuid_1,
+                         from_book_container_uuid: @reading_pool_2_new.book_container_uuid,
+                         to_book_container_uuid: @reading_pool_2_old.book_container_uuid
+      @reading_pool_3_old = FactoryGirl.create(
+        :exercise_pool,
+        exercises_count: 8,
+        ecosystem_uuid: ecosystem_uuid_1,
+        use_for_personalized_for_assignment_types: ['reading']
+      )
       @reading_pool_3_new = FactoryGirl.create(
         :exercise_pool,
         exercises_count: 8,
         ecosystem_uuid: ecosystem_uuid_2,
+        use_for_personalized_for_assignment_types: ['reading']
+      )
+      FactoryGirl.create :book_container_mapping,
+                         from_ecosystem_uuid: ecosystem_uuid_1,
+                         to_ecosystem_uuid: ecosystem_uuid_2,
+                         from_book_container_uuid: @reading_pool_3_old.book_container_uuid,
+                         to_book_container_uuid: @reading_pool_3_new.book_container_uuid
+      FactoryGirl.create :book_container_mapping,
+                         from_ecosystem_uuid: ecosystem_uuid_2,
+                         to_ecosystem_uuid: ecosystem_uuid_1,
+                         from_book_container_uuid: @reading_pool_3_new.book_container_uuid,
+                         to_book_container_uuid: @reading_pool_3_old.book_container_uuid
+      @reading_pool_4_old = FactoryGirl.create(
+        :exercise_pool,
+        exercises_count: 7,
+        ecosystem_uuid: ecosystem_uuid_1,
         use_for_personalized_for_assignment_types: ['reading']
       )
       @reading_pool_4_new = FactoryGirl.create(
@@ -67,12 +100,38 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
         ecosystem_uuid: ecosystem_uuid_2,
         use_for_personalized_for_assignment_types: ['reading']
       )
+      FactoryGirl.create :book_container_mapping,
+                         from_ecosystem_uuid: ecosystem_uuid_1,
+                         to_ecosystem_uuid: ecosystem_uuid_2,
+                         from_book_container_uuid: @reading_pool_4_old.book_container_uuid,
+                         to_book_container_uuid: @reading_pool_4_new.book_container_uuid
+      FactoryGirl.create :book_container_mapping,
+                         from_ecosystem_uuid: ecosystem_uuid_2,
+                         to_ecosystem_uuid: ecosystem_uuid_1,
+                         from_book_container_uuid: @reading_pool_4_new.book_container_uuid,
+                         to_book_container_uuid: @reading_pool_4_old.book_container_uuid
+      @reading_pool_5_old = FactoryGirl.create(
+        :exercise_pool,
+        exercises_count: 6,
+        ecosystem_uuid: ecosystem_uuid_1,
+        use_for_personalized_for_assignment_types: ['reading']
+      )
       @reading_pool_5_new = FactoryGirl.create(
         :exercise_pool,
         exercises_count: 6,
         ecosystem_uuid: ecosystem_uuid_2,
         use_for_personalized_for_assignment_types: ['reading']
       )
+      FactoryGirl.create :book_container_mapping,
+                         from_ecosystem_uuid: ecosystem_uuid_1,
+                         to_ecosystem_uuid: ecosystem_uuid_2,
+                         from_book_container_uuid: @reading_pool_5_old.book_container_uuid,
+                         to_book_container_uuid: @reading_pool_5_new.book_container_uuid
+      FactoryGirl.create :book_container_mapping,
+                         from_ecosystem_uuid: ecosystem_uuid_2,
+                         to_ecosystem_uuid: ecosystem_uuid_1,
+                         from_book_container_uuid: @reading_pool_5_new.book_container_uuid,
+                         to_book_container_uuid: @reading_pool_5_old.book_container_uuid
 
       @homework_pool_1_old = FactoryGirl.create(
         :exercise_pool,
@@ -102,6 +161,13 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: @reading_pool_2_new.book_container_uuid
       )
+      @homework_pool_3_old = FactoryGirl.create(
+        :exercise_pool,
+        exercises_count: 3,
+        ecosystem_uuid: ecosystem_uuid_1,
+        use_for_personalized_for_assignment_types: ['homework'],
+        book_container_uuid: @reading_pool_3_old.book_container_uuid
+      )
       @homework_pool_3_new = FactoryGirl.create(
         :exercise_pool,
         exercises_count: 3,
@@ -109,12 +175,26 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: @reading_pool_3_new.book_container_uuid
       )
+      @homework_pool_4_old = FactoryGirl.create(
+        :exercise_pool,
+        exercises_count: 2,
+        ecosystem_uuid: ecosystem_uuid_1,
+        use_for_personalized_for_assignment_types: ['homework'],
+        book_container_uuid: @reading_pool_4_old.book_container_uuid
+      )
       @homework_pool_4_new = FactoryGirl.create(
         :exercise_pool,
         exercises_count: 2,
         ecosystem_uuid: ecosystem_uuid_2,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: @reading_pool_4_new.book_container_uuid
+      )
+      @homework_pool_5_old = FactoryGirl.create(
+        :exercise_pool,
+        exercises_count: 1,
+        ecosystem_uuid: ecosystem_uuid_1,
+        use_for_personalized_for_assignment_types: ['homework'],
+        book_container_uuid: @reading_pool_5_old.book_container_uuid
       )
       @homework_pool_5_new = FactoryGirl.create(
         :exercise_pool,
@@ -242,7 +322,7 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       )
 
       # These homeworks are taking all available exercises, so no PEs are possible
-      # 0 SPEs, 0 PEs requested
+      # 2 SPEs, 1 PE requested; No exercises available to fill either
       @homework_1 = FactoryGirl.create(
         :assignment,
         course_uuid: course_uuid,
@@ -254,9 +334,9 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
         assigned_book_container_uuids: [
           @homework_pool_1_old.book_container_uuid, @homework_pool_2_old.book_container_uuid
         ],
-        goal_num_tutor_assigned_spes: 0,
+        goal_num_tutor_assigned_spes: 2,
         spes_are_assigned: false,
-        goal_num_tutor_assigned_pes: 0,
+        goal_num_tutor_assigned_pes: 1,
         pes_are_assigned: false
       )
 
@@ -299,65 +379,6 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
 
     after(:all)  { DatabaseCleaner.clean }
 
-    let(:expected_spe_requests) do
-      [
-        {
-          assignment_uuid: @reading_2.uuid,
-          exercise_uuids: [
-            be_in(@reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids)
-          ],
-          algorithm_name: 'local_query_instructor_driven'
-        },
-        {
-          assignment_uuid: @reading_3.uuid,
-          exercise_uuids: match_array([
-            be_in(@reading_pool_1_new.exercise_uuids + @reading_pool_2_new.exercise_uuids),
-            be_in(@reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids)
-          ]),
-          algorithm_name: 'local_query_instructor_driven'
-        },
-        {
-          assignment_uuid: @homework_2.uuid,
-          exercise_uuids: [],
-          algorithm_name: 'local_query_instructor_driven'
-        },
-        {
-          assignment_uuid: @homework_3.uuid,
-          exercise_uuids: [
-            be_in(@homework_pool_1_new.exercise_uuids + @homework_pool_2_new.exercise_uuids)
-          ],
-          algorithm_name: 'local_query_instructor_driven'
-        },
-        {
-          assignment_uuid: @reading_2.uuid,
-          exercise_uuids: [
-            be_in(@reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids)
-          ],
-          algorithm_name: 'local_query_student_driven'
-        },
-        {
-          assignment_uuid: @reading_3.uuid,
-          exercise_uuids: match_array([
-            be_in(@reading_pool_1_new.exercise_uuids + @reading_pool_2_new.exercise_uuids),
-            be_in(@reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids)
-          ]),
-          algorithm_name: 'local_query_student_driven'
-        },
-        {
-          assignment_uuid: @homework_2.uuid,
-          exercise_uuids: [],
-          algorithm_name: 'local_query_student_driven'
-        },
-        {
-          assignment_uuid: @homework_3.uuid,
-          exercise_uuids: [
-            be_in(@homework_pool_1_new.exercise_uuids + @homework_pool_2_new.exercise_uuids)
-          ],
-          algorithm_name: 'local_query_student_driven'
-        }
-      ]
-    end
-
     let(:expected_pe_requests) do
       [
         {
@@ -368,9 +389,13 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
         },
         {
           assignment_uuid: @reading_3.uuid,
-          exercise_uuids: match_array([
+          exercise_uuids: [
             be_in(@reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids)
-          ] * 2)
+          ] * 2
+        },
+        {
+          assignment_uuid: @homework_1.uuid,
+          exercise_uuids: []
         },
         {
           assignment_uuid: @homework_2.uuid,
@@ -383,61 +408,101 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
       ]
     end
 
-    it 'assigns the correct numbers of SPEs and PEs from the correct pools' do
-      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
-        expect(requests).to match_array expected_spe_requests
-      end
-      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes) do |requests|
-        expect(requests).to match_array expected_pe_requests
-      end
+    let(:ordered_assignment_uuids) { ordered_assignments.map(&:uuid) }
 
-      expect { subject.process }.to  not_change { Assignment.count    }
-                                .and change     { AssignmentSpe.count }.by(8)
-                                .and change     { AssignmentPe.count  }.by(3)
+    let(:assigned_exercises_by_assignment_uuid) do
+      AssignedExercise.where(
+        assignment_uuid: ordered_assignment_uuids,
+        is_spe: false,
+        is_pe: false
+      ).group_by(&:assignment_uuid)
     end
 
-    context 'with some SPEs and PEs already assigned' do
-      before(:all) do
-        DatabaseCleaner.start
+    let!(:ordered_responses) do
+      ordered_assignment_uuids.flat_map do |assignment_uuid|
+        assigned_exercises = assigned_exercises_by_assignment_uuid[assignment_uuid]
 
-        reading_3_assigned_spe_pool = @reading_pool_1_new
-        reading_3_assigned_spe_uuid = reading_3_assigned_spe_pool.exercise_uuids.sample
-        [ :instructor_driven, :student_driven ].each do |history_type|
-          FactoryGirl.create :assignment_spe,
-                             student_uuid: @reading_3.student_uuid,
-                             assignment_uuid: @reading_3.uuid,
-                             history_type: history_type,
-                             book_container_uuid: reading_3_assigned_spe_pool.book_container_uuid,
-                             exercise_uuid: reading_3_assigned_spe_uuid,
-                             k_ago: 2
-        end
-
-        reading_3_assigned_pe_pool = [@reading_pool_4_new, @reading_pool_5_new].sample
-        reading_3_available_pe_uuids = reading_3_assigned_pe_pool.exercise_uuids -
-                                       @reading_3.assigned_exercise_uuids
-        reading_3_assigned_pe_uuid = reading_3_available_pe_uuids.sample
-        FactoryGirl.create :assignment_pe,
-                           student_uuid: @reading_3.student_uuid,
-                           assignment_uuid: @reading_3.uuid,
-                           book_container_uuid: reading_3_assigned_pe_pool.book_container_uuid,
-                           exercise_uuid: reading_3_assigned_pe_uuid
-
-        homework_3_assigned_spe_pool = @homework_pool_1_new
-        homework_3_assigned_spe_uuid = homework_3_assigned_spe_pool.exercise_uuids.sample
-        [ :instructor_driven, :student_driven ].each do |history_type|
-          FactoryGirl.create :assignment_spe,
-                             student_uuid: @homework_3.student_uuid,
-                             assignment_uuid: @homework_3.uuid,
-                             history_type: history_type,
-                             book_container_uuid: homework_3_assigned_spe_pool.book_container_uuid,
-                             exercise_uuid: homework_3_assigned_spe_uuid,
-                             k_ago: 2
+        assigned_exercises.map do |assigned_exercise|
+          FactoryGirl.create :response, uuid: assigned_exercise.uuid
         end
       end
+    end
 
-      after(:all)  { DatabaseCleaner.clean }
+    context 'with assignments completed in the expected order' do
+      let(:ordered_assignments) do
+        [ @reading_1, @homework_1, @reading_2, @homework_2, @reading_3, @homework_3 ]
+      end
 
-      it 'assigns only the missing SPEs and PEs from the correct pools' do
+      let(:expected_spe_requests) do
+        [
+          {
+            assignment_uuid: @reading_2.uuid,
+            exercise_uuids: [
+              be_in(@reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_instructor_driven'
+          },
+          {
+            assignment_uuid: @reading_3.uuid,
+            exercise_uuids: [
+              be_in(@reading_pool_1_new.exercise_uuids + @reading_pool_2_new.exercise_uuids),
+              be_in(@reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_instructor_driven'
+          },
+          {
+            assignment_uuid: @homework_1.uuid,
+            exercise_uuids: [],
+            algorithm_name: 'local_query_instructor_driven'
+          },
+          {
+            assignment_uuid: @homework_2.uuid,
+            exercise_uuids: [],
+            algorithm_name: 'local_query_instructor_driven'
+          },
+          {
+            assignment_uuid: @homework_3.uuid,
+            exercise_uuids: [
+              be_in(@homework_pool_1_new.exercise_uuids + @homework_pool_2_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_instructor_driven'
+          },
+          {
+            assignment_uuid: @reading_2.uuid,
+            exercise_uuids: [
+              be_in(@reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_student_driven'
+          },
+          {
+            assignment_uuid: @reading_3.uuid,
+            exercise_uuids: [
+              be_in(@reading_pool_1_new.exercise_uuids + @reading_pool_2_new.exercise_uuids),
+              be_in(@reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_student_driven'
+          },
+          {
+            assignment_uuid: @homework_1.uuid,
+            exercise_uuids: [],
+            algorithm_name: 'local_query_student_driven'
+          },
+          {
+            assignment_uuid: @homework_2.uuid,
+            exercise_uuids: [],
+            algorithm_name: 'local_query_student_driven'
+          },
+          {
+            assignment_uuid: @homework_3.uuid,
+            exercise_uuids: [
+              be_in(@homework_pool_1_new.exercise_uuids + @homework_pool_2_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_student_driven'
+          }
+        ]
+      end
+
+      it 'assigns the correct numbers of SPEs and PEs from the correct pools' do
         expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
           expect(requests).to match_array expected_spe_requests
         end
@@ -446,8 +511,220 @@ RSpec.describe Services::UpdateAssignmentExercises::Service, type: :service do
         end
 
         expect { subject.process }.to  not_change { Assignment.count    }
-                                  .and change     { AssignmentSpe.count }.by(4)
-                                  .and change     { AssignmentPe.count  }.by(2)
+                                  .and change     { AssignmentSpe.count }.by(8)
+                                  .and change     { AssignmentPe.count  }.by(3)
+      end
+
+      context 'with some SPEs and PEs already assigned' do
+        before(:all) do
+          DatabaseCleaner.start
+
+          reading_3_assigned_pe_pool = [@reading_pool_4_new, @reading_pool_5_new].sample
+          reading_3_available_pe_uuids = reading_3_assigned_pe_pool.exercise_uuids -
+                                         @reading_3.assigned_exercise_uuids
+          reading_3_assigned_pe_uuid = reading_3_available_pe_uuids.sample
+          FactoryGirl.create :assignment_pe,
+                             student_uuid: @reading_3.student_uuid,
+                             assignment_uuid: @reading_3.uuid,
+                             book_container_uuid: reading_3_assigned_pe_pool.book_container_uuid,
+                             exercise_uuid: reading_3_assigned_pe_uuid
+
+          reading_3_assigned_spe_pool = @reading_pool_1_new
+          reading_3_assigned_spe_uuid = reading_3_assigned_spe_pool.exercise_uuids.sample
+          [ :instructor_driven, :student_driven ].each do |history_type|
+            FactoryGirl.create :assignment_spe,
+                               student_uuid: @reading_3.student_uuid,
+                               assignment_uuid: @reading_3.uuid,
+                               history_type: history_type,
+                               book_container_uuid: reading_3_assigned_spe_pool.book_container_uuid,
+                               exercise_uuid: reading_3_assigned_spe_uuid,
+                               k_ago: 2
+          end
+
+          homework_3_assigned_spe_pool = @homework_pool_1_new
+          homework_3_assigned_spe_uuid = homework_3_assigned_spe_pool.exercise_uuids.sample
+          [ :instructor_driven, :student_driven ].each do |history_type|
+            FactoryGirl.create :assignment_spe,
+                               student_uuid: @homework_3.student_uuid,
+                               assignment_uuid: @homework_3.uuid,
+                               history_type: history_type,
+                               book_container_uuid: homework_3_assigned_spe_pool.book_container_uuid,
+                               exercise_uuid: homework_3_assigned_spe_uuid,
+                               k_ago: 2
+          end
+        end
+
+        after(:all)  { DatabaseCleaner.clean }
+
+        it 'assigns only the missing SPEs and PEs from the correct pools' do
+          expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
+            expect(requests).to match_array expected_spe_requests
+          end
+          expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes) do |requests|
+            expect(requests).to match_array expected_pe_requests
+          end
+
+          expect { subject.process }.to  not_change { Assignment.count    }
+                                    .and change     { AssignmentSpe.count }.by(4)
+                                    .and change     { AssignmentPe.count  }.by(2)
+        end
+      end
+    end
+
+    context 'with assignments completed in the reverse order' do
+      let(:ordered_assignments) do
+        [ @reading_1, @homework_1, @reading_2, @homework_2, @reading_3, @homework_3 ].reverse
+      end
+
+      let(:expected_spe_requests) do
+        [
+          {
+            assignment_uuid: @reading_2.uuid,
+            exercise_uuids: [
+              be_in(@reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_instructor_driven'
+          },
+          {
+            assignment_uuid: @reading_3.uuid,
+            exercise_uuids: [
+              be_in(@reading_pool_1_new.exercise_uuids + @reading_pool_2_new.exercise_uuids),
+              be_in(@reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_instructor_driven'
+          },
+          {
+            assignment_uuid: @homework_1.uuid,
+            exercise_uuids: [],
+            algorithm_name: 'local_query_instructor_driven'
+          },
+          {
+            assignment_uuid: @homework_2.uuid,
+            exercise_uuids: [],
+            algorithm_name: 'local_query_instructor_driven'
+          },
+          {
+            assignment_uuid: @homework_3.uuid,
+            exercise_uuids: [
+              be_in(@homework_pool_1_new.exercise_uuids + @homework_pool_2_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_instructor_driven'
+          },
+          {
+            assignment_uuid: @reading_2.uuid,
+            exercise_uuids: [
+              be_in(@reading_pool_3_new.exercise_uuids + @reading_pool_4_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_student_driven'
+          },
+          {
+            assignment_uuid: @reading_3.uuid,
+            exercise_uuids: [
+              be_in(@reading_pool_4_new.exercise_uuids + @reading_pool_5_new.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_student_driven'
+          },
+          {
+            assignment_uuid: @homework_1.uuid,
+            exercise_uuids: [
+              be_in(@homework_pool_4_old.exercise_uuids + @homework_pool_5_old.exercise_uuids)
+            ],
+            algorithm_name: 'local_query_student_driven'
+          },
+          {
+            assignment_uuid: @homework_2.uuid,
+            exercise_uuids: [],
+            algorithm_name: 'local_query_student_driven'
+          },
+          {
+            assignment_uuid: @homework_3.uuid,
+            exercise_uuids: [],
+            algorithm_name: 'local_query_student_driven'
+          }
+        ]
+      end
+
+      it 'assigns the correct numbers of SPEs and PEs from the correct pools' do
+        expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
+          expect(requests).to match_array expected_spe_requests
+        end
+        expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes) do |requests|
+          expect(requests).to match_array expected_pe_requests
+        end
+
+        expect { subject.process }.to  not_change { Assignment.count    }
+                                  .and change     { AssignmentSpe.count }.by(7)
+                                  .and change     { AssignmentPe.count  }.by(3)
+      end
+
+      context 'with some SPEs and PEs already assigned' do
+        before(:all) do
+          DatabaseCleaner.start
+
+          reading_3_assigned_pe_pool = [@reading_pool_4_new, @reading_pool_5_new].sample
+          reading_3_available_pe_uuids = reading_3_assigned_pe_pool.exercise_uuids -
+                                         @reading_3.assigned_exercise_uuids
+          reading_3_assigned_pe_uuid = reading_3_available_pe_uuids.sample
+          FactoryGirl.create :assignment_pe,
+                             student_uuid: @reading_3.student_uuid,
+                             assignment_uuid: @reading_3.uuid,
+                             book_container_uuid: reading_3_assigned_pe_pool.book_container_uuid,
+                             exercise_uuid: reading_3_assigned_pe_uuid
+
+          reading_3_assigned_instructor_spe_pool = @reading_pool_1_new
+          reading_3_assigned_instructor_spe_uuid =
+            reading_3_assigned_instructor_spe_pool.exercise_uuids.sample
+          FactoryGirl.create(
+            :assignment_spe,
+            student_uuid: @reading_3.student_uuid,
+            assignment_uuid: @reading_3.uuid,
+            history_type: :instructor_driven,
+            book_container_uuid: reading_3_assigned_instructor_spe_pool.book_container_uuid,
+            exercise_uuid: reading_3_assigned_instructor_spe_uuid,
+            k_ago: 2
+          )
+
+          homework_3_assigned_instructor_spe_pool = @homework_pool_1_new
+          homework_3_assigned_instructor_spe_uuid =
+            homework_3_assigned_instructor_spe_pool.exercise_uuids.sample
+          FactoryGirl.create(
+            :assignment_spe,
+            student_uuid: @homework_3.student_uuid,
+            assignment_uuid: @homework_3.uuid,
+            history_type: :instructor_driven,
+            book_container_uuid: homework_3_assigned_instructor_spe_pool.book_container_uuid,
+            exercise_uuid: homework_3_assigned_instructor_spe_uuid,
+            k_ago: 2
+          )
+
+          homework_1_assigned_student_spe_pool = @homework_pool_4_old
+          homework_1_assigned_student_spe_uuid =
+            homework_1_assigned_student_spe_pool.exercise_uuids.sample
+          FactoryGirl.create(
+            :assignment_spe,
+            student_uuid: @homework_1.student_uuid,
+            assignment_uuid: @homework_1.uuid,
+            history_type: :student_driven,
+            book_container_uuid: homework_1_assigned_student_spe_pool.book_container_uuid,
+            exercise_uuid: homework_1_assigned_student_spe_uuid,
+            k_ago: 2
+          )
+        end
+
+        after(:all)  { DatabaseCleaner.clean }
+
+        it 'assigns only the missing SPEs and PEs from the correct pools' do
+          expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
+            expect(requests).to match_array expected_spe_requests
+          end
+          expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes) do |requests|
+            expect(requests).to match_array expected_pe_requests
+          end
+
+          expect { subject.process }.to  not_change { Assignment.count    }
+                                    .and change     { AssignmentSpe.count }.by(4)
+                                    .and change     { AssignmentPe.count  }.by(2)
+        end
       end
     end
   end

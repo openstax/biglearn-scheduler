@@ -5,7 +5,7 @@ class Assignment < ApplicationRecord
     from(
       <<-SQL.strip_heredoc
         (
-          SELECT assignments.*,
+          SELECT assignments.*, assignment_core_steps_completion.core_steps_completed_at,
             row_number() OVER (
               PARTITION by assignments.student_uuid, assignments.assignment_type
               ORDER BY assignments.due_at ASC, assignments.opens_at ASC, assignments.created_at ASC

@@ -379,8 +379,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           student_uuid: student_uuid,
           assignment_type: assignment_type,
           exclusion_info: {
-            opens_at: DateTime.now.yesterday.utc.iso8601,
-            due_at: DateTime.now.tomorrow.utc.iso8601
+            opens_at: Time.now.yesterday.utc.iso8601,
+            due_at: Time.now.tomorrow.utc.iso8601
           },
           assigned_book_container_uuids: assigned_book_container_uuids,
           goal_num_tutor_assigned_spes: goal_num_tutor_assigned_spes,
@@ -469,7 +469,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       let(:student_uuid)   { SecureRandom.uuid }
       let(:exercise_uuid)  { SecureRandom.uuid }
       let(:is_correct)     { [true, false].sample }
-      let(:responded_at)   { DateTime.now.utc.iso8601 }
+      let(:responded_at)   { Time.now.utc.iso8601 }
       let(:event_data)     do
         {
           response_uuid: event_uuid,

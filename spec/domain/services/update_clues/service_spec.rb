@@ -195,7 +195,7 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
 
         # Exclude @response_8 from the Student CLUe (but not the Teacher CLUe)
         assignment = FactoryGirl.create :assignment, student_uuid: @student_2.uuid,
-                                                     due_at: DateTime.now.tomorrow
+                                                     due_at: Time.now.tomorrow
         FactoryGirl.create :assigned_exercise, uuid: @response_10.uuid,
                                                assignment_uuid: assignment.uuid
       end

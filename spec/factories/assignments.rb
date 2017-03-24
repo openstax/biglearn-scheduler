@@ -16,5 +16,22 @@ FactoryGirl.define do
     spes_are_assigned             { [true, false].sample }
     goal_num_tutor_assigned_pes   { [rand(10), nil].sample }
     pes_are_assigned              { [true, false].sample }
+
+    after(:create) do |assignment|
+      num_exercises = assignment.assigned_exercise_uuids.size
+      num_spes = assignment.spes_are_assigned ? assignment.goal_num_tutor_assigned_spes || 0 : 0
+      num_pes = assignment.pes_are_assigned ? assignment.goal_num_tutor_assigned_pes || 0 : 0
+      first_spe_index = num_exercises - num_spes
+      first_pe_index = first_spe_index - num_pes
+
+      num_exercises.times do |index|
+        create(
+          :assigned_exercise,
+          assignment_uuid: assignment.uuid,
+          is_spe: index >= first_spe_index,
+          is_pe: index >= first_pe_index && index < first_spe_index
+        )
+      end
+    end
   end
 end
