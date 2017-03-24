@@ -27,18 +27,30 @@ class Services::UpdateAssignmentExercises::Service
                                 .take(BATCH_SIZE)
 
         # Build assignment histories so we can find SPE book_container_uuids
+        student_random_ago_sequence_number_by_assignment_uuid = {}
         history_queries = assignments.map do |assignment|
           instructor_driven_sequence_number = assignment.instructor_driven_sequence_number
           student_driven_sequence_number = assignment.student_driven_sequence_number
-          sequence_number_queries = get_k_agos.map do |k_ago|
-            aa[:instructor_driven_sequence_number].eq(instructor_driven_sequence_number - k_ago).or(
-              aa[:student_driven_sequence_number].eq(student_driven_sequence_number - k_ago)
-            )
-          end.reduce(:or)
+          instructor_k_agos = get_k_agos
+          instructor_sequence_number_queries = instructor_k_agos.map do |k_ago|
+            aa[:instructor_driven_sequence_number].eq(instructor_driven_sequence_number - k_ago)
+          end
+          student_random_ago_sequence_number = rand(student_driven_sequence_number - 1) + 1 \
+            if student_driven_sequence_number > instructor_k_agos.max
+          student_random_ago_sequence_number_by_assignment_uuid[assignment.uuid] =
+            student_random_ago_sequence_number
+          student_sequence_number_queries = get_k_agos(student_random_ago_sequence_number)
+                                              .map do |k_ago|
+            aa[:student_driven_sequence_number].eq(student_driven_sequence_number - k_ago)
+          end
+
+          sequence_number_query = (
+            instructor_sequence_number_queries + student_sequence_number_queries
+          ).reduce(:or)
 
           aa[:student_uuid].eq(assignment.student_uuid).and(
-            aa[:assignment_type].eq(assignment.assignment_type).and(sequence_number_queries)
-          ) unless sequence_number_queries.nil?
+            aa[:assignment_type].eq(assignment.assignment_type).and(sequence_number_query)
+          ) unless sequence_number_query.nil?
         end.compact.reduce(:or)
         instructor_histories = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = {} }
@@ -81,19 +93,17 @@ class Services::UpdateAssignmentExercises::Service
           student_driven_sequence_number = assignment.student_driven_sequence_number
           to_ecosystem_uuid = assignment.ecosystem_uuid
 
-          instructor_spaced_assignments = []
-          student_spaced_assignments = []
-          get_k_agos.each do |k_ago|
+          instructor_spaced_assignments = get_k_agos.map do |k_ago|
             instructor_spaced_sequence_number = instructor_driven_sequence_number - k_ago
-            instructor_spaced_assignment = instructor_history[instructor_spaced_sequence_number]
-            instructor_spaced_assignments << instructor_spaced_assignment \
-              unless instructor_spaced_assignment.nil?
-
+            instructor_history[instructor_spaced_sequence_number]
+          end.compact
+          student_random_ago_sequence_number =
+            student_random_ago_sequence_number_by_assignment_uuid[assignment.uuid]
+          student_spaced_assignments = get_k_agos(student_random_ago_sequence_number)
+                                         .map do |k_ago|
             student_spaced_sequence_number = student_driven_sequence_number - k_ago
-            student_spaced_assignment = student_history[student_spaced_sequence_number]
-            student_spaced_assignments << student_spaced_assignment \
-              unless student_spaced_assignment.nil?
-          end
+            student_history[student_spaced_sequence_number]
+          end.compact
 
           from_queries = (instructor_spaced_assignments + student_spaced_assignments)
                            .map do |from_ecosystem_uuid, from_book_container_uuids|
@@ -151,7 +161,10 @@ class Services::UpdateAssignmentExercises::Service
 
             instructor_book_container_uuids_map[assignment_uuid][k_ago] = \
               instructor_mapped_book_containers
-
+          end
+          student_random_ago_sequence_number =
+            student_random_ago_sequence_number_by_assignment_uuid[assignment_uuid]
+          get_k_agos(student_random_ago_sequence_number).each do |k_ago|
             student_spaced_sequence_number = student_driven_sequence_number - k_ago
             student_from_ecosystem_uuid, student_spaced_book_container_uuids = \
               student_history[student_spaced_sequence_number]
@@ -354,6 +367,8 @@ class Services::UpdateAssignmentExercises::Service
             )
 
             # Student-driven
+            student_random_ago_sequence_number =
+              student_random_ago_sequence_number_by_assignment_uuid[assignment_uuid]
             assign_spes(
               assignment: assignment,
               assignment_sequence_number: assignment.student_driven_sequence_number,
@@ -363,7 +378,8 @@ class Services::UpdateAssignmentExercises::Service
               assignment_book_container_uuids_map: assignment_student_book_container_uuids_map,
               assignment_excluded_uuids: assignment_excluded_uuids,
               assignment_spes: assignment_spes,
-              spe_updates: spe_updates
+              spe_updates: spe_updates,
+              random_ago_sequence_number: student_random_ago_sequence_number
             )
 
             assignment.spes_are_assigned = true
@@ -411,11 +427,14 @@ class Services::UpdateAssignmentExercises::Service
 
   protected
 
-  def get_k_agos
-    [2, 4]
+  def get_k_agos(random_ago_sequence_number = nil)
+    [2, 4].tap do |k_agos|
+      k_agos << random_ago_sequence_number unless random_ago_sequence_number.nil?
+    end
   end
 
-  def get_k_ago_map(assignment, assignment_sequence_number, history)
+  def get_k_ago_map(assignment, assignment_sequence_number, history,
+                    random_ago_sequence_number = nil)
     # Entries in the list have the form:
     # [from-this-many-assignments-ago, pick-this-many-exercises]
     k_agos = get_k_agos
@@ -426,8 +445,8 @@ class Services::UpdateAssignmentExercises::Service
     case num_spes
     when Integer
       # Tutor decides
-      # Subtract 1 for random-ago if student-driven
-      #num_spes -= 1 if history_type == :student_driven
+      # Subtract 1 for random-ago if present
+      num_spes -= 1 if random_ago_sequence_number.present?
       num_spes_per_k_ago, remainder = num_spes.divmod k_agos.size
 
       [].tap do |k_ago_map|
@@ -437,8 +456,8 @@ class Services::UpdateAssignmentExercises::Service
           k_ago_map << [k_ago, num_k_ago_spes] if num_k_ago_spes > 0
         end
 
-        # Add random-ago slot if student-driven
-        #k_ago_map << [nil, 1] if history_type == :student_driven
+        # Add random-ago slot if present
+        k_ago_map << [random_ago_sequence_number, 1] if random_ago_sequence_number.present?
       end
     when NilClass
       # Biglearn decides based on the history
@@ -448,7 +467,9 @@ class Services::UpdateAssignmentExercises::Service
         spaced_assignment = history[assignment_sequence_number - k_ago] || assignment
         num_book_containers = spaced_assignment.assigned_book_container_uuids.size
         [k_ago, num_book_containers * DEFAULT_NUM_SPES_PER_K_AGO_PAGE] if num_book_containers > 0
-      end.compact
+      end.compact.tap do |k_ago_map|
+        k_ago_map << [random_ago_sequence_number, 1] if random_ago_sequence_number.present?
+      end
     else
       raise ArgumentError, "Invalid assignment num_spes: #{num_spes.inspect}", caller
     end
@@ -548,11 +569,16 @@ class Services::UpdateAssignmentExercises::Service
   # This means SPEs must be populated AFTER PEs (or this method will need changes)
   def assign_spes(assignment:, assignment_sequence_number:, history:, history_type:,
                   assignment_assigned_spe_uuids_map:, assignment_book_container_uuids_map:,
-                  assignment_excluded_uuids:, assignment_spes:, spe_updates:)
+                  assignment_excluded_uuids:, assignment_spes:, spe_updates:,
+                  random_ago_sequence_number: nil)
     assignment_uuid = assignment.uuid
     assignment_type = assignment.assignment_type
 
-    k_ago_map = get_k_ago_map(assignment, assignment_sequence_number, history)
+    random_ago_sequence_number
+
+    k_ago_map = get_k_ago_map(
+      assignment, assignment_sequence_number, history, random_ago_sequence_number
+    )
     current_assignment_excluded_uuids = assignment_excluded_uuids
 
     spaced_practice_exercise_uuids = k_ago_map.flat_map do |k_ago, num_exercises|
