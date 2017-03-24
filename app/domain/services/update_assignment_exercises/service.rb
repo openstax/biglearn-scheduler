@@ -324,6 +324,9 @@ class Services::UpdateAssignmentExercises::Service
                                         assigned_spe_uuids +
                                         assigned_pe_uuids
 
+            instructor_history = instructor_histories[student_uuid][assignment_type]
+            student_history = student_histories[student_uuid][assignment_type]
+
             # Personalized
             assign_pes(
               assignment: assignment,
@@ -340,6 +343,8 @@ class Services::UpdateAssignmentExercises::Service
             # Instructor-driven
             assign_spes(
               assignment: assignment,
+              assignment_sequence_number: assignment.instructor_driven_sequence_number,
+              history: instructor_history,
               history_type: :instructor_driven,
               assignment_assigned_spe_uuids_map: assignment_instructor_assigned_spe_uuids_map,
               assignment_book_container_uuids_map: assignment_instructor_book_container_uuids_map,
@@ -351,6 +356,8 @@ class Services::UpdateAssignmentExercises::Service
             # Student-driven
             assign_spes(
               assignment: assignment,
+              assignment_sequence_number: assignment.student_driven_sequence_number,
+              history: student_history,
               history_type: :student_driven,
               assignment_assigned_spe_uuids_map: assignment_student_assigned_spe_uuids_map,
               assignment_book_container_uuids_map: assignment_student_book_container_uuids_map,
@@ -408,7 +415,7 @@ class Services::UpdateAssignmentExercises::Service
     [2, 4]
   end
 
-  def get_k_ago_map(assignment, history_type)
+  def get_k_ago_map(assignment, assignment_sequence_number, history)
     # Entries in the list have the form:
     # [from-this-many-assignments-ago, pick-this-many-exercises]
     k_agos = get_k_agos
@@ -434,41 +441,14 @@ class Services::UpdateAssignmentExercises::Service
         #k_ago_map << [nil, 1] if history_type == :student_driven
       end
     when NilClass
-      # Biglearn decides
-      case history_type
-      when :instructor_driven
-        aa = Assignment.arel_table
-        student_uuid = assignment.student_uuid
-        due_at = assignment.due_at
-        opens_at = assignment.opens_at
-        created_at = assignment.created_at
-        assignment_query = aa[:student_uuid].eq(student_uuid).and(
-                             aa[:due_at].lt(due_at).or(
-                               aa[:due_at].eq(due_at).and(
-                                 aa[:opens_at].lt(opens_at).or(
-                                   aa[:opens_at].eq(opens_at).and(
-                                     aa[:created_at].lt(created_at)
-                                   )
-                                 )
-                               )
-                             )
-                           )
-        previous_assignments = Assignment.where(assignment_query)
-                                         .order(due_at: :desc, opens_at: :desc, created_at: :desc)
-
-        k_agos.map do |k_ago|
-          # If not enough assignments for the k-ago, assign 1 per page in the current assignment
-          # and use them as personalized exercises
-          spaced_assignment = previous_assignments.offset(k_ago - 1).first || assignment
-          num_book_containers = spaced_assignment.assigned_book_container_uuids.size
-          [k_ago, num_book_containers * DEFAULT_NUM_SPES_PER_K_AGO_PAGE]
-        end.compact
-      when :student_driven
-        # TODO
-        get_k_ago_map(assignment, :instructor_driven)
-      else
-        raise ArgumentError, "Invalid history_type: #{history_type.inspect}", caller
-      end
+      # Biglearn decides based on the history
+      k_agos.map do |k_ago|
+        # If not enough assignments for the k-ago, assign 1 per page in the current assignment
+        # and use them as personalized exercises
+        spaced_assignment = history[assignment_sequence_number - k_ago] || assignment
+        num_book_containers = spaced_assignment.assigned_book_container_uuids.size
+        [k_ago, num_book_containers * DEFAULT_NUM_SPES_PER_K_AGO_PAGE] if num_book_containers > 0
+      end.compact
     else
       raise ArgumentError, "Invalid assignment num_spes: #{num_spes.inspect}", caller
     end
@@ -566,13 +546,13 @@ class Services::UpdateAssignmentExercises::Service
   # assignment_excluded_uuids are NOT updated (externally) by this method
   # so we can call it twice in a row
   # This means SPEs must be populated AFTER PEs (or this method will need changes)
-  def assign_spes(assignment:, history_type:, assignment_assigned_spe_uuids_map:,
-                  assignment_book_container_uuids_map:, assignment_excluded_uuids:,
-                  assignment_spes:, spe_updates:)
+  def assign_spes(assignment:, assignment_sequence_number:, history:, history_type:,
+                  assignment_assigned_spe_uuids_map:, assignment_book_container_uuids_map:,
+                  assignment_excluded_uuids:, assignment_spes:, spe_updates:)
     assignment_uuid = assignment.uuid
     assignment_type = assignment.assignment_type
 
-    k_ago_map = get_k_ago_map(assignment, history_type)
+    k_ago_map = get_k_ago_map(assignment, assignment_sequence_number, history)
     current_assignment_excluded_uuids = assignment_excluded_uuids
 
     spaced_practice_exercise_uuids = k_ago_map.flat_map do |k_ago, num_exercises|
