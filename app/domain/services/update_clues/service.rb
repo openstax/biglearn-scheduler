@@ -345,8 +345,7 @@ class Services::UpdateClues::Service
 
       var = responses.map { |bool| (p_hat - (bool ? 1 : 0))**2 }.reduce(&:+) / (tot - 1)
 
-      interval = ( Z_ALPHA * Math.sqrt(p_hat*(1-p_hat)/(tot + Z_ALPHA**2)) +
-                   0.1*Math.sqrt(var) + 0.05 )
+      interval = Z_ALPHA * Math.sqrt(p_hat*(1-p_hat)/(tot + Z_ALPHA**2)) + 0.1*Math.sqrt(var) + 0.05
 
       {
         minimum: [p_hat - interval, 0].max,

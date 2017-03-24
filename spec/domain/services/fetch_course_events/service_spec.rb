@@ -454,7 +454,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         expect(assignment.student_uuid).to eq student_uuid
         expect(assignment.assignment_type).to eq assignment_type
         expect(assignment.assigned_book_container_uuids).to eq assigned_book_container_uuids
-        expect(assignment.assigned_exercise_uuids).to eq assigned_exercise_uuids
+        expect(assignment.assigned_exercise_uuids).to eq assigned_exercise_uuids.uniq
 
         expect(assignment.goal_num_tutor_assigned_spes).to eq goal_num_tutor_assigned_spes
         expect(assignment.spes_are_assigned).to eq spes_are_assigned

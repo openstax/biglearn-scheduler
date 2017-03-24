@@ -3,6 +3,7 @@ class CreateAssignedExercises < ActiveRecord::Migration[5.0]
     create_table :assigned_exercises do |t|
       t.uuid    :uuid,            null: false, index: { unique: true }
       t.uuid    :assignment_uuid, null: false
+      t.uuid    :exercise_uuid,   null: false
       t.boolean :is_spe,          null: false
       t.boolean :is_pe,           null: false
 

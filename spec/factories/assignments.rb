@@ -18,16 +18,17 @@ FactoryGirl.define do
     pes_are_assigned              { [true, false].sample }
 
     after(:create) do |assignment|
-      num_exercises = assignment.assigned_exercise_uuids.size
+      assigned_exercise_uuids = assignment.assigned_exercise_uuids
       num_spes = assignment.spes_are_assigned ? assignment.goal_num_tutor_assigned_spes || 0 : 0
       num_pes = assignment.pes_are_assigned ? assignment.goal_num_tutor_assigned_pes || 0 : 0
-      first_spe_index = num_exercises - num_spes
+      first_spe_index = assigned_exercise_uuids.size - num_spes
       first_pe_index = first_spe_index - num_pes
 
-      num_exercises.times do |index|
+      assigned_exercise_uuids.each_with_index do |assigned_exercise_uuid, index|
         create(
           :assigned_exercise,
           assignment_uuid: assignment.uuid,
+          exercise_uuid: assigned_exercise_uuid,
           is_spe: index >= first_spe_index,
           is_pe: index >= first_pe_index && index < first_spe_index
         )

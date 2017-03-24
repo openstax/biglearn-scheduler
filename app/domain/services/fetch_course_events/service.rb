@@ -181,7 +181,7 @@ class Services::FetchCourseEvents::Service
 
           ecosystem_uuid = data.fetch(:ecosystem_uuid)
           exercises = data.fetch(:assigned_exercises)
-          exercise_uuids = exercises.map { |exercise| exercise.fetch(:exercise_uuid) }
+          exercise_uuids = exercises.map { |exercise| exercise.fetch(:exercise_uuid) }.uniq
 
           exclusion_info = data.fetch(:exclusion_info, {})
           opens_at = exclusion_info[:opens_at]
@@ -207,6 +207,7 @@ class Services::FetchCourseEvents::Service
             assigned_exercises << AssignedExercise.new(
               uuid: assigned_exercise.fetch(:trial_uuid),
               assignment_uuid: assignment_uuid,
+              exercise_uuid: assigned_exercise.fetch(:exercise_uuid),
               is_spe: assigned_exercise.fetch(:is_spe),
               is_pe: assigned_exercise.fetch(:is_pe)
             )

@@ -18,6 +18,7 @@ ActiveRecord::Schema.define(version: 20170307172053) do
   create_table "assigned_exercises", force: :cascade do |t|
     t.uuid     "uuid",            null: false
     t.uuid     "assignment_uuid", null: false
+    t.uuid     "exercise_uuid",   null: false
     t.boolean  "is_spe",          null: false
     t.boolean  "is_pe",           null: false
     t.datetime "created_at",      null: false
