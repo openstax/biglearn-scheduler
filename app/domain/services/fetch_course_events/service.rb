@@ -291,34 +291,50 @@ class Services::FetchCourseEvents::Service
       from_to_mappings = from_to_queries.empty? ?
         BookContainerMapping.none : BookContainerMapping.where(from_to_queries.reduce(:or))
 
-      grouped_to_from_mappings = to_from_mappings.group_by(&:to_ecosystem_uuid)
-      grouped_from_to_mappings = from_to_mappings.group_by(&:from_ecosystem_uuid)
+      grouped_to_from_mappings = Hash.new do |hash, key|
+        hash[key] = Hash.new { |hash, key| hash[key] = [] }
+      end
+      to_from_mappings.each do |tfm|
+        grouped_to_from_mappings[tfm.to_ecosystem_uuid][tfm.to_book_container_uuid] << tfm
+      end
+      grouped_from_to_mappings = Hash.new do |hash, key|
+        hash[key] = Hash.new { |hash, key| hash[key] = [] }
+      end
+      from_to_mappings.each do |ftm|
+        grouped_from_to_mappings[ftm.from_ecosystem_uuid][ftm.from_book_container_uuid] << ftm
+      end
 
       chain_mappings = book_container_mappings.flat_map do |bcm|
         from_ecosystem_uuid = bcm.from_ecosystem_uuid
         to_ecosystem_uuid = bcm.to_ecosystem_uuid
+        from_book_container_uuid = bcm.from_book_container_uuid
+        to_book_container_uuid = bcm.to_book_container_uuid
 
-        to_from_mappings = grouped_to_from_mappings[from_ecosystem_uuid] || []
-        from_to_mappings = grouped_from_to_mappings[to_ecosystem_uuid] || []
+        to_from_mappings = grouped_to_from_mappings[from_ecosystem_uuid][from_book_container_uuid]
+        from_to_mappings = grouped_from_to_mappings[to_ecosystem_uuid][to_book_container_uuid]
 
         to_from_mappings.map do |tfm|
+          next if tfm.from_ecosystem_uuid == to_ecosystem_uuid
+
           BookContainerMapping.new(
             uuid: SecureRandom.uuid,
             from_ecosystem_uuid: tfm.from_ecosystem_uuid,
             to_ecosystem_uuid: to_ecosystem_uuid,
             from_book_container_uuid: tfm.from_book_container_uuid,
-            to_book_container_uuid: bcm.to_book_container_uuid
+            to_book_container_uuid: to_book_container_uuid
           )
         end + from_to_mappings.map do |ftm|
+          next if ftm.to_ecosystem_uuid == from_ecosystem_uuid
+
           BookContainerMapping.new(
             uuid: SecureRandom.uuid,
             from_ecosystem_uuid: from_ecosystem_uuid,
             to_ecosystem_uuid: ftm.to_ecosystem_uuid,
-            from_book_container_uuid: bcm.from_book_container_uuid,
+            from_book_container_uuid: from_book_container_uuid,
             to_book_container_uuid: ftm.to_book_container_uuid
           )
         end
-      end
+      end.compact
 
       # Reverse mappings
       reverse_mappings = (book_container_mappings + chain_mappings).group_by do |bcm|

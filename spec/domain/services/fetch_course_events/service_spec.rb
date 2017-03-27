@@ -52,19 +52,21 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
     end
 
     context 'prepare_course_ecosystem events' do
-      let(:event_type)              { 'prepare_course_ecosystem' }
-      let(:preparation_uuid)        { event_uuid }
-      let(:ecosystem_uuid)          { SecureRandom.uuid }
-      let(:num_bc_mappings)         { 3 }
-      let(:book_container_mappings) do
-        num_bc_mappings.times.map do
+      let(:event_type)                { 'prepare_course_ecosystem' }
+      let(:preparation_uuid)          { event_uuid }
+      let(:ecosystem_uuid)            { SecureRandom.uuid }
+      let(:num_bc_mappings)           { 3 }
+      let(:from_book_container_uuids) { num_bc_mappings.times.map { SecureRandom.uuid } }
+      let(:to_book_container_uuids)   { num_bc_mappings.times.map { SecureRandom.uuid } }
+      let(:book_container_mappings)   do
+        num_bc_mappings.times.map do |index|
           {
-            from_book_container_uuid: SecureRandom.uuid,
-            to_book_container_uuid: SecureRandom.uuid
+            from_book_container_uuid: from_book_container_uuids[index],
+            to_book_container_uuid: to_book_container_uuids[index]
           }
         end
       end
-      let(:exercise_mappings)       do
+      let(:exercise_mappings)         do
         5.times.map do
           {
             from_exercise_uuid: SecureRandom.uuid,
@@ -72,7 +74,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           }
         end
       end
-      let(:ecosystem_map)           do
+      let(:ecosystem_map)             do
         {
           from_ecosystem_uuid: course.ecosystem_uuid,
           to_ecosystem_uuid: ecosystem_uuid,
@@ -80,7 +82,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           exercise_mappings: exercise_mappings
         }
       end
-      let(:event_data)              do
+      let(:event_data)                do
         {
           preparation_uuid: preparation_uuid,
           course_uuid: course.uuid,
@@ -90,32 +92,87 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         }
       end
 
-      it 'creates only an EcosystemPreparation for the Course' do
-        expect { subject.process }.to  not_change { Course.count }
-                                  .and change     { EcosystemPreparation.count }.by(1)
-                                  .and(change     do
-                                    BookContainerMapping.count
-                                  end.by(2 * num_bc_mappings))
-                                  .and not_change { CourseContainer.count }
-                                  .and not_change { Student.count }
-                                  .and not_change { Assignment.count }
-                                  .and not_change { AssignedExercise.count }
-                                  .and not_change { AssignmentSpe.count }
-                                  .and not_change { AssignmentPe.count }
-                                  .and not_change { Response.count }
-                                  .and not_change { ResponseClue.count }
-                                  .and(change     do
-                                    course.reload.sequence_number
-                                  end.from(0).to(sequence_number + 1))
-                                  .and not_change { course.ecosystem_uuid }
-                                  .and not_change { course.course_excluded_exercise_uuids }
-                                  .and not_change { course.course_excluded_exercise_group_uuids }
-                                  .and not_change { course.global_excluded_exercise_uuids }
-                                  .and not_change { course.global_excluded_exercise_group_uuids }
+      context 'with no preexisting BookContainerMappings' do
+        it 'creates an EcosystemPreparation, given BookContainerMappings' +
+           ' and reverse BookContainerMappings for the Course' do
+          expect { subject.process }.to  not_change { Course.count }
+                                    .and change     { EcosystemPreparation.count }.by(1)
+                                    .and(change     do
+                                      BookContainerMapping.count
+                                    end.by(2 * num_bc_mappings))
+                                    .and not_change { CourseContainer.count }
+                                    .and not_change { Student.count }
+                                    .and not_change { Assignment.count }
+                                    .and not_change { AssignedExercise.count }
+                                    .and not_change { AssignmentSpe.count }
+                                    .and not_change { AssignmentPe.count }
+                                    .and not_change { Response.count }
+                                    .and not_change { ResponseClue.count }
+                                    .and(change     do
+                                      course.reload.sequence_number
+                                    end.from(0).to(sequence_number + 1))
+                                    .and not_change { course.ecosystem_uuid }
+                                    .and not_change { course.course_excluded_exercise_uuids }
+                                    .and not_change { course.course_excluded_exercise_group_uuids }
+                                    .and not_change { course.global_excluded_exercise_uuids }
+                                    .and not_change { course.global_excluded_exercise_group_uuids }
 
-        preparation = EcosystemPreparation.find_by uuid: preparation_uuid
-        expect(preparation.course_uuid).to eq course.uuid
-        expect(preparation.ecosystem_uuid).to eq ecosystem_uuid
+          preparation = EcosystemPreparation.find_by uuid: preparation_uuid
+          expect(preparation.course_uuid).to eq course.uuid
+          expect(preparation.ecosystem_uuid).to eq ecosystem_uuid
+        end
+      end
+
+      context 'with preexisting BookContainerMappings' do
+        let!(:chainable_book_container_mappings) do
+          chainable_from_ecosystem_uuid = SecureRandom.uuid
+          chainable_to_ecosystem_uuid = SecureRandom.uuid
+
+          book_container_mappings.flat_map do |bcm|
+            [
+              FactoryGirl.create(:book_container_mapping,
+                                 from_ecosystem_uuid: chainable_from_ecosystem_uuid,
+                                 to_ecosystem_uuid: course.ecosystem_uuid,
+                                 from_book_container_uuid: SecureRandom.uuid,
+                                 to_book_container_uuid: bcm[:from_book_container_uuid]),
+
+              FactoryGirl.create(:book_container_mapping,
+                                 from_ecosystem_uuid: ecosystem_uuid,
+                                 to_ecosystem_uuid: chainable_to_ecosystem_uuid,
+                                 from_book_container_uuid: bcm[:to_book_container_uuid],
+                                 to_book_container_uuid: SecureRandom.uuid)
+            ]
+          end
+        end
+
+        it 'creates an EcosystemPreparation, given BookContainerMappings,' +
+           ' chain BookContainerMappings and reverse BookContainerMappings for the Course' do
+          expect { subject.process }.to  not_change { Course.count }
+                                    .and change     { EcosystemPreparation.count }.by(1)
+                                    .and(change     do
+                                      BookContainerMapping.count
+                                    end.by(6 * num_bc_mappings))
+                                    .and not_change { CourseContainer.count }
+                                    .and not_change { Student.count }
+                                    .and not_change { Assignment.count }
+                                    .and not_change { AssignedExercise.count }
+                                    .and not_change { AssignmentSpe.count }
+                                    .and not_change { AssignmentPe.count }
+                                    .and not_change { Response.count }
+                                    .and not_change { ResponseClue.count }
+                                    .and(change     do
+                                      course.reload.sequence_number
+                                    end.from(0).to(sequence_number + 1))
+                                    .and not_change { course.ecosystem_uuid }
+                                    .and not_change { course.course_excluded_exercise_uuids }
+                                    .and not_change { course.course_excluded_exercise_group_uuids }
+                                    .and not_change { course.global_excluded_exercise_uuids }
+                                    .and not_change { course.global_excluded_exercise_group_uuids }
+
+          preparation = EcosystemPreparation.find_by uuid: preparation_uuid
+          expect(preparation.course_uuid).to eq course.uuid
+          expect(preparation.ecosystem_uuid).to eq ecosystem_uuid
+        end
       end
     end
 
