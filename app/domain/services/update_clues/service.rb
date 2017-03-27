@@ -118,9 +118,10 @@ class Services::UpdateClues::Service
         # Collect ongoing assignment uuids so we can exclude them from the student CLUes
         ongoing_assignment_uuids = []
         Assignment.where(student_uuid: student_uuids)
-                  .pluck(:uuid, :due_at)
-                  .each do |assignment_uuid, due_at|
-          ongoing_assignment_uuids << assignment_uuid if due_at > start_time
+                  .pluck(:uuid, :due_at, :opens_at)
+                  .each do |assignment_uuid, due_at, opens_at|
+          ongoing_assignment_uuids << assignment_uuid \
+            if due_at > start_time && (opens_at.nil? || opens_at < start_time)
         end
 
         # Collect the CLUes that need to be updated and build the final Response query
