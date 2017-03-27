@@ -93,7 +93,9 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       it 'creates only an EcosystemPreparation for the Course' do
         expect { subject.process }.to  not_change { Course.count }
                                   .and change     { EcosystemPreparation.count }.by(1)
-                                  .and change     { BookContainerMapping.count }.by(num_bc_mappings)
+                                  .and(change     do
+                                    BookContainerMapping.count
+                                  end.by(2 * num_bc_mappings))
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }

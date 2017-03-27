@@ -56,6 +56,8 @@ class Services::FetchCourseEvents::Service
           data = prepare_course_ecosystem.fetch(:event_data)
 
           ecosystem_map = data.fetch(:ecosystem_map)
+
+          # Forward mappings
           from_ecosystem_uuid = ecosystem_map.fetch(:from_ecosystem_uuid)
           to_ecosystem_uuid = ecosystem_map.fetch(:to_ecosystem_uuid)
           ecosystem_map.fetch(:book_container_mappings).each do |mapping|
@@ -264,6 +266,80 @@ class Services::FetchCourseEvents::Service
 
       results << BookContainerMapping.import(
         book_container_mappings, validate: false, on_duplicate_key_ignore: {
+          conflict_target: [ :from_book_container_uuid, :from_ecosystem_uuid, :to_ecosystem_uuid ]
+        }
+      )
+
+      # Chain mappings
+      bcm = BookContainerMapping.arel_table
+      to_from_queries = []
+      from_to_queries = []
+      book_container_mappings.each do |book_container_mapping|
+        to_from_queries <<
+          bcm[:to_ecosystem_uuid].eq(book_container_mapping.from_ecosystem_uuid).and(
+            bcm[:from_ecosystem_uuid].not_eq(book_container_mapping.to_ecosystem_uuid)
+          )
+
+        from_to_queries <<
+          bcm[:from_ecosystem_uuid].eq(book_container_mapping.to_ecosystem_uuid).and(
+            bcm[:to_ecosystem_uuid].not_eq(book_container_mapping.from_ecosystem_uuid)
+          )
+      end
+
+      to_from_mappings = to_from_queries.empty? ?
+        BookContainerMapping.none : BookContainerMapping.where(to_from_queries.reduce(:or))
+      from_to_mappings = from_to_queries.empty? ?
+        BookContainerMapping.none : BookContainerMapping.where(from_to_queries.reduce(:or))
+
+      grouped_to_from_mappings = to_from_mappings.group_by(&:to_ecosystem_uuid)
+      grouped_from_to_mappings = from_to_mappings.group_by(&:from_ecosystem_uuid)
+
+      chain_mappings = book_container_mappings.flat_map do |bcm|
+        from_ecosystem_uuid = bcm.from_ecosystem_uuid
+        to_ecosystem_uuid = bcm.to_ecosystem_uuid
+
+        to_from_mappings = grouped_to_from_mappings[from_ecosystem_uuid] || []
+        from_to_mappings = grouped_from_to_mappings[to_ecosystem_uuid] || []
+
+        to_from_mappings.map do |tfm|
+          BookContainerMapping.new(
+            uuid: SecureRandom.uuid,
+            from_ecosystem_uuid: tfm.from_ecosystem_uuid,
+            to_ecosystem_uuid: to_ecosystem_uuid,
+            from_book_container_uuid: tfm.from_book_container_uuid,
+            to_book_container_uuid: bcm.to_book_container_uuid
+          )
+        end + from_to_mappings.map do |ftm|
+          BookContainerMapping.new(
+            uuid: SecureRandom.uuid,
+            from_ecosystem_uuid: from_ecosystem_uuid,
+            to_ecosystem_uuid: ftm.to_ecosystem_uuid,
+            from_book_container_uuid: bcm.from_book_container_uuid,
+            to_book_container_uuid: ftm.to_book_container_uuid
+          )
+        end
+      end
+
+      # Reverse mappings
+      reverse_mappings = (book_container_mappings + chain_mappings).group_by do |bcm|
+        [ bcm.from_ecosystem_uuid, bcm.to_ecosystem_uuid, bcm.to_book_container_uuid ]
+      end.map do |(from_ecosystem_uuid, to_ecosystem_uuid, to_book_container_uuid), bcms|
+        # Skip if 1-to-many (reverse mapping would be invalid)
+        next if bcms.size > 1
+
+        from_book_container_uuid = bcms.first.from_book_container_uuid
+
+        BookContainerMapping.new(
+          uuid: SecureRandom.uuid,
+          from_ecosystem_uuid: to_ecosystem_uuid,
+          to_ecosystem_uuid: from_ecosystem_uuid,
+          from_book_container_uuid: to_book_container_uuid,
+          to_book_container_uuid: from_book_container_uuid
+        )
+      end.compact
+
+      results << BookContainerMapping.import(
+        chain_mappings + reverse_mappings, validate: false, on_duplicate_key_ignore: {
           conflict_target: [ :from_book_container_uuid, :from_ecosystem_uuid, :to_ecosystem_uuid ]
         }
       )
