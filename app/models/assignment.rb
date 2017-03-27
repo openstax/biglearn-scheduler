@@ -22,7 +22,6 @@ class Assignment < ApplicationRecord
             LEFT OUTER JOIN responses
               ON responses.uuid = assigned_exercises.uuid
             WHERE assigned_exercises.is_spe = FALSE
-              AND assigned_exercises.is_pe = FALSE
             GROUP BY assigned_exercises.assignment_uuid
             HAVING COUNT(assigned_exercises.uuid) = COUNT(responses.uuid)
           ) AS assignment_core_steps_completion
