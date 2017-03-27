@@ -81,6 +81,7 @@ class Services::UpdatePracticeWorstAreasExercises::Service
           )
         end
 
+        # Get exercises that have already been assigned to each student
         assigned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
         assigned_but_not_due_exercise_uuids_by_student_uuids = Hash.new do |hash, key|
           hash[key] = []
@@ -111,12 +112,9 @@ class Services::UpdatePracticeWorstAreasExercises::Service
 
           course_uuid = course_uuid_by_student_uuid[student_uuid]
           course_excluded_uuids = excluded_uuids_by_course_uuid[course_uuid]
-          assigned_but_not_due_exercise_uuids = \
-            assigned_but_not_due_exercise_uuids_by_student_uuids[student_uuid]
 
           student_excluded_uuids = course_excluded_uuids +
-                                   assigned_student_pe_uuids_map.values.flatten +
-                                   assigned_but_not_due_exercise_uuids
+                                   assigned_student_pe_uuids_map.values.flatten
 
           worst_student_clues = student.worst_student_clues.to_a
 
@@ -143,9 +141,12 @@ class Services::UpdatePracticeWorstAreasExercises::Service
 
           # Collect exercise group_uuids that have already been assigned to this student
           assigned_exercise_uuids = assigned_exercise_uuids_by_student_uuids[student_uuid]
-          assigned_exercise_group_uuids = assigned_exercise_uuids.map do |assigned_exercise_uuid|
-            exercise_group_uuid_by_uuid[assigned_exercise_uuid]
-          end.compact
+          assigned_exercise_group_uuids =
+            exercise_group_uuid_by_uuid.values_at(*assigned_exercise_uuids).uniq
+          assigned_but_not_due_exercise_uuids =
+            assigned_but_not_due_exercise_uuids_by_student_uuids[student_uuid]
+          assigned_but_not_due_exercise_group_uuids =
+            exercise_group_uuid_by_uuid.values_at(*assigned_but_not_due_exercise_uuids).uniq
 
           # Assign the candidate exercises for each position in the worst_clue_pes_map
           # based on the priority of each CLUe
@@ -155,7 +156,7 @@ class Services::UpdatePracticeWorstAreasExercises::Service
             assigned_clue_pe_uuids = assigned_student_pe_uuids_map[book_container_uuid]
             student_pe_uuids.concat assigned_clue_pe_uuids
 
-            num_pes_needed = worst_clue_pes_map[index] - assigned_clue_pe_uuids.size
+            num_pes_needed = (worst_clue_pes_map[index] || 0) - assigned_clue_pe_uuids.size
 
             next if num_pes_needed <= 0
 
@@ -171,25 +172,34 @@ class Services::UpdatePracticeWorstAreasExercises::Service
               available_candidate_exercise_uuids = candidate_exercise_uuids - student_pe_uuids
 
               # Partition remaining exercises into used and unused by group uuid
-              assigned_candidate_exercise_uuids, unassigned_candidate_exercise_uuids = \
+              assigned_candidate_exercise_uuids, unassigned_candidate_exercise_uuids =
                 available_candidate_exercise_uuids.partition do |exercise_uuid|
                 group_uuid = exercise_group_uuid_by_uuid[exercise_uuid]
                 assigned_exercise_group_uuids.include?(group_uuid)
               end
+              # Remove assigned but not due exercises
+              assigned_candidate_exercise_uuids = assigned_candidate_exercise_uuids
+                                                    .reject do |assigned_candidate_exercise_uuid|
+                group_uuid = exercise_group_uuid_by_uuid[assigned_candidate_exercise_uuid]
+                assigned_but_not_due_exercise_group_uuids.include?(group_uuid)
+              end
 
               # Randomly pick candidate exercises, preferring unassigned ones
               unassigned_count = unassigned_candidate_exercise_uuids.size
+              assigned_count = assigned_candidate_exercise_uuids.size
 
               new_clue_pe_uuids.concat(
                 if num_pes_needed <= unassigned_count
                   unassigned_candidate_exercise_uuids.sample(num_pes_needed)
                 else
-                  unassigned_candidate_exercise_uuids +
-                  assigned_candidate_exercise_uuids.sample(num_pes_needed - unassigned_count)
+                  (
+                    unassigned_candidate_exercise_uuids +
+                    assigned_candidate_exercise_uuids.sample(num_pes_needed - unassigned_count)
+                  ).shuffle
                 end
               )
 
-              num_pes_needed -= available_candidate_exercise_uuids.size
+              num_pes_needed -= unassigned_count + assigned_count
 
               break if num_pes_needed <= 0
             end
@@ -245,6 +255,8 @@ class Services::UpdatePracticeWorstAreasExercises::Service
   # TODO: Decide on the mapping...
   def get_worst_clue_pes_map(num_clues)
     case num_clues
+    when 0
+      []
     when 1
       [5]
     when 2
@@ -253,11 +265,9 @@ class Services::UpdatePracticeWorstAreasExercises::Service
       [2, 2, 1]
     when 4
       [2, 1, 1, 1]
-    when 5
+    else
       # 5 is the max
       [1, 1, 1, 1, 1]
-    else
-      []
     end
   end
 end
