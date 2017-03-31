@@ -3,7 +3,7 @@
 
 require_relative 'config/application'
 
-## override the output formatter setting in .rspec
+# Override the output formatter setting in .rspec
 task(:spec) { ENV['SPEC_OPTS'] ||= '--format progress' }
 
 Rails.application.load_tasks

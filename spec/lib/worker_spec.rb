@@ -5,14 +5,14 @@ RSpec.describe Worker, type: :lib do
 
   before  { TestTaskCounter.reset }
 
-  context '#run' do
+  context '#run_once' do
     it 'runs the given task once' do
-      expect{ subject.run }.not_to raise_error
+      expect{ subject.run_once }.not_to raise_error
       expect(TestTaskCounter.count).to eq 1
     end
   end
 
-  context '#start' do
+  context '#run' do
     context 'when the worker is ahead of schedule' do
       let(:run_every) { 10.seconds }
 
@@ -29,7 +29,7 @@ RSpec.describe Worker, type: :lib do
         end
 
         # Catch the error raised by the test task so the Worker aborts but the test still passes
-        expect { subject.start run_every }.to raise_error(TestTaskComplete)
+        expect { subject.run run_every }.to raise_error(TestTaskComplete)
         expect(TestTaskCounter.count).to eq TestTaskCounter::MAX_COUNT
       end
     end
@@ -41,7 +41,7 @@ RSpec.describe Worker, type: :lib do
         expect(subject).not_to receive(:sleep)
 
         # Catch the error raised by the test task so the Worker aborts but the test still passes
-        expect { subject.start run_every }.to raise_error(TestTaskComplete)
+        expect { subject.run run_every }.to raise_error(TestTaskComplete)
         expect(TestTaskCounter.count).to eq TestTaskCounter::MAX_COUNT
       end
     end

@@ -1,3 +1,5 @@
+include Tasks::ApplicationHelper
+
 namespace :fetch_metadatas do
-  task(worker: :environment) { Worker.new(:'fetch_metadatas:all').start }
+  define_worker_tasks :'fetch_metadatas:all'
 end

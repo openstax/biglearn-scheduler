@@ -1,20 +1,19 @@
 class Worker
-  def initialize(task)
-    @task = task
-    @task_string = task.to_s
+  def initialize(task_name_string)
+    @task_name_string = task_name_string
   end
 
-  def run
+  def run_once
     log(:debug) { 'Executing task...' }
-    Rake::Task[@task].execute
+    Rake::Task[@task_name_string].execute
   end
 
-  def start(run_every = 1.second)
+  def run(run_every = 1.second)
     start_time = Time.now.freeze
-    log(:info) { "Started at #{start_time}" }
+    log(:fatal) { "Started at #{start_time}" }
 
     1.upto(Float::INFINITY).each do |iteration|
-      run
+      run_once
 
       wake_up_at = start_time + iteration * run_every
       sleep_interval = wake_up_at - Time.now
@@ -30,6 +29,6 @@ class Worker
   protected
 
   def log(level, &block)
-    Rails.logger.tagged(@task_string, 'Worker') { |logger| logger.public_send(level, &block) }
+    Rails.logger.tagged(@task_name_string, 'Worker') { |logger| logger.public_send(level, &block) }
   end
 end

@@ -1,3 +1,5 @@
+include Tasks::ApplicationHelper
+
 namespace :update_clues do
-  task(worker: :environment) { Worker.new(:'update_clues:all').start }
+  define_worker_tasks :'update_clues:all'
 end

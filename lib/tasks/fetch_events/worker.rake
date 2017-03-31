@@ -1,3 +1,5 @@
+include Tasks::ApplicationHelper
+
 namespace :fetch_events do
-  task(worker: :environment) { Worker.new(:'fetch_events:all').start }
+  define_worker_tasks :'fetch_events:all'
 end

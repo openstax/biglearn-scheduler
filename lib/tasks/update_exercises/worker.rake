@@ -1,3 +1,5 @@
+include Tasks::ApplicationHelper
+
 namespace :update_exercises do
-  task(worker: :environment) { Worker.new(:'update_exercises:all').start }
+  define_worker_tasks :'update_exercises:all'
 end

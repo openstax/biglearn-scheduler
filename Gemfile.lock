@@ -212,6 +212,7 @@ DEPENDENCIES
   activerecord-import
   byebug
   coffee-rails (~> 4.2)
+  daemons
   database_cleaner
   factory_girl_rails (~> 4.0)
   faker
@@ -235,4 +236,4 @@ DEPENDENCIES
   webmock
 
 BUNDLED WITH
-   1.13.7
+   1.14.5
