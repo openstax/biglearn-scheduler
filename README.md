@@ -1,2 +1,2 @@
-# biglearn-local-query
-Non-SPARFA Biglearn algorithms
+# biglearn-scheduler
+Biglearn logic that controls when and how to update CLUes, PEs and SPEs
