@@ -15,7 +15,7 @@ class Services::UpdatePracticeWorstAreasExercises::Service
                           .preload(:worst_student_clues)
                           .take(BATCH_SIZE)
 
-        # Get PEs that are already assigned
+        # Get Student PEs that are already assigned
         student_uuids = students.map(&:uuid)
         assigned_pe_uuids_map = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = [] }
@@ -81,18 +81,32 @@ class Services::UpdatePracticeWorstAreasExercises::Service
           )
         end
 
-        # Get exercises that have already been assigned to each student
+        # Get exercises that have already been assigned or that we plan to assign to each student
         assigned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
         assigned_but_not_due_exercise_uuids_by_student_uuids = Hash.new do |hash, key|
           hash[key] = []
         end
-        Assignment.where(student_uuid: student_uuids)
-                  .pluck(:student_uuid, :due_at, :assigned_exercise_uuids)
-                  .each do |student_uuid, due_at, assigned_exercise_uuids|
-          assigned_exercise_uuids_by_student_uuids[student_uuid].concat assigned_exercise_uuids
+        assignments = Assignment.where(student_uuid: student_uuids)
+                                .pluck(:uuid, :student_uuid, :due_at, :assigned_exercise_uuids)
+        assignment_uuids = assignments.map(&:first)
+        assignment_planned_exercise_uuids_by_assignment_uuid = Hash.new do |hash, key|
+          hash[key] = []
+        end
+        (
+          AssignmentSpe.where(assignment_uuid: assignment_uuids)
+                       .pluck(:assignment_uuid, :exercise_uuid) +
+          AssignmentPe.where(assignment_uuid: assignment_uuids)
+                      .pluck(:assignment_uuid, :exercise_uuid)
+        ).each do |assignment_uuid, exercise_uuid|
+          assignment_planned_exercise_uuids_by_assignment_uuid[assignment_uuid] << exercise_uuid
+        end
+        assignments.each do |uuid, student_uuid, due_at, assigned_exercise_uuids|
+          planned_exercise_uuids = assignment_planned_exercise_uuids_by_assignment_uuid[uuid]
+          exercise_uuids = assigned_exercise_uuids + planned_exercise_uuids
+          assigned_exercise_uuids_by_student_uuids[student_uuid].concat exercise_uuids
 
           assigned_but_not_due_exercise_uuids_by_student_uuids[student_uuid].concat(
-            assigned_exercise_uuids
+            exercise_uuids
           ) if due_at.present? && due_at > start_time
         end
         assigned_exercise_uuids = assigned_exercise_uuids_by_student_uuids.values.flatten
