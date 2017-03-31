@@ -202,9 +202,8 @@ class Services::UpdateAssignmentExercises::Service
           end
         end
 
-        # Get any exercises that are already assigned as SPEs or PEs
+        # Get exercises that are already assigned as SPEs or PEs
         assignment_uuids = assignments.map(&:uuid)
-
         instructor_assigned_spe_uuids_map = Hash.new do |hash, key|
           hash[key] = Hash.new do |hash, key|
             hash[key] = Hash.new { |hash, key| hash[key] = [] }
@@ -278,26 +277,51 @@ class Services::UpdateAssignmentExercises::Service
           )
         end
 
-        # Get exercises that have already been assigned to each student
+        # Get exercises that have already been assigned or that we plan to assign to each student
         student_uuids = assignments.map(&:student_uuid)
-        @assigned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
-        @assigned_but_not_due_exercise_uuids_by_student_uuids = Hash.new do |hash, key|
+        other_assignments = Assignment
+                              .where(student_uuid: student_uuids)
+                              .pluck(:uuid, :student_uuid, :due_at, :assigned_exercise_uuids)
+        other_assignment_uuids = other_assignments.map(&:first)
+        assignment_planned_exercise_uuids_by_assignment_uuid = Hash.new do |hash, key|
           hash[key] = []
         end
-        Assignment.where(student_uuid: student_uuids)
-                  .pluck(:student_uuid, :due_at, :assigned_exercise_uuids)
-                  .each do |student_uuid, due_at, assigned_exercise_uuids|
-          @assigned_exercise_uuids_by_student_uuids[student_uuid].concat assigned_exercise_uuids
-
-          @assigned_but_not_due_exercise_uuids_by_student_uuids[student_uuid].concat(
-            assigned_exercise_uuids
-          ) if due_at.present? && due_at > start_time
+        (
+          AssignmentSpe.where(assignment_uuid: other_assignment_uuids)
+                       .pluck(:assignment_uuid, :exercise_uuid) +
+          AssignmentPe.where(assignment_uuid: other_assignment_uuids)
+                      .pluck(:assignment_uuid, :exercise_uuid)
+        ).each do |assignment_uuid, exercise_uuid|
+          assignment_planned_exercise_uuids_by_assignment_uuid[assignment_uuid] << exercise_uuid
         end
-        assigned_exercise_uuids = @assigned_exercise_uuids_by_student_uuids.values.flatten
+        @assigned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
+        @assigned_and_not_due_exercise_uuids_by_student_uuids = Hash.new do |hash, key|
+          hash[key] = []
+        end
+        @planned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
+        @planned_and_not_due_exercise_uuids_by_student_uuids = Hash.new do |hash, key|
+          hash[key] = []
+        end
+        other_assignments.each do |uuid, student_uuid, due_at, assigned_exercise_uuids|
+          planned_exercise_uuids = assignment_planned_exercise_uuids_by_assignment_uuid[uuid]
+
+          @assigned_exercise_uuids_by_student_uuids[student_uuid].concat assigned_exercise_uuids
+          @planned_exercise_uuids_by_student_uuids[student_uuid].concat planned_exercise_uuids
+
+          if due_at.present? && due_at > start_time
+            @assigned_and_not_due_exercise_uuids_by_student_uuids[student_uuid].concat(
+              assigned_exercise_uuids
+            )
+            @planned_and_not_due_exercise_uuids_by_student_uuids[student_uuid].concat(
+              assigned_exercise_uuids
+            )
+          end
+        end
 
         # Convert relevant exercise uuids to group uuids
-        relevant_exercise_uuids = @exercise_uuids_map.values.flat_map(&:values) +
-                                  assigned_exercise_uuids
+        relevant_exercise_uuids = ( @exercise_uuids_map.values.map(&:values) +
+                                    @assigned_exercise_uuids_by_student_uuids.values +
+                                    @planned_exercise_uuids_by_student_uuids.values ).flatten
         @exercise_group_uuid_by_uuid = Exercise.where(uuid: relevant_exercise_uuids)
                                                .pluck(:uuid, :group_uuid)
                                                .to_h
@@ -492,14 +516,25 @@ class Services::UpdateAssignmentExercises::Service
                                assignment.assigned_exercise_uuids -
                                excluded_uuids
 
-    # Collect exercise group_uuids that have already been assigned to this student
+    # Collect exercise_uuids that have already been assigned to this student
     assigned_exercise_uuids = @assigned_exercise_uuids_by_student_uuids[student_uuid]
+    assigned_and_not_due_exercise_uuids =
+      @assigned_and_not_due_exercise_uuids_by_student_uuids[student_uuid]
+
+    # If the assignment receiving the SPEs/PEs is a practice assignment,
+    # we consider planned exercises as if they were already assigned to prevent
+    # students from practicing all exercises and getting all the answers ahead of time
+    if assignment_type == 'practice'
+      assigned_exercise_uuids += @planned_exercise_uuids_by_student_uuids[student_uuid]
+      assigned_and_not_due_exercise_uuids +=
+        @planned_and_not_due_exercise_uuids_by_student_uuids[student_uuid]
+    end
+
+    # Convert assigned exercise_uuids to exercise_group_uuids
     assigned_exercise_group_uuids =
       @exercise_group_uuid_by_uuid.values_at(*assigned_exercise_uuids).uniq
-    assigned_but_not_due_exercise_uuids =
-      @assigned_but_not_due_exercise_uuids_by_student_uuids[student_uuid]
-    assigned_but_not_due_exercise_group_uuids =
-      @exercise_group_uuid_by_uuid.values_at(*assigned_but_not_due_exercise_uuids).uniq
+    assigned_and_not_due_exercise_group_uuids =
+      @exercise_group_uuid_by_uuid.values_at(*assigned_and_not_due_exercise_uuids).uniq
 
     # Partition remaining exercises into used and unused by group uuid
     assigned_candidate_exercise_uuids, unassigned_candidate_exercise_uuids =
@@ -511,7 +546,7 @@ class Services::UpdateAssignmentExercises::Service
     assigned_candidate_exercise_uuids = assigned_candidate_exercise_uuids
                                           .reject do |assigned_candidate_exercise_uuid|
       group_uuid = @exercise_group_uuid_by_uuid[assigned_candidate_exercise_uuid]
-      assigned_but_not_due_exercise_group_uuids.include?(group_uuid)
+      assigned_and_not_due_exercise_group_uuids.include?(group_uuid)
     end
 
     # Randomly pick candidate exercises, preferring unassigned ones
