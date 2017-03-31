@@ -441,6 +441,13 @@ class Services::FetchCourseEvents::Service
         AssignmentPe.where(ape_query).delete_all
       end
 
+      student_uuids_in_courses_with_changed_ecosystems = Student.where(
+        course_uuid: course_uuids_with_changed_ecosystems
+      ).pluck(:uuid)
+      student_uuids_in_courses_with_changed_ecosystems.each do |student_uuid|
+        spe_queries << spe[:student_uuid].eq(student_uuid)
+      end
+
       if spe_queries.any?
         spe_query = spe_queries.reduce(:or)
         affected_pe_student_uuids = StudentPe.where(spe_query).pluck(:student_uuid)
