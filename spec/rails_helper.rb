@@ -104,3 +104,7 @@ RSpec.configure do |config|
 
   config.include FactoryGirl::Syntax::Methods
 end
+
+def make_post_request(route:, headers: nil, body: nil)
+  post route, params: body, headers: headers
+end

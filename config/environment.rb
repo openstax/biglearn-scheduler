@@ -1,8 +1,9 @@
 # Load the Rails application.
 require_relative 'application'
 
-require 'openstax/biglearn'
+require 'errors'
 require 'worker'
+require 'openstax/biglearn'
 require 'tasks/application_helper'
 
 # Initialize the Rails application.

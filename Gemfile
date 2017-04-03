@@ -45,6 +45,9 @@ gem 'activerecord-import'
 # Daemonize our custom background tasks
 gem 'daemons'
 
+# Used for input/output payload schema validation
+gem 'json-schema'
+
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
   gem 'byebug', platform: :mri
