@@ -1,18 +1,18 @@
 require 'rails_helper'
 
 RSpec.describe EcosystemMatricesController, type: :request do
-  let(:given_algorithm_uuid)   { SecureRandom.uuid }
+  let(:given_algorithm_uuid) { SecureRandom.uuid }
 
-  let(:calculation_uuid_1)     { SecureRandom.uuid }
-  let(:calculation_uuid_2)     { SecureRandom.uuid }
+  let(:calculation_uuid_1)   { SecureRandom.uuid }
+  let(:calculation_uuid_2)   { SecureRandom.uuid }
 
   context '#fetch_ecosystem_matrix_updates' do
-    let(:ecosystem_uuid_1)     { SecureRandom.uuid }
-    let(:ecosystem_uuid_2)     { SecureRandom.uuid }
+    let(:ecosystem_uuid_1)   { SecureRandom.uuid }
+    let(:ecosystem_uuid_2)   { SecureRandom.uuid }
 
-    let(:request_payload)      { { algorithm_uuid: given_algorithm_uuid } }
+    let(:request_payload)    { { algorithm_uuid: given_algorithm_uuid } }
 
-    let(:target_result)        do
+    let(:target_result)      do
       {
         ecosystem_matrix_updates: [
           {
@@ -26,15 +26,15 @@ RSpec.describe EcosystemMatricesController, type: :request do
         ]
       }
     end
-    let(:target_response)      { target_result }
+    let(:target_response)    { target_result }
 
-    let(:service_double)       do
+    let(:service_double)     do
       instance_double(Services::FetchEcosystemMatrixUpdates::Service).tap do |dbl|
         allow(dbl).to receive(:process).with(request_payload).and_return(target_result)
       end
     end
 
-    before(:each)              do
+    before(:each)            do
       allow(Services::FetchEcosystemMatrixUpdates::Service).to(
         receive(:new).and_return(service_double)
       )
@@ -72,7 +72,7 @@ RSpec.describe EcosystemMatricesController, type: :request do
   end
 
   context '#ecosystem_matrices_updated' do
-    let(:request_payload)      do
+    let(:request_payload)    do
       {
         ecosystem_matrices_updated: [
           {
@@ -101,15 +101,15 @@ RSpec.describe EcosystemMatricesController, type: :request do
         ]
       }
     end
-    let(:target_response)      { target_result }
+    let(:target_response)    { target_result }
 
-    let(:service_double)       do
+    let(:service_double)     do
       instance_double(Services::EcosystemMatricesUpdated::Service).tap do |dbl|
         allow(dbl).to receive(:process).with(request_payload).and_return(target_result)
       end
     end
 
-    before(:each)              do
+    before(:each)            do
       allow(Services::EcosystemMatricesUpdated::Service).to receive(:new).and_return(service_double)
     end
 

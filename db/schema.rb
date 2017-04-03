@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170307172053) do
+ActiveRecord::Schema.define(version: 20170403210806) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -101,6 +101,19 @@ ActiveRecord::Schema.define(version: 20170307172053) do
     t.index ["uuid"], name: "index_book_container_mappings_on_uuid", unique: true, using: :btree
   end
 
+  create_table "clue_calculations", force: :cascade do |t|
+    t.uuid     "uuid",           null: false
+    t.uuid     "algorithm_uuid", null: false
+    t.boolean  "is_calculated",  null: false
+    t.uuid     "exercise_uuids", null: false, array: true
+    t.uuid     "student_uuids",  null: false, array: true
+    t.jsonb    "clue_data",      null: false
+    t.datetime "created_at",     null: false
+    t.datetime "updated_at",     null: false
+    t.index ["algorithm_uuid", "is_calculated"], name: "index_clue_calculations_on_algorithm_uuid_and_is_calculated", using: :btree
+    t.index ["uuid"], name: "index_clue_calculations_on_uuid", unique: true, using: :btree
+  end
+
   create_table "course_containers", force: :cascade do |t|
     t.uuid     "uuid",          null: false
     t.uuid     "course_uuid",   null: false
@@ -137,6 +150,18 @@ ActiveRecord::Schema.define(version: 20170307172053) do
     t.index ["uuid"], name: "index_ecosystem_exercises_on_uuid", unique: true, using: :btree
   end
 
+  create_table "ecosystem_matrix_updates", force: :cascade do |t|
+    t.uuid     "uuid",           null: false
+    t.uuid     "algorithm_uuid", null: false
+    t.boolean  "is_updated",     null: false
+    t.uuid     "ecosystem_uuid", null: false
+    t.datetime "created_at",     null: false
+    t.datetime "updated_at",     null: false
+    t.index ["algorithm_uuid", "is_updated"], name: "index_ecosystem_matrix_updates_on_algorithm_uuid_and_is_updated", using: :btree
+    t.index ["ecosystem_uuid"], name: "index_ecosystem_matrix_updates_on_ecosystem_uuid", using: :btree
+    t.index ["uuid"], name: "index_ecosystem_matrix_updates_on_uuid", unique: true, using: :btree
+  end
+
   create_table "ecosystem_preparations", force: :cascade do |t|
     t.uuid     "uuid",           null: false
     t.uuid     "course_uuid",    null: false
@@ -154,6 +179,19 @@ ActiveRecord::Schema.define(version: 20170307172053) do
     t.datetime "created_at",      null: false
     t.datetime "updated_at",      null: false
     t.index ["uuid"], name: "index_ecosystems_on_uuid", unique: true, using: :btree
+  end
+
+  create_table "exercise_calculations", force: :cascade do |t|
+    t.uuid     "uuid",                   null: false
+    t.uuid     "algorithm_uuid",         null: false
+    t.boolean  "is_calculated",          null: false
+    t.uuid     "exercise_uuids",         null: false, array: true
+    t.uuid     "student_uuids",          null: false, array: true
+    t.uuid     "ordered_exercise_uuids", null: false, array: true
+    t.datetime "created_at",             null: false
+    t.datetime "updated_at",             null: false
+    t.index ["algorithm_uuid", "is_calculated"], name: "index_exercise_calculations_on_algorithm_uuid_and_is_calculated", using: :btree
+    t.index ["uuid"], name: "index_exercise_calculations_on_uuid", unique: true, using: :btree
   end
 
   create_table "exercise_pools", force: :cascade do |t|
