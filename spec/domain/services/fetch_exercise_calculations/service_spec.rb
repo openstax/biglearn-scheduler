@@ -18,37 +18,37 @@ RSpec.describe Services::FetchExerciseCalculations::Service, type: :service do
     let(:calculation_uuid_2)   { SecureRandom.uuid }
 
     let(:num_exercise_uuids_1) { rand(10) + 1 }
-    let(:num_student_uuids_1)  { rand(10) + 1 }
     let(:exercise_uuids_1)     { num_exercise_uuids_1.times.map { SecureRandom.uuid } }
-    let(:student_uuids_1)      { num_student_uuids_1.times.map  { SecureRandom.uuid } }
+    let(:student_uuid_1)       { SecureRandom.uuid }
     let(:ecosystem_uuid_1)     { SecureRandom.uuid }
 
 
     let(:num_exercise_uuids_2) { rand(10) + 1 }
-    let(:num_student_uuids_2)  { rand(10) + 1 }
     let(:exercise_uuids_2)     { num_exercise_uuids_2.times.map { SecureRandom.uuid } }
-    let(:student_uuids_2)      { num_student_uuids_2.times.map  { SecureRandom.uuid } }
+    let(:student_uuid_2)       { SecureRandom.uuid }
     let(:ecosystem_uuid_2)     { SecureRandom.uuid }
 
     before do
       FactoryGirl.create :exercise_calculation, uuid: calculation_uuid_1,
-                                                algorithm_name: given_algorithm_name,
-                                                is_calculated: false,
-                                                exercise_uuids: exercise_uuids_1,
-                                                student_uuids: student_uuids_1,
-                                                ecosystem_uuid: ecosystem_uuid_1
+                                                ecosystem_uuid: ecosystem_uuid_1,
+                                                student_uuid: student_uuid_1,
+                                                exercise_uuids: exercise_uuids_1
 
       FactoryGirl.create :exercise_calculation, uuid: calculation_uuid_2,
-                                                algorithm_name: given_algorithm_name,
-                                                is_calculated: false,
-                                                exercise_uuids: exercise_uuids_2,
-                                                student_uuids: student_uuids_2,
-                                                ecosystem_uuid: ecosystem_uuid_2
+                                                ecosystem_uuid: ecosystem_uuid_2,
+                                                student_uuid: student_uuid_2,
+                                                exercise_uuids: exercise_uuids_2
     end
 
     context "when the ExerciseCalculations have already been calculated" do
       before do
-        ExerciseCalculation.update_all(is_calculated: true)
+        FactoryGirl.create :algorithm_exercise_calculation,
+                           exercise_calculation_uuid: calculation_uuid_1,
+                           algorithm_name: given_algorithm_name
+
+        FactoryGirl.create :algorithm_exercise_calculation,
+                           exercise_calculation_uuid: calculation_uuid_2,
+                           algorithm_name: given_algorithm_name
       end
 
       it "an empty array of exercise_calculations is returned" do
@@ -65,9 +65,9 @@ RSpec.describe Services::FetchExerciseCalculations::Service, type: :service do
             response.fetch(:calculation_uuid)
           )
 
-          expect(response.fetch(:exercise_uuids)).to eq exercise_calculation.exercise_uuids
-          expect(response.fetch(:student_uuids)).to eq exercise_calculation.student_uuids
           expect(response.fetch(:ecosystem_uuid)).to eq exercise_calculation.ecosystem_uuid
+          expect(response.fetch(:student_uuid)).to eq exercise_calculation.student_uuid
+          expect(response.fetch(:exercise_uuids)).to eq exercise_calculation.exercise_uuids
         end
       end
     end

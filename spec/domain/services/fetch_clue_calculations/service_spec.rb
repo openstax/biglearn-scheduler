@@ -32,23 +32,25 @@ RSpec.describe Services::FetchClueCalculations::Service, type: :service do
 
     before do
       FactoryGirl.create :clue_calculation, uuid: calculation_uuid_1,
-                                            algorithm_name: given_algorithm_name,
-                                            is_calculated: false,
+                                            ecosystem_uuid: ecosystem_uuid_1,
                                             exercise_uuids: exercise_uuids_1,
-                                            student_uuids: student_uuids_1,
-                                            ecosystem_uuid: ecosystem_uuid_1
+                                            student_uuids: student_uuids_1
 
       FactoryGirl.create :clue_calculation, uuid: calculation_uuid_2,
-                                            algorithm_name: given_algorithm_name,
-                                            is_calculated: false,
+                                            ecosystem_uuid: ecosystem_uuid_2,
                                             exercise_uuids: exercise_uuids_2,
-                                            student_uuids: student_uuids_2,
-                                            ecosystem_uuid: ecosystem_uuid_2
+                                            student_uuids: student_uuids_2
     end
 
     context "when the ClueCalculations have already been calculated" do
       before do
-        ClueCalculation.update_all(is_calculated: true)
+        FactoryGirl.create :algorithm_clue_calculation,
+                           clue_calculation_uuid: calculation_uuid_1,
+                           algorithm_name: given_algorithm_name
+
+        FactoryGirl.create :algorithm_clue_calculation,
+                           clue_calculation_uuid: calculation_uuid_2,
+                           algorithm_name: given_algorithm_name
       end
 
       it "an empty array of clue_calculations is returned" do
@@ -63,9 +65,9 @@ RSpec.describe Services::FetchClueCalculations::Service, type: :service do
         action.fetch(:clue_calculations).each do |response|
           clue_calculation = clue_calculations_by_uuid.fetch response.fetch(:calculation_uuid)
 
+          expect(response.fetch(:ecosystem_uuid)).to eq clue_calculation.ecosystem_uuid
           expect(response.fetch(:exercise_uuids)).to eq clue_calculation.exercise_uuids
           expect(response.fetch(:student_uuids)).to eq clue_calculation.student_uuids
-          expect(response.fetch(:ecosystem_uuid)).to eq clue_calculation.ecosystem_uuid
         end
       end
     end

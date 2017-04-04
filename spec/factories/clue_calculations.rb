@@ -6,11 +6,8 @@ FactoryGirl.define do
     end
 
     uuid           { SecureRandom.uuid }
-    algorithm_name { [ 'local_query', 'sparfa' ].sample }
+    ecosystem_uuid { SecureRandom.uuid }
     exercise_uuids { num_exercise_uuids.times.map { SecureRandom.uuid } }
     student_uuids  { num_student_uuids.times.map  { SecureRandom.uuid } }
-    ecosystem_uuid { SecureRandom.uuid }
-    is_calculated  { [true, false].sample }
-    clue_data      { {} }
   end
 end

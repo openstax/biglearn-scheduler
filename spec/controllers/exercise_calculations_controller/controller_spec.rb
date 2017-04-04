@@ -1,56 +1,54 @@
 require 'rails_helper'
 
 RSpec.describe ExerciseCalculationsController, type: :request do
-  let(:given_algorithm_name)  { 'tesr' }
+  let(:given_algorithm_name) { 'tesr' }
 
-  let(:calculation_uuid_1)    { SecureRandom.uuid }
-  let(:calculation_uuid_2)    { SecureRandom.uuid }
+  let(:calculation_uuid_1)   { SecureRandom.uuid }
+  let(:calculation_uuid_2)   { SecureRandom.uuid }
 
-  let(:num_exercise_uuids_1)  { rand(10) + 1 }
-  let(:exercise_uuids_1)      { num_exercise_uuids_1.times.map { SecureRandom.uuid } }
+  let(:num_exercise_uuids_1) { rand(10) + 1 }
+  let(:exercise_uuids_1)     { num_exercise_uuids_1.times.map { SecureRandom.uuid } }
 
-  let(:num_exercise_uuids_2)  { rand(10) + 1 }
-  let(:exercise_uuids_2)      { num_exercise_uuids_2.times.map { SecureRandom.uuid } }
+  let(:num_exercise_uuids_2) { rand(10) + 1 }
+  let(:exercise_uuids_2)     { num_exercise_uuids_2.times.map { SecureRandom.uuid } }
 
   context '#fetch_exercise_calculations' do
 
-    let(:num_student_uuids_1) { rand(10) + 1 }
-    let(:student_uuids_1)     { num_student_uuids_1.times.map  { SecureRandom.uuid } }
-    let(:ecosystem_uuid_1)    { SecureRandom.uuid }
+    let(:ecosystem_uuid_1)   { SecureRandom.uuid }
+    let(:student_uuid_1)     { SecureRandom.uuid }
 
-    let(:num_student_uuids_2) { rand(10) + 1 }
-    let(:student_uuids_2)     { num_student_uuids_2.times.map  { SecureRandom.uuid } }
-    let(:ecosystem_uuid_2)    { SecureRandom.uuid }
+    let(:ecosystem_uuid_2)   { SecureRandom.uuid }
+    let(:student_uuid_2)     { SecureRandom.uuid }
 
-    let(:request_payload)     { { algorithm_name: given_algorithm_name } }
+    let(:request_payload)    { { algorithm_name: given_algorithm_name } }
 
-    let(:target_result)       do
+    let(:target_result)      do
       {
         exercise_calculations: [
           {
             calculation_uuid: calculation_uuid_1,
-            exercise_uuids: exercise_uuids_1,
-            student_uuids: student_uuids_1,
-            ecosystem_uuid: ecosystem_uuid_1
+            ecosystem_uuid: ecosystem_uuid_1,
+            student_uuid: student_uuid_1,
+            exercise_uuids: exercise_uuids_1
           },
           {
             calculation_uuid: calculation_uuid_2,
-            exercise_uuids: exercise_uuids_2,
-            student_uuids: student_uuids_2,
-            ecosystem_uuid: ecosystem_uuid_2
+            ecosystem_uuid: ecosystem_uuid_2,
+            student_uuid: student_uuid_2,
+            exercise_uuids: exercise_uuids_2
           }
         ]
       }
     end
-    let(:target_response)     { target_result }
+    let(:target_response)    { target_result }
 
-    let(:service_double)      do
+    let(:service_double)     do
       instance_double(Services::FetchExerciseCalculations::Service).tap do |dbl|
         allow(dbl).to receive(:process).with(request_payload).and_return(target_result)
       end
     end
 
-    before(:each)             do
+    before(:each)            do
       allow(Services::FetchExerciseCalculations::Service).to(
         receive(:new).and_return(service_double)
       )

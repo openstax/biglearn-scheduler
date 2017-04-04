@@ -22,19 +22,21 @@ RSpec.describe Services::FetchEcosystemMatrixUpdates::Service, type: :service do
 
     before do
       FactoryGirl.create :ecosystem_matrix_update, uuid: calculation_uuid_1,
-                                                   algorithm_name: given_algorithm_name,
-                                                   is_updated: false,
                                                    ecosystem_uuid: ecosystem_uuid_1
 
       FactoryGirl.create :ecosystem_matrix_update, uuid: calculation_uuid_2,
-                                                   algorithm_name: given_algorithm_name,
-                                                   is_updated: false,
                                                    ecosystem_uuid: ecosystem_uuid_2
     end
 
     context "when the EcosystemMatrixUpdates have already been updated" do
       before do
-        EcosystemMatrixUpdate.update_all(is_updated: true)
+        FactoryGirl.create :algorithm_ecosystem_matrix_update,
+                           ecosystem_matrix_update_uuid: calculation_uuid_1,
+                           algorithm_name: given_algorithm_name
+
+        FactoryGirl.create :algorithm_ecosystem_matrix_update,
+                           ecosystem_matrix_update_uuid: calculation_uuid_2,
+                           algorithm_name: given_algorithm_name
       end
 
       it "an empty array of ecosystem_matrix_updates is returned" do

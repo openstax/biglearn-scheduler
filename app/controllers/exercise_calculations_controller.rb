@@ -59,17 +59,14 @@ class ExerciseCalculationsController < JsonApiController
             'type': 'object',
             'properties': {
               'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
+              'ecosystem_uuid': {'$ref': '#standard_definitions/uuid'},
+              'student_uuid': {'$ref': '#standard_definitions/uuid'},
               'exercise_uuids': {
                 'type': 'array',
                 'items': {'$ref': '#standard_definitions/uuid'}
-              },
-              'student_uuids': {
-                'type': 'array',
-                'items': {'$ref': '#standard_definitions/uuid'}
-              },
-              'ecosystem_uuid': {'$ref': '#standard_definitions/uuid'}
+              }
             },
-            'required': ['calculation_uuid', 'exercise_uuids', 'student_uuids', 'ecosystem_uuid'],
+            'required': ['calculation_uuid', 'ecosystem_uuid', 'student_uuid', 'exercise_uuids'],
             'additionalProperties': false
           },
           'minItems': 0,

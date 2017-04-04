@@ -1,8 +1,10 @@
 class Services::FetchEcosystemMatrixUpdates::Service
   def process(algorithm_name:)
-    ecosystem_matrix_updates = EcosystemMatrixUpdate.where(algorithm_name: algorithm_name,
-                                                           is_updated: false)
-                                                    .limit(1000)
+    algorithm_ecosystem_matrix_update_uuids =
+      AlgorithmEcosystemMatrixUpdate.where(algorithm_name: algorithm_name)
+                                    .pluck(:ecosystem_matrix_update_uuid)
+    ecosystem_matrix_updates =
+      EcosystemMatrixUpdate.where.not(uuid: algorithm_ecosystem_matrix_update_uuids).limit(1000)
 
     ecosystem_matrix_update_responses = ecosystem_matrix_updates.map do |ecosystem_matrix_update|
       {
