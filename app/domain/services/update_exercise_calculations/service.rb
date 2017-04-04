@@ -1,21 +1,20 @@
 class Services::UpdateExerciseCalculations::Service
   def process(exercise_calculation_updates:)
-    start_time = Time.now
-    Rails.logger.tagged 'UpdateExerciseCalculations' do |logger|
-      logger.info { "Started at #{start_time}" }
+    algorithm_exercise_calculations =
+      exercise_calculation_updates.map do |exercise_calculation_update|
+      AlgorithmExerciseCalculation.new(
+        uuid: SecureRandom.uuid,
+        exercise_calculation_uuid: exercise_calculation_update.fetch(:calculation_uuid),
+        algorithm_name: exercise_calculation_update.fetch(:algorithm_name),
+        exercise_uuids: exercise_calculation_update.fetch(:exercise_uuids)
+      )
     end
 
-    Rails.logger.tagged 'UpdateExerciseCalculations' do |logger|
-      # logger.info do
-      #   course_events = course_event_responses.map do |response|
-      #     response.fetch(:events).size
-      #   end.reduce(0, :+)
-      #   conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-      #   time = Time.now - start_time
-      #
-      #   "Received: #{course_events} event(s) in #{courses.size} course(s)" +
-      #   " - Conflicts: #{conflicts} - Took: #{time} second(s)"
-      # end
-    end
+    AlgorithmExerciseCalculation.import(
+      algorithm_exercise_calculations, validate: false, on_duplicate_key_update: {
+        conflict_target: [ :exercise_calculation_uuid, :algorithm_name ],
+        columns: [ :exercise_uuids ]
+      }
+    )
   end
 end

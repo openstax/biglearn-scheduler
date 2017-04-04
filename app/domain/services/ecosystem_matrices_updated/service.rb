@@ -1,21 +1,18 @@
 class Services::EcosystemMatricesUpdated::Service
   def process(ecosystem_matrices_updated:)
-    start_time = Time.now
-    Rails.logger.tagged 'EcosystemMatricesUpdated' do |logger|
-      logger.info { "Started at #{start_time}" }
+    algorithm_ecosystem_matrix_updates =
+      ecosystem_matrices_updated.map do |ecosystem_matrix_updated|
+      AlgorithmEcosystemMatrixUpdate.new(
+        uuid: SecureRandom.uuid,
+        ecosystem_matrix_update_uuid: ecosystem_matrix_updated.fetch(:calculation_uuid),
+        algorithm_name: ecosystem_matrix_updated.fetch(:algorithm_name)
+      )
     end
 
-    Rails.logger.tagged 'EcosystemMatricesUpdated' do |logger|
-      # logger.info do
-      #   course_events = course_event_responses.map do |response|
-      #     response.fetch(:events).size
-      #   end.reduce(0, :+)
-      #   conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-      #   time = Time.now - start_time
-      #
-      #   "Received: #{course_events} event(s) in #{courses.size} course(s)" +
-      #   " - Conflicts: #{conflicts} - Took: #{time} second(s)"
-      # end
-    end
+    AlgorithmEcosystemMatrixUpdate.import(
+      algorithm_ecosystem_matrix_updates, validate: false, on_duplicate_key_ignore: {
+        conflict_target: [ :ecosystem_matrix_update_uuid, :algorithm_name ]
+      }
+    )
   end
 end
