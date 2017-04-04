@@ -1,0 +1,14 @@
+FactoryGirl.define do
+  factory :assignment_spe_calculation do
+    transient           { num_exercise_uuids { rand(10) + 1 } }
+
+    uuid                { SecureRandom.uuid }
+    ecosystem_uuid      { SecureRandom.uuid }
+    assignment_uuid     { SecureRandom.uuid }
+    history_type        { AssignmentSpeCalculation.history_types.keys.sample }
+    k_ago               { rand(5) + 1 }
+    book_container_uuid { SecureRandom.uuid }
+    student_uuid        { SecureRandom.uuid }
+    exercise_uuids      { num_exercise_uuids.times.map { SecureRandom.uuid } }
+  end
+end
