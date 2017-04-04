@@ -1,21 +1,16 @@
 class Services::FetchEcosystemMatrixUpdates::Service
-  def process(algorithm_uuid:)
-    start_time = Time.now
-    Rails.logger.tagged 'FetchEcosystemMatrixUpdates' do |logger|
-      logger.info { "Started at #{start_time}" }
+  def process(algorithm_name:)
+    ecosystem_matrix_updates = EcosystemMatrixUpdate.where(algorithm_name: algorithm_name,
+                                                           is_updated: false)
+                                                    .limit(1000)
+
+    ecosystem_matrix_update_responses = ecosystem_matrix_updates.map do |ecosystem_matrix_update|
+      {
+        calculation_uuid: ecosystem_matrix_update.uuid,
+        ecosystem_uuid: ecosystem_matrix_update.ecosystem_uuid
+      }
     end
 
-    Rails.logger.tagged 'FetchEcosystemMatrixUpdates' do |logger|
-      # logger.info do
-      #   course_events = course_event_responses.map do |response|
-      #     response.fetch(:events).size
-      #   end.reduce(0, :+)
-      #   conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-      #   time = Time.now - start_time
-      #
-      #   "Received: #{course_events} event(s) in #{courses.size} course(s)" +
-      #   " - Conflicts: #{conflicts} - Took: #{time} second(s)"
-      # end
-    end
+    { ecosystem_matrix_updates: ecosystem_matrix_update_responses }
   end
 end

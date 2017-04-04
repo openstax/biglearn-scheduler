@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe ClueCalculationsController, type: :request do
-  let(:given_algorithm_uuid)   { SecureRandom.uuid }
+  let(:given_algorithm_name)   { 'sparfa' }
 
   let(:calculation_uuid_1)     { SecureRandom.uuid }
   let(:calculation_uuid_2)     { SecureRandom.uuid }
@@ -20,7 +20,7 @@ RSpec.describe ClueCalculationsController, type: :request do
     let(:student_uuids_2)      { num_student_uuids_2.times.map  { SecureRandom.uuid } }
     let(:ecosystem_uuid_2)     { SecureRandom.uuid }
 
-    let(:request_payload)      { { algorithm_uuid: given_algorithm_uuid } }
+    let(:request_payload)      { { algorithm_name: given_algorithm_name } }
 
     let(:target_result)        do
       {
@@ -100,12 +100,12 @@ RSpec.describe ClueCalculationsController, type: :request do
         clue_calculation_updates: [
           {
             calculation_uuid: calculation_uuid_1,
-            algorithm_uuid: given_algorithm_uuid,
+            algorithm_name: given_algorithm_name,
             clue_data: given_clue_data_1
           },
           {
             calculation_uuid: calculation_uuid_2,
-            algorithm_uuid: given_algorithm_uuid,
+            algorithm_name: given_algorithm_name,
             clue_data: given_clue_data_2
           }
         ]

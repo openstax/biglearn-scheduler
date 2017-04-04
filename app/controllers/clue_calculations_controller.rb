@@ -3,10 +3,10 @@ class ClueCalculationsController < JsonApiController
   def fetch_clue_calculations
     with_json_apis(input_schema:  _fetch_clue_calculations_request_payload_schema,
                    output_schema: _fetch_clue_calculations_response_payload_schema) do
-      algorithm_uuid = json_parsed_request_payload.fetch(:algorithm_uuid)
+      algorithm_name = json_parsed_request_payload.fetch(:algorithm_name)
 
       service = Services::FetchClueCalculations::Service.new
-      result = service.process(algorithm_uuid: algorithm_uuid)
+      result = service.process(algorithm_name: algorithm_name)
 
       response_payload = { clue_calculations: result.fetch(:clue_calculations) }
 
@@ -37,9 +37,11 @@ class ClueCalculationsController < JsonApiController
       '$schema': JSON_SCHEMA,
       'type': 'object',
       'properties': {
-        'algorithm_uuid': {'$ref': '#standard_definitions/uuid'}
+        'algorithm_name': {
+          'type': 'string'
+        }
       },
-      'required': ['algorithm_uuid'],
+      'required': ['algorithm_name'],
       'additionalProperties': false,
       'standard_definitions': _standard_definitions
     }
@@ -69,6 +71,8 @@ class ClueCalculationsController < JsonApiController
             'required': ['calculation_uuid', 'exercise_uuids', 'student_uuids', 'ecosystem_uuid'],
             'additionalProperties': false
           },
+          'minItems': 0,
+          'maxItems': 1000
         },
       },
       'required': ['clue_calculations'],
@@ -88,12 +92,16 @@ class ClueCalculationsController < JsonApiController
             'type': 'object',
             'properties': {
               'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
-              'algorithm_uuid':   {'$ref': '#standard_definitions/uuid'},
+              'algorithm_name':   {
+                'type': 'string'
+              },
               'clue_data':        {'$ref': '#standard_definitions/clue_data'}
             },
-            'required': ['calculation_uuid', 'algorithm_uuid', 'clue_data'],
+            'required': ['calculation_uuid', 'algorithm_name', 'clue_data'],
             'additionalProperties': false
-          }
+          },
+          'minItems': 1,
+          'maxItems': 1000
         }
       },
       'required': ['clue_calculation_updates'],
@@ -119,7 +127,9 @@ class ClueCalculationsController < JsonApiController
             },
             'required': ['calculation_uuid', 'calculation_status'],
             'additionalProperties': false
-          }
+          },
+          'minItems': 0,
+          'maxItems': 1000
         }
       },
       'required': ['clue_calculation_update_responses'],

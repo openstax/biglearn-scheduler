@@ -3,10 +3,10 @@ class ExerciseCalculationsController < JsonApiController
   def fetch_exercise_calculations
     with_json_apis(input_schema:  _fetch_exercise_calculations_request_payload_schema,
                    output_schema: _fetch_exercise_calculations_response_payload_schema) do
-      algorithm_uuid = json_parsed_request_payload.fetch(:algorithm_uuid)
+      algorithm_name = json_parsed_request_payload.fetch(:algorithm_name)
 
       service = Services::FetchExerciseCalculations::Service.new
-      result = service.process(algorithm_uuid: algorithm_uuid)
+      result = service.process(algorithm_name: algorithm_name)
 
       response_payload = { exercise_calculations: result.fetch(:exercise_calculations) }
 
@@ -38,9 +38,11 @@ class ExerciseCalculationsController < JsonApiController
       '$schema': JSON_SCHEMA,
       'type': 'object',
       'properties': {
-        'algorithm_uuid': {'$ref': '#standard_definitions/uuid'}
+        'algorithm_name': {
+          'type': 'string'
+        }
       },
-      'required': ['algorithm_uuid'],
+      'required': ['algorithm_name'],
       'additionalProperties': false,
       'standard_definitions': _standard_definitions
     }
@@ -70,6 +72,8 @@ class ExerciseCalculationsController < JsonApiController
             'required': ['calculation_uuid', 'exercise_uuids', 'student_uuids', 'ecosystem_uuid'],
             'additionalProperties': false
           },
+          'minItems': 0,
+          'maxItems': 1000
         },
       },
       'required': ['exercise_calculations'],
@@ -89,15 +93,19 @@ class ExerciseCalculationsController < JsonApiController
             'type': 'object',
             'properties': {
               'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
-              'algorithm_uuid':   {'$ref': '#standard_definitions/uuid'},
+              'algorithm_name':   {
+                'type': 'string'
+              },
               'exercise_uuids':   {
                 type: 'array',
                 items: {'$ref': '#standard_definitions/uuid'}
               }
             },
-            'required': ['calculation_uuid', 'algorithm_uuid', 'exercise_uuids'],
+            'required': ['calculation_uuid', 'algorithm_name', 'exercise_uuids'],
             'additionalProperties': false
-          }
+          },
+          'minItems': 1,
+          'maxItems': 1000
         }
       },
       'required': ['exercise_calculation_updates'],
@@ -123,7 +131,9 @@ class ExerciseCalculationsController < JsonApiController
             },
             'required': ['calculation_uuid', 'calculation_status'],
             'additionalProperties': false
-          }
+          },
+          'minItems': 0,
+          'maxItems': 1000
         }
       },
       'required': ['exercise_calculation_update_responses'],

@@ -3,10 +3,10 @@ class EcosystemMatricesController < JsonApiController
   def fetch_ecosystem_matrix_updates
     with_json_apis(input_schema:  _fetch_ecosystem_matrix_updates_request_payload_schema,
                    output_schema: _fetch_ecosystem_matrix_updates_response_payload_schema) do
-      algorithm_uuid = json_parsed_request_payload.fetch(:algorithm_uuid)
+      algorithm_name = json_parsed_request_payload.fetch(:algorithm_name)
 
       service = Services::FetchEcosystemMatrixUpdates::Service.new
-      result = service.process(algorithm_uuid: algorithm_uuid)
+      result = service.process(algorithm_name: algorithm_name)
 
       response_payload = { ecosystem_matrix_updates: result.fetch(:ecosystem_matrix_updates) }
 
@@ -37,9 +37,11 @@ class EcosystemMatricesController < JsonApiController
       '$schema': JSON_SCHEMA,
       'type': 'object',
       'properties': {
-        'algorithm_uuid': {'$ref': '#standard_definitions/uuid'}
+        'algorithm_name': {
+          'type': 'string'
+        }
       },
-      'required': ['algorithm_uuid'],
+      'required': ['algorithm_name'],
       'additionalProperties': false,
       'standard_definitions': _standard_definitions
     }
@@ -61,6 +63,8 @@ class EcosystemMatricesController < JsonApiController
             'required': ['calculation_uuid', 'ecosystem_uuid'],
             'additionalProperties': false
           },
+          'minItems': 0,
+          'maxItems': 1000
         },
       },
       'required': ['ecosystem_matrix_updates'],
@@ -80,11 +84,15 @@ class EcosystemMatricesController < JsonApiController
             'type': 'object',
             'properties': {
               'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
-              'algorithm_uuid':   {'$ref': '#standard_definitions/uuid'}
+              'algorithm_name':   {
+                'type': 'string'
+              }
             },
-            'required': ['calculation_uuid', 'algorithm_uuid'],
+            'required': ['calculation_uuid', 'algorithm_name'],
             'additionalProperties': false
-          }
+          },
+          'minItems': 1,
+          'maxItems': 1000
         }
       },
       'required': ['ecosystem_matrices_updated'],
@@ -110,7 +118,9 @@ class EcosystemMatricesController < JsonApiController
             },
             'required': ['calculation_uuid', 'update_status'],
             'additionalProperties': false
-          }
+          },
+          'minItems': 0,
+          'maxItems': 1000
         }
       },
       'required': ['ecosystem_matrix_updated_responses'],

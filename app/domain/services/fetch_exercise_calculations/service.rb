@@ -1,21 +1,18 @@
 class Services::FetchExerciseCalculations::Service
-  def process(algorithm_uuid:)
-    start_time = Time.now
-    Rails.logger.tagged 'FetchExerciseCalculations' do |logger|
-      logger.info { "Started at #{start_time}" }
+  def process(algorithm_name:)
+    exercise_calculations = ExerciseCalculation.where(algorithm_name: algorithm_name,
+                                                      is_calculated: false)
+                                               .limit(1000)
+
+    exercise_calculation_responses = exercise_calculations.map do |exercise_calculation|
+      {
+        calculation_uuid: exercise_calculation.uuid,
+        exercise_uuids: exercise_calculation.exercise_uuids,
+        student_uuids: exercise_calculation.student_uuids,
+        ecosystem_uuid: exercise_calculation.ecosystem_uuid
+      }
     end
 
-    Rails.logger.tagged 'FetchExerciseCalculations' do |logger|
-      # logger.info do
-      #   course_events = course_event_responses.map do |response|
-      #     response.fetch(:events).size
-      #   end.reduce(0, :+)
-      #   conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-      #   time = Time.now - start_time
-      #
-      #   "Received: #{course_events} event(s) in #{courses.size} course(s)" +
-      #   " - Conflicts: #{conflicts} - Took: #{time} second(s)"
-      # end
-    end
+    { exercise_calculations: exercise_calculation_responses }
   end
 end

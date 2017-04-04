@@ -1,21 +1,17 @@
 class Services::FetchClueCalculations::Service
-  def process(algorithm_uuid:)
-    start_time = Time.now
-    Rails.logger.tagged 'FetchClueCalculations' do |logger|
-      logger.info { "Started at #{start_time}" }
+  def process(algorithm_name:)
+    clue_calculations = ClueCalculation.where(algorithm_name: algorithm_name, is_calculated: false)
+                                       .limit(1000)
+
+    clue_calculation_responses = clue_calculations.map do |clue_calculation|
+      {
+        calculation_uuid: clue_calculation.uuid,
+        exercise_uuids: clue_calculation.exercise_uuids,
+        student_uuids: clue_calculation.student_uuids,
+        ecosystem_uuid: clue_calculation.ecosystem_uuid
+      }
     end
 
-    Rails.logger.tagged 'FetchClueCalculations' do |logger|
-      # logger.info do
-      #   course_events = course_event_responses.map do |response|
-      #     response.fetch(:events).size
-      #   end.reduce(0, :+)
-      #   conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-      #   time = Time.now - start_time
-      #
-      #   "Received: #{course_events} event(s) in #{courses.size} course(s)" +
-      #   " - Conflicts: #{conflicts} - Took: #{time} second(s)"
-      # end
-    end
+    { clue_calculations: clue_calculation_responses }
   end
 end
