@@ -4,7 +4,7 @@ class CreateAlgorithmTeacherClueCalculations < ActiveRecord::Migration[5.0]
       t.uuid    :uuid,                          null: false, index: { unique: true }
       t.uuid    :teacher_clue_calculation_uuid, null: false
       t.citext  :algorithm_name,                null: false
-      t.decimal :clue_value,                    null: false
+      t.jsonb   :clue_data,                     null: false
 
       t.timestamps                              null: false
     end

@@ -117,11 +117,11 @@ RSpec.describe ClueCalculationsController, type: :request do
         clue_calculation_update_responses: [
           {
             calculation_uuid: calculation_uuid_1,
-            calculation_status: 'accepted'
+            calculation_status: 'calculation_accepted'
           },
           {
             calculation_uuid: calculation_uuid_2,
-            calculation_status: 'accepted'
+            calculation_status: 'calculation_accepted'
           }
         ]
       }

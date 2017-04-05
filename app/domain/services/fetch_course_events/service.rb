@@ -414,56 +414,75 @@ class Services::FetchCourseEvents::Service
 
       # Find affected assignments and PracticeWorstAreasExercises for students with updated
       # assignments (with the same exercise_uuids) and mark their SPEs/PEs for partial recalculation
-      aaspece = AlgorithmAssignmentSpeCalculationExercise.arel_table
-      aapece = AlgorithmAssignmentPeCalculationExercise.arel_table
-      aspece = AlgorithmStudentPeCalculationExercise.arel_table
-      aaspece_queries = [aaspece[:assignment_uuid].in(updated_assignment_uuids)]
-      aapece_queries = [aapece[:assignment_uuid].in(updated_assignment_uuids)]
-      aspece_queries = [aspece[:student_uuid].in(affected_student_uuids)]
+      a_spe_c_e = AssignmentSpeCalculationExercise.arel_table
+      a_pe_c_e = AssignmentPeCalculationExercise.arel_table
+      s_pe_c_e = StudentPeCalculationExercise.arel_table
+      a_spe_c_e_queries = [a_spe_c_e[:assignment_uuid].in(updated_assignment_uuids)]
+      a_pe_c_e_queries = [a_pe_c_e[:assignment_uuid].in(updated_assignment_uuids)]
+      s_pe_c_e_queries = [s_pe_c_e[:student_uuid].in(affected_student_uuids)]
       assignments.each do |assignment|
         assignment_uuid = assignment.uuid
         student_uuid = assignment.student_uuid
         assigned_exercise_uuids = assignment.assigned_exercise_uuids
 
-        aaspece_queries << aaspece[:student_uuid].eq(student_uuid).and(
-                             aaspece[:exercise_uuid].in(assigned_exercise_uuids)
-                           )
+        a_spe_c_e_queries << a_spe_c_e[:student_uuid].eq(student_uuid).and(
+                               a_spe_c_e[:exercise_uuid].in(assigned_exercise_uuids)
+                             )
 
-        aapece_queries << aapece[:student_uuid].eq(student_uuid).and(
-                            aapece[:exercise_uuid].in(assigned_exercise_uuids)
-                          )
+        a_pe_c_e_queries << a_pe_c_e[:student_uuid].eq(student_uuid).and(
+                              a_pe_c_e[:exercise_uuid].in(assigned_exercise_uuids)
+                            )
 
-        aspece_queries << aspece[:student_uuid].eq(student_uuid).and(
-                            aspece[:exercise_uuid].in(assigned_exercise_uuids)
-                          )
+        s_pe_c_e_queries << s_pe_c_e[:student_uuid].eq(student_uuid).and(
+                              s_pe_c_e[:exercise_uuid].in(assigned_exercise_uuids)
+                            )
       end
 
-      aaspece_query = aaspece_queries.reduce(:or)
-      affected_algorithm_assignment_spe_calculation_uuids =
-        AlgorithmAssignmentSpeCalculationExercise.where(aaspece_query)
-                                                 .pluck(:algorithm_assignment_spe_calculation_uuid)
+      # TODO: Optimize this code (remove assigned exercises instead of recalculating everything)
+      # Recalculate only if 0 SPEs left
+      a_spe_c_e_query = a_spe_c_e_queries.reduce(:or)
+      affected_assignment_spe_calculation_uuids =
+        AssignmentSpeCalculationExercise.where(a_spe_c_e_query)
+                                        .pluck(:assignment_spe_calculation_uuid)
+      AssignmentSpeCalculation
+        .where(uuid: affected_assignment_spe_calculation_uuids)
+        .delete_all
+      AssignmentSpeCalculationExercise
+        .where(assignment_spe_calculation_uuid: affected_assignment_spe_calculation_uuids)
+        .delete_all
       AlgorithmAssignmentSpeCalculation
-        .where(uuid: affected_algorithm_assignment_spe_calculation_uuids)
-        .update_all(needs_recalculation: true)
-      AlgorithmAssignmentSpeCalculationExercise.where(aaspece_query).delete_all
+        .where(assignment_spe_calculation_uuid: affected_assignment_spe_calculation_uuids)
+        .delete_all
 
-      aapece_query = aapece_queries.reduce(:or)
-      affected_algorithm_assignment_pe_calculation_uuids =
-        AlgorithmAssignmentPeCalculationExercise.where(aapece_query)
-                                                .pluck(:algorithm_assignment_pe_calculation_uuid)
+      # Recalculate if < 3 PEs left (reading) or < 5 PEs left (practice)
+      a_pe_c_e_query = a_pe_c_e_queries.reduce(:or)
+      affected_assignment_pe_calculation_uuids =
+        AssignmentPeCalculationExercise.where(a_pe_c_e_query)
+                                       .pluck(:assignment_pe_calculation_uuid)
+      AssignmentPeCalculation
+        .where(uuid: affected_assignment_pe_calculation_uuids)
+        .delete_all
+      AssignmentPeCalculationExercise
+        .where(assignment_pe_calculation_uuid: affected_assignment_pe_calculation_uuids)
+        .delete_all
       AlgorithmAssignmentPeCalculation
-        .where(uuid: affected_algorithm_assignment_pe_calculation_uuids)
-        .update_all(needs_recalculation: true)
-      AlgorithmAssignmentPeCalculationExercise.where(aapece_query).delete_all
+        .where(assignment_pe_calculation_uuid: affected_assignment_pe_calculation_uuids)
+        .delete_all
 
-      aspece_query = aspece_queries.reduce(:or)
-      affected_algorithm_student_pe_calculation_uuids =
-        AlgorithmStudentPeCalculationExercise.where(aspece_query)
-                                             .pluck(:algorithm_student_pe_calculation_uuid)
+      # Recalculate if < 5 PEs left
+      s_pe_c_e_query = s_pe_c_e_queries.reduce(:or)
+      affected_student_pe_calculation_uuids =
+        StudentPeCalculationExercise.where(s_pe_c_e_query)
+                                    .pluck(:student_pe_calculation_uuid)
+      StudentPeCalculation
+        .where(uuid: affected_student_pe_calculation_uuids)
+        .delete_all
+      StudentPeCalculationExercise
+        .where(student_pe_calculation_uuid: affected_student_pe_calculation_uuids)
+        .delete_all
       AlgorithmStudentPeCalculation
-        .where(uuid: affected_algorithm_student_pe_calculation_uuids)
-        .update_all(needs_recalculation: true)
-      AlgorithmStudentPeCalculationExercise.where(aspece_query).delete_all
+        .where(student_pe_calculation_uuid: affected_student_pe_calculation_uuids)
+        .delete_all
 
       results << Response.import(
         responses, validate: false, on_duplicate_key_update: {

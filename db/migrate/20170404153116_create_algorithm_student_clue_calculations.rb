@@ -4,6 +4,8 @@ class CreateAlgorithmStudentClueCalculations < ActiveRecord::Migration[5.0]
       t.uuid    :uuid,                          null: false, index: { unique: true }
       t.uuid    :student_clue_calculation_uuid, null: false
       t.citext  :algorithm_name,                null: false
+      t.jsonb   :clue_data,                     null: false
+      t.uuid    :student_uuid,                  null: false
       t.decimal :clue_value,                    null: false
 
       t.timestamps                              null: false
@@ -13,5 +15,9 @@ class CreateAlgorithmStudentClueCalculations < ActiveRecord::Migration[5.0]
               [ :student_clue_calculation_uuid, :algorithm_name ],
               unique: true,
               name: 'index_alg_s_clue_calc_on_s_clue_calc_uuid_and_alg_name'
+
+    add_index :algorithm_student_clue_calculations,
+              [ :student_uuid, :clue_value ],
+              name: 'index_alg_s_clue_calc_on_s_uuid_and_clue_val'
   end
 end

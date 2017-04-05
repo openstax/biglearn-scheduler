@@ -92,11 +92,11 @@ RSpec.describe EcosystemMatricesController, type: :request do
         ecosystem_matrix_updated_responses: [
           {
             calculation_uuid: calculation_uuid_1,
-            update_status: 'success'
+            calculation_status: 'calculation_accepted'
           },
           {
             calculation_uuid: calculation_uuid_2,
-            update_status: 'success'
+            calculation_status: 'calculation_accepted'
           }
         ]
       }

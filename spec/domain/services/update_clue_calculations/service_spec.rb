@@ -46,47 +46,90 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
   let(:action)                         do
     service.process(clue_calculation_updates: given_clue_calculation_updates)
   end
+  let(:results)                        { action.fetch(:clue_calculation_update_responses) }
 
-  context "when non-existing AlgorithmClueCalculation" +
-          " calculation_uuid and algorithm_name are given" do
-    it "creates new AlgorithmClueCalculation records for the given updates" do
-      expect { action }.to change { AlgorithmClueCalculation.count }.by(2)
+  context 'when non-existing StudentClueCalculation and' +
+          ' TeacherClueCalculation calculation_uuids are given' do
+    it 'does not create new records and returns calculation_status: "calculation_unknown"' do
+      expect { action }.to  not_change { AlgorithmStudentClueCalculation.count }
+                       .and not_change { AlgorithmTeacherClueCalculation.count }
 
-      new_algorithm_clue_calculations =
-        AlgorithmClueCalculation.where(clue_calculation_uuid: clue_data_by_calculation_uuid.keys)
-      new_algorithm_clue_calculations.each do |new_algorithm_clue_calculation|
-        expect(new_algorithm_clue_calculation.algorithm_name).to eq given_algorithm_name
-
-        calculation_uuid = new_algorithm_clue_calculation.clue_calculation_uuid
-        clue_data = clue_data_by_calculation_uuid.fetch(calculation_uuid)
-        expect(new_algorithm_clue_calculation.clue_data).to eq clue_data
-      end
+      results.each { |result| expect(result[:calculation_status]).to eq 'calculation_unknown' }
     end
   end
 
-  context "when previously-existing AlgorithmClueCalculation" +
-          " calculation_uuid and algorithm_name are given" do
-    before do
-      FactoryGirl.create :algorithm_clue_calculation,
-                         clue_calculation_uuid: given_calculation_uuid_1,
-                         algorithm_name: given_algorithm_name
-
-      FactoryGirl.create :algorithm_clue_calculation,
-                         clue_calculation_uuid: given_calculation_uuid_2,
-                         algorithm_name: given_algorithm_name
+  context 'when previously-existing StudentClueCalculation and' +
+          ' TeacherClueCalculation calculation_uuids are given' do
+    let!(:student_clue_calculation) do
+      FactoryGirl.create :student_clue_calculation, uuid: given_calculation_uuid_1
     end
 
-    it "updates the AlgorithmClueCalculation records with the given updates" do
-      expect { action }.not_to change { AlgorithmClueCalculation.count }
+    let!(:teacher_clue_calculation) do
+      FactoryGirl.create :teacher_clue_calculation, uuid: given_calculation_uuid_2
+    end
 
-      new_algorithm_clue_calculations =
-        AlgorithmClueCalculation.where(clue_calculation_uuid: clue_data_by_calculation_uuid.keys)
-      new_algorithm_clue_calculations.each do |new_algorithm_clue_calculation|
-        expect(new_algorithm_clue_calculation.algorithm_name).to eq given_algorithm_name
+    context 'when non-existing AlgorithmStudentClueCalculation and' +
+            ' AlgorithmTeacherClueCalculation calculation_uuids and algorithm_name are given' do
+      it 'creates new records and returns calculation_status: "calculation_accepted"' do
+        expect { action }.to  change { AlgorithmStudentClueCalculation.count }.by(1)
+                         .and change { AlgorithmTeacherClueCalculation.count }.by(1)
 
-        calculation_uuid = new_algorithm_clue_calculation.clue_calculation_uuid
-        clue_data = clue_data_by_calculation_uuid.fetch(calculation_uuid)
-        expect(new_algorithm_clue_calculation.clue_data).to eq clue_data
+        results.each { |result| expect(result[:calculation_status]).to eq 'calculation_accepted' }
+
+        algorithm_student_clue_calculation = AlgorithmStudentClueCalculation.find_by(
+          student_clue_calculation_uuid: given_calculation_uuid_1
+        )
+        expect(algorithm_student_clue_calculation.algorithm_name).to eq given_algorithm_name
+        expect(algorithm_student_clue_calculation.clue_data).to eq given_clue_data_1
+        expect(algorithm_student_clue_calculation.student_uuid).to(
+          eq student_clue_calculation.student_uuid
+        )
+        expect(algorithm_student_clue_calculation.clue_value).to(
+          eq given_clue_data_1.fetch('most_likely')
+        )
+        algorithm_teacher_clue_calculation = AlgorithmTeacherClueCalculation.find_by(
+          teacher_clue_calculation_uuid: given_calculation_uuid_2
+        )
+        expect(algorithm_teacher_clue_calculation.algorithm_name).to eq given_algorithm_name
+        expect(algorithm_teacher_clue_calculation.clue_data).to eq given_clue_data_2
+      end
+    end
+
+    context 'when previously-existing AlgorithmStudentClueCalculation and' +
+            ' AlgorithmTeacherClueCalculation calculation_uuids and algorithm_name are given' do
+      before do
+        FactoryGirl.create :algorithm_student_clue_calculation,
+                           student_clue_calculation_uuid: given_calculation_uuid_1,
+                           algorithm_name: given_algorithm_name
+
+        FactoryGirl.create :algorithm_teacher_clue_calculation,
+                           teacher_clue_calculation_uuid: given_calculation_uuid_2,
+                           algorithm_name: given_algorithm_name
+      end
+
+      it 'updates the records and returns calculation_status: "calculation_accepted"' do
+      expect { action }.to  not_change { AlgorithmStudentClueCalculation.count }
+                       .and not_change { AlgorithmTeacherClueCalculation.count }
+
+        results.each { |result| expect(result[:calculation_status]).to eq 'calculation_accepted' }
+
+        algorithm_student_clue_calculation = AlgorithmStudentClueCalculation.find_by(
+          student_clue_calculation_uuid: given_calculation_uuid_1
+        )
+        expect(algorithm_student_clue_calculation.algorithm_name).to eq given_algorithm_name
+        expect(algorithm_student_clue_calculation.clue_data).to eq given_clue_data_1
+        # The student_uuid field cannot be updated after the record is created
+        expect(algorithm_student_clue_calculation.student_uuid).not_to(
+          eq student_clue_calculation.student_uuid
+        )
+        expect(algorithm_student_clue_calculation.clue_value).to(
+          eq given_clue_data_1.fetch('most_likely')
+        )
+        algorithm_teacher_clue_calculation = AlgorithmTeacherClueCalculation.find_by(
+          teacher_clue_calculation_uuid: given_calculation_uuid_2
+        )
+        expect(algorithm_teacher_clue_calculation.algorithm_name).to eq given_algorithm_name
+        expect(algorithm_teacher_clue_calculation.clue_data).to eq given_clue_data_2
       end
     end
   end

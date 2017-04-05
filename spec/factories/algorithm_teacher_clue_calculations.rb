@@ -3,6 +3,6 @@ FactoryGirl.define do
     uuid                          { SecureRandom.uuid }
     teacher_clue_calculation_uuid { SecureRandom.uuid }
     algorithm_name                { [ 'local_query', 'sparfa' ].sample }
-    clue_value                    { rand }
+    clue_data                     { { 'most_likely' => rand } }
   end
 end

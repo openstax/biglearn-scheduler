@@ -5,6 +5,8 @@ RSpec.describe AlgorithmStudentClueCalculation, type: :model do
 
   it { is_expected.to validate_presence_of(:student_clue_calculation_uuid) }
   it { is_expected.to validate_presence_of(:algorithm_name) }
+  it { is_expected.to validate_presence_of(:clue_data) }
+  it { is_expected.to validate_presence_of(:student_uuid) }
   it { is_expected.to validate_presence_of(:clue_value) }
 
   it do

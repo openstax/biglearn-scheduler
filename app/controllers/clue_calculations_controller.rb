@@ -122,13 +122,13 @@ class ClueCalculationsController < JsonApiController
             'properties': {
               'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
               'calculation_status': {
-                'emum': ['accepted']
+                'emum': ['calculation_unknown', 'calculation_accepted']
               }
             },
             'required': ['calculation_uuid', 'calculation_status'],
             'additionalProperties': false
           },
-          'minItems': 0,
+          'minItems': 1,
           'maxItems': 2000
         }
       },

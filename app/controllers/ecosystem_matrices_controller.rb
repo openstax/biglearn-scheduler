@@ -112,14 +112,14 @@ class EcosystemMatricesController < JsonApiController
             'type': 'object',
             'properties': {
               'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
-              'update_status': {
-                'emum': ['success']
+              'calculation_status': {
+                'emum': ['calculation_unknown', 'calculation_accepted']
               }
             },
-            'required': ['calculation_uuid', 'update_status'],
+            'required': ['calculation_uuid', 'calculation_status'],
             'additionalProperties': false
           },
-          'minItems': 0,
+          'minItems': 1,
           'maxItems': 1000
         }
       },

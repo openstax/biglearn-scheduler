@@ -16,56 +16,26 @@ ActiveRecord::Schema.define(version: 20170404212728) do
   enable_extension "plpgsql"
   enable_extension "citext"
 
-  create_table "algorithm_assignment_pe_calculation_exercises", force: :cascade do |t|
-    t.uuid     "uuid",                                     null: false
-    t.uuid     "algorithm_assignment_pe_calculation_uuid", null: false
-    t.uuid     "exercise_uuid",                            null: false
-    t.uuid     "assignment_uuid",                          null: false
-    t.uuid     "student_uuid",                             null: false
-    t.datetime "created_at",                               null: false
-    t.datetime "updated_at",                               null: false
-    t.index ["algorithm_assignment_pe_calculation_uuid", "exercise_uuid"], name: "index_alg_a_pe_calc_ex_on_alg_a_pe_calc_uuid_and_ex_uuid", unique: true, using: :btree
-    t.index ["assignment_uuid"], name: "index_alg_a_pe_calc_ex_on_a_uuid", using: :btree
-    t.index ["exercise_uuid"], name: "index_alg_a_pe_calc_ex_on_ex_uuid", using: :btree
-    t.index ["student_uuid", "exercise_uuid"], name: "index_alg_a_pe_calc_ex_on_s_uuid_and_ex_uuid", unique: true, using: :btree
-    t.index ["uuid"], name: "index_algorithm_assignment_pe_calculation_exercises_on_uuid", unique: true, using: :btree
-  end
-
   create_table "algorithm_assignment_pe_calculations", force: :cascade do |t|
     t.uuid     "uuid",                           null: false
     t.uuid     "assignment_pe_calculation_uuid", null: false
     t.citext   "algorithm_name",                 null: false
-    t.boolean  "needs_recalculation",            null: false
     t.uuid     "assignment_uuid",                null: false
     t.uuid     "student_uuid",                   null: false
+    t.uuid     "exercise_uuids",                 null: false, array: true
     t.datetime "created_at",                     null: false
     t.datetime "updated_at",                     null: false
     t.index ["assignment_pe_calculation_uuid", "algorithm_name"], name: "index_alg_a_pe_calc_on_a_pe_calc_uuid_and_alg_name", unique: true, using: :btree
     t.index ["uuid"], name: "index_algorithm_assignment_pe_calculations_on_uuid", unique: true, using: :btree
   end
 
-  create_table "algorithm_assignment_spe_calculation_exercises", force: :cascade do |t|
-    t.uuid     "uuid",                                      null: false
-    t.uuid     "algorithm_assignment_spe_calculation_uuid", null: false
-    t.uuid     "exercise_uuid",                             null: false
-    t.uuid     "assignment_uuid",                           null: false
-    t.uuid     "student_uuid",                              null: false
-    t.datetime "created_at",                                null: false
-    t.datetime "updated_at",                                null: false
-    t.index ["algorithm_assignment_spe_calculation_uuid", "exercise_uuid"], name: "index_alg_a_spe_calc_ex_on_alg_a_spe_calc_uuid_and_ex_uuid", unique: true, using: :btree
-    t.index ["assignment_uuid"], name: "index_alg_a_spe_calc_ex_on_a_uuid", using: :btree
-    t.index ["exercise_uuid"], name: "index_alg_a_spe_calc_ex_on_ex_uuid", using: :btree
-    t.index ["student_uuid", "exercise_uuid"], name: "index_alg_a_spe_calc_ex_on_s_uuid_and_ex_uuid", unique: true, using: :btree
-    t.index ["uuid"], name: "index_algorithm_assignment_spe_calculation_exercises_on_uuid", unique: true, using: :btree
-  end
-
   create_table "algorithm_assignment_spe_calculations", force: :cascade do |t|
     t.uuid     "uuid",                            null: false
     t.uuid     "assignment_spe_calculation_uuid", null: false
     t.citext   "algorithm_name",                  null: false
-    t.boolean  "needs_recalculation",             null: false
     t.uuid     "assignment_uuid",                 null: false
     t.uuid     "student_uuid",                    null: false
+    t.uuid     "exercise_uuids",                  null: false, array: true
     t.datetime "created_at",                      null: false
     t.datetime "updated_at",                      null: false
     t.index ["assignment_spe_calculation_uuid", "algorithm_name"], name: "index_alg_a_spe_calc_on_a_spe_calc_uuid_and_alg_name", unique: true, using: :btree
@@ -86,32 +56,22 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "uuid",                          null: false
     t.uuid     "student_clue_calculation_uuid", null: false
     t.citext   "algorithm_name",                null: false
+    t.jsonb    "clue_data",                     null: false
+    t.uuid     "student_uuid",                  null: false
     t.decimal  "clue_value",                    null: false
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
     t.index ["student_clue_calculation_uuid", "algorithm_name"], name: "index_alg_s_clue_calc_on_s_clue_calc_uuid_and_alg_name", unique: true, using: :btree
+    t.index ["student_uuid", "clue_value"], name: "index_alg_s_clue_calc_on_s_uuid_and_clue_val", using: :btree
     t.index ["uuid"], name: "index_algorithm_student_clue_calculations_on_uuid", unique: true, using: :btree
-  end
-
-  create_table "algorithm_student_pe_calculation_exercises", force: :cascade do |t|
-    t.uuid     "uuid",                                  null: false
-    t.uuid     "algorithm_student_pe_calculation_uuid", null: false
-    t.uuid     "exercise_uuid",                         null: false
-    t.uuid     "student_uuid",                          null: false
-    t.datetime "created_at",                            null: false
-    t.datetime "updated_at",                            null: false
-    t.index ["algorithm_student_pe_calculation_uuid", "exercise_uuid"], name: "index_alg_s_pe_calc_ex_on_alg_s_pe_calc_uuid_and_ex_uuid", unique: true, using: :btree
-    t.index ["exercise_uuid"], name: "index_alg_s_pe_calc_ex_on_ex_uuid", using: :btree
-    t.index ["student_uuid", "exercise_uuid"], name: "index_alg_s_pe_calc_ex_on_s_uuid_and_ex_uuid", unique: true, using: :btree
-    t.index ["uuid"], name: "index_algorithm_student_pe_calculation_exercises_on_uuid", unique: true, using: :btree
   end
 
   create_table "algorithm_student_pe_calculations", force: :cascade do |t|
     t.uuid     "uuid",                        null: false
     t.uuid     "student_pe_calculation_uuid", null: false
     t.citext   "algorithm_name",              null: false
-    t.boolean  "needs_recalculation",         null: false
     t.uuid     "student_uuid",                null: false
+    t.uuid     "exercise_uuids",              null: false, array: true
     t.datetime "created_at",                  null: false
     t.datetime "updated_at",                  null: false
     t.index ["student_pe_calculation_uuid", "algorithm_name"], name: "index_alg_s_pe_calc_on_s_pe_calc_uuid_and_alg_name", unique: true, using: :btree
@@ -122,7 +82,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "uuid",                          null: false
     t.uuid     "teacher_clue_calculation_uuid", null: false
     t.citext   "algorithm_name",                null: false
-    t.decimal  "clue_value",                    null: false
+    t.jsonb    "clue_data",                     null: false
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
     t.index ["teacher_clue_calculation_uuid", "algorithm_name"], name: "index_alg_t_clue_calc_on_t_clue_calc_uuid_and_alg_name", unique: true, using: :btree
@@ -141,6 +101,21 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.index ["uuid"], name: "index_assigned_exercises_on_uuid", unique: true, using: :btree
   end
 
+  create_table "assignment_pe_calculation_exercises", force: :cascade do |t|
+    t.uuid     "uuid",                           null: false
+    t.uuid     "assignment_pe_calculation_uuid", null: false
+    t.uuid     "exercise_uuid",                  null: false
+    t.uuid     "assignment_uuid",                null: false
+    t.uuid     "student_uuid",                   null: false
+    t.datetime "created_at",                     null: false
+    t.datetime "updated_at",                     null: false
+    t.index ["assignment_pe_calculation_uuid", "exercise_uuid"], name: "index_a_pe_calc_ex_on_alg_a_pe_calc_uuid_and_ex_uuid", unique: true, using: :btree
+    t.index ["assignment_uuid"], name: "index_assignment_pe_calculation_exercises_on_assignment_uuid", using: :btree
+    t.index ["exercise_uuid"], name: "index_assignment_pe_calculation_exercises_on_exercise_uuid", using: :btree
+    t.index ["student_uuid", "exercise_uuid"], name: "index_a_pe_calc_ex_on_s_uuid_and_ex_uuid", using: :btree
+    t.index ["uuid"], name: "index_assignment_pe_calculation_exercises_on_uuid", unique: true, using: :btree
+  end
+
   create_table "assignment_pe_calculations", force: :cascade do |t|
     t.uuid     "uuid",                null: false
     t.uuid     "ecosystem_uuid",      null: false
@@ -155,6 +130,21 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.index ["ecosystem_uuid"], name: "index_assignment_pe_calculations_on_ecosystem_uuid", using: :btree
     t.index ["student_uuid"], name: "index_assignment_pe_calculations_on_student_uuid", using: :btree
     t.index ["uuid"], name: "index_assignment_pe_calculations_on_uuid", unique: true, using: :btree
+  end
+
+  create_table "assignment_spe_calculation_exercises", force: :cascade do |t|
+    t.uuid     "uuid",                            null: false
+    t.uuid     "assignment_spe_calculation_uuid", null: false
+    t.uuid     "exercise_uuid",                   null: false
+    t.uuid     "assignment_uuid",                 null: false
+    t.uuid     "student_uuid",                    null: false
+    t.datetime "created_at",                      null: false
+    t.datetime "updated_at",                      null: false
+    t.index ["assignment_spe_calculation_uuid", "exercise_uuid"], name: "index_a_spe_calc_ex_on_alg_a_spe_calc_uuid_and_ex_uuid", unique: true, using: :btree
+    t.index ["assignment_uuid"], name: "index_assignment_spe_calculation_exercises_on_assignment_uuid", using: :btree
+    t.index ["exercise_uuid"], name: "index_assignment_spe_calculation_exercises_on_exercise_uuid", using: :btree
+    t.index ["student_uuid", "exercise_uuid"], name: "index_a_spe_calc_ex_on_s_uuid_and_ex_uuid", using: :btree
+    t.index ["uuid"], name: "index_assignment_spe_calculation_exercises_on_uuid", unique: true, using: :btree
   end
 
   create_table "assignment_spe_calculations", force: :cascade do |t|
@@ -341,6 +331,19 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.index ["ecosystem_uuid"], name: "index_student_clue_calculations_on_ecosystem_uuid", using: :btree
     t.index ["student_uuid", "book_container_uuid"], name: "index_s_clue_calc_on_s_uuid_and_bc_uuid", unique: true, using: :btree
     t.index ["uuid"], name: "index_student_clue_calculations_on_uuid", unique: true, using: :btree
+  end
+
+  create_table "student_pe_calculation_exercises", force: :cascade do |t|
+    t.uuid     "uuid",                        null: false
+    t.uuid     "student_pe_calculation_uuid", null: false
+    t.uuid     "exercise_uuid",               null: false
+    t.uuid     "student_uuid",                null: false
+    t.datetime "created_at",                  null: false
+    t.datetime "updated_at",                  null: false
+    t.index ["exercise_uuid"], name: "index_student_pe_calculation_exercises_on_exercise_uuid", using: :btree
+    t.index ["student_pe_calculation_uuid", "exercise_uuid"], name: "index_s_pe_calc_ex_on_alg_s_pe_calc_uuid_and_ex_uuid", unique: true, using: :btree
+    t.index ["student_uuid", "exercise_uuid"], name: "index_s_pe_calc_ex_on_s_uuid_and_ex_uuid", using: :btree
+    t.index ["uuid"], name: "index_student_pe_calculation_exercises_on_uuid", unique: true, using: :btree
   end
 
   create_table "student_pe_calculations", force: :cascade do |t|
