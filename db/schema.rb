@@ -20,10 +20,14 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "uuid",                                     null: false
     t.uuid     "algorithm_assignment_pe_calculation_uuid", null: false
     t.uuid     "exercise_uuid",                            null: false
+    t.uuid     "assignment_uuid",                          null: false
+    t.uuid     "student_uuid",                             null: false
     t.datetime "created_at",                               null: false
     t.datetime "updated_at",                               null: false
     t.index ["algorithm_assignment_pe_calculation_uuid", "exercise_uuid"], name: "index_alg_a_pe_calc_ex_on_alg_a_pe_calc_uuid_and_ex_uuid", unique: true, using: :btree
+    t.index ["assignment_uuid"], name: "index_alg_a_pe_calc_ex_on_a_uuid", using: :btree
     t.index ["exercise_uuid"], name: "index_alg_a_pe_calc_ex_on_ex_uuid", using: :btree
+    t.index ["student_uuid", "exercise_uuid"], name: "index_alg_a_pe_calc_ex_on_s_uuid_and_ex_uuid", unique: true, using: :btree
     t.index ["uuid"], name: "index_algorithm_assignment_pe_calculation_exercises_on_uuid", unique: true, using: :btree
   end
 
@@ -31,6 +35,9 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "uuid",                           null: false
     t.uuid     "assignment_pe_calculation_uuid", null: false
     t.citext   "algorithm_name",                 null: false
+    t.boolean  "needs_recalculation",            null: false
+    t.uuid     "assignment_uuid",                null: false
+    t.uuid     "student_uuid",                   null: false
     t.datetime "created_at",                     null: false
     t.datetime "updated_at",                     null: false
     t.index ["assignment_pe_calculation_uuid", "algorithm_name"], name: "index_alg_a_pe_calc_on_a_pe_calc_uuid_and_alg_name", unique: true, using: :btree
@@ -41,10 +48,14 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "uuid",                                      null: false
     t.uuid     "algorithm_assignment_spe_calculation_uuid", null: false
     t.uuid     "exercise_uuid",                             null: false
+    t.uuid     "assignment_uuid",                           null: false
+    t.uuid     "student_uuid",                              null: false
     t.datetime "created_at",                                null: false
     t.datetime "updated_at",                                null: false
     t.index ["algorithm_assignment_spe_calculation_uuid", "exercise_uuid"], name: "index_alg_a_spe_calc_ex_on_alg_a_spe_calc_uuid_and_ex_uuid", unique: true, using: :btree
+    t.index ["assignment_uuid"], name: "index_alg_a_spe_calc_ex_on_a_uuid", using: :btree
     t.index ["exercise_uuid"], name: "index_alg_a_spe_calc_ex_on_ex_uuid", using: :btree
+    t.index ["student_uuid", "exercise_uuid"], name: "index_alg_a_spe_calc_ex_on_s_uuid_and_ex_uuid", unique: true, using: :btree
     t.index ["uuid"], name: "index_algorithm_assignment_spe_calculation_exercises_on_uuid", unique: true, using: :btree
   end
 
@@ -52,6 +63,9 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "uuid",                            null: false
     t.uuid     "assignment_spe_calculation_uuid", null: false
     t.citext   "algorithm_name",                  null: false
+    t.boolean  "needs_recalculation",             null: false
+    t.uuid     "assignment_uuid",                 null: false
+    t.uuid     "student_uuid",                    null: false
     t.datetime "created_at",                      null: false
     t.datetime "updated_at",                      null: false
     t.index ["assignment_spe_calculation_uuid", "algorithm_name"], name: "index_alg_a_spe_calc_on_a_spe_calc_uuid_and_alg_name", unique: true, using: :btree
@@ -83,10 +97,12 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "uuid",                                  null: false
     t.uuid     "algorithm_student_pe_calculation_uuid", null: false
     t.uuid     "exercise_uuid",                         null: false
+    t.uuid     "student_uuid",                          null: false
     t.datetime "created_at",                            null: false
     t.datetime "updated_at",                            null: false
     t.index ["algorithm_student_pe_calculation_uuid", "exercise_uuid"], name: "index_alg_s_pe_calc_ex_on_alg_s_pe_calc_uuid_and_ex_uuid", unique: true, using: :btree
     t.index ["exercise_uuid"], name: "index_alg_s_pe_calc_ex_on_ex_uuid", using: :btree
+    t.index ["student_uuid", "exercise_uuid"], name: "index_alg_s_pe_calc_ex_on_s_uuid_and_ex_uuid", unique: true, using: :btree
     t.index ["uuid"], name: "index_algorithm_student_pe_calculation_exercises_on_uuid", unique: true, using: :btree
   end
 
@@ -94,6 +110,8 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "uuid",                        null: false
     t.uuid     "student_pe_calculation_uuid", null: false
     t.citext   "algorithm_name",              null: false
+    t.boolean  "needs_recalculation",         null: false
+    t.uuid     "student_uuid",                null: false
     t.datetime "created_at",                  null: false
     t.datetime "updated_at",                  null: false
     t.index ["student_pe_calculation_uuid", "algorithm_name"], name: "index_alg_s_pe_calc_on_s_pe_calc_uuid_and_alg_name", unique: true, using: :btree

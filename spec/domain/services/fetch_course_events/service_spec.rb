@@ -12,8 +12,12 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                 .and not_change { Student.count }
                                 .and not_change { Assignment.count }
                                 .and not_change { AssignedExercise.count }
-                                .and not_change { AssignmentSpe.count }
-                                .and not_change { AssignmentPe.count }
+                                .and not_change { AssignmentSpeCalculation.count }
+                                .and not_change { AssignmentPeCalculation.count }
+                                .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                .and not_change { AlgorithmAssignmentPeCalculation.count }
+                                .and not_change { AlgorithmAssignmentSpeCalculationExercise.count }
+                                .and not_change { AlgorithmAssignmentPeCalculationExercise.count }
                                 .and not_change { Response.count }
                                 .and not_change { ResponseClue.count }
     end
@@ -104,8 +108,16 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     .and not_change { Student.count }
                                     .and not_change { Assignment.count }
                                     .and not_change { AssignedExercise.count }
-                                    .and not_change { AssignmentSpe.count }
-                                    .and not_change { AssignmentPe.count }
+                                    .and not_change { AssignmentSpeCalculation.count }
+                                    .and not_change { AssignmentPeCalculation.count }
+                                    .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                    .and not_change { AlgorithmAssignmentPeCalculation.count }
+                                    .and(not_change do
+                                      AlgorithmAssignmentSpeCalculationExercise.count
+                                    end)
+                                    .and(not_change do
+                                      AlgorithmAssignmentPeCalculationExercise.count
+                                    end)
                                     .and not_change { Response.count }
                                     .and not_change { ResponseClue.count }
                                     .and(change     do
@@ -156,8 +168,16 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     .and not_change { Student.count }
                                     .and not_change { Assignment.count }
                                     .and not_change { AssignedExercise.count }
-                                    .and not_change { AssignmentSpe.count }
-                                    .and not_change { AssignmentPe.count }
+                                    .and not_change { AssignmentSpeCalculation.count }
+                                    .and not_change { AssignmentPeCalculation.count }
+                                    .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                    .and not_change { AlgorithmAssignmentPeCalculation.count }
+                                    .and(not_change do
+                                      AlgorithmAssignmentSpeCalculationExercise.count
+                                    end)
+                                    .and(not_change do
+                                      AlgorithmAssignmentPeCalculationExercise.count
+                                    end)
                                     .and not_change { Response.count }
                                     .and not_change { ResponseClue.count }
                                     .and(change     do
@@ -206,8 +226,14 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
                                   .and not_change { AssignedExercise.count }
-                                  .and not_change { AssignmentSpe.count }
-                                  .and not_change { AssignmentPe.count }
+                                  .and not_change { AssignmentSpeCalculation.count }
+                                  .and not_change { AssignmentPeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentPeCalculation.count }
+                                  .and(not_change do
+                                    AlgorithmAssignmentSpeCalculationExercise.count
+                                  end)
+                                  .and not_change { AlgorithmAssignmentPeCalculationExercise.count }
                                   .and not_change { Response.count }
                                   .and change     { ResponseClue.count }.by(-num_response_clues)
                                   .and(change     do
@@ -272,8 +298,14 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { Student.count }.by(num_students)
                                   .and not_change { Assignment.count }
                                   .and not_change { AssignedExercise.count }
-                                  .and not_change { AssignmentSpe.count }
-                                  .and not_change { AssignmentPe.count }
+                                  .and not_change { AssignmentSpeCalculation.count }
+                                  .and not_change { AssignmentPeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentPeCalculation.count }
+                                  .and(not_change do
+                                    AlgorithmAssignmentSpeCalculationExercise.count
+                                  end)
+                                  .and not_change { AlgorithmAssignmentPeCalculationExercise.count }
                                   .and not_change { Response.count }
                                   .and not_change { ResponseClue.count }
                                   .and(change     do
@@ -323,8 +355,14 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
                                   .and not_change { AssignedExercise.count }
-                                  .and not_change { AssignmentSpe.count }
-                                  .and not_change { AssignmentPe.count }
+                                  .and not_change { AssignmentSpeCalculation.count }
+                                  .and not_change { AssignmentPeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentPeCalculation.count }
+                                  .and(not_change do
+                                    AlgorithmAssignmentSpeCalculationExercise.count
+                                  end)
+                                  .and not_change { AlgorithmAssignmentPeCalculationExercise.count }
                                   .and not_change { Response.count }
                                   .and not_change { ResponseClue.count }
                                   .and(change     do
@@ -379,8 +417,14 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
                                   .and not_change { AssignedExercise.count }
-                                  .and not_change { AssignmentSpe.count }
-                                  .and not_change { AssignmentPe.count }
+                                  .and not_change { AssignmentSpeCalculation.count }
+                                  .and not_change { AssignmentPeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentPeCalculation.count }
+                                  .and(not_change do
+                                    AlgorithmAssignmentSpeCalculationExercise.count
+                                  end)
+                                  .and not_change { AlgorithmAssignmentPeCalculationExercise.count }
                                   .and not_change { Response.count }
                                   .and not_change { ResponseClue.count }
                                   .and(change     do
@@ -457,18 +501,49 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                         goal_num_tutor_assigned_pes: num_assigned_exercises,
                                         pes_are_assigned: true
       end
-      let!(:other_assignment_spes) do
+
+      let!(:other_assignment_spe_calculation) do
+        FactoryGirl.create :assignment_spe_calculation,
+                           assignment_uuid: other_assignment.uuid,
+                           student_uuid: student_uuid,
+                           exercise_uuids: assigned_exercises.map { |ex| ex.fetch(:exercise_uuid) }
+      end
+      let!(:other_assignment_algorithm_spe_calculation) do
+        FactoryGirl.create :algorithm_assignment_spe_calculation,
+                           assignment_spe_calculation_uuid: other_assignment_spe_calculation.uuid,
+                           assignment_uuid: other_assignment.uuid,
+                           student_uuid: student_uuid
+      end
+      let!(:other_assignment_algorithm_spe_calculation_exercises) do
         assigned_exercises.map do |assigned_exercise|
-          FactoryGirl.create :assignment_spe, assignment_uuid: other_assignment.uuid,
-                                              student_uuid: student_uuid,
-                                              exercise_uuid: assigned_exercise.fetch(:exercise_uuid)
+          FactoryGirl.create :algorithm_assignment_spe_calculation_exercise,
+                             algorithm_assignment_spe_calculation_uuid:
+                               other_assignment_algorithm_spe_calculation.uuid,
+                             assignment_uuid: other_assignment.uuid,
+                             student_uuid: student_uuid,
+                             exercise_uuid: assigned_exercise.fetch(:exercise_uuid)
         end
       end
-      let!(:other_assignment_pes) do
+      let!(:other_assignment_pe_calculation) do
+        FactoryGirl.create :assignment_pe_calculation,
+                           assignment_uuid: other_assignment.uuid,
+                           student_uuid: student_uuid,
+                           exercise_uuids: assigned_exercises.map { |ex| ex.fetch(:exercise_uuid) }
+      end
+      let!(:other_assignment_algorithm_pe_calculation) do
+        FactoryGirl.create :algorithm_assignment_pe_calculation,
+                           assignment_pe_calculation_uuid: other_assignment_pe_calculation.uuid,
+                           assignment_uuid: other_assignment.uuid,
+                           student_uuid: student_uuid
+      end
+      let!(:other_assignment_pe_calculation_exercises) do
         assigned_exercises.map do |assigned_exercise|
-          FactoryGirl.create :assignment_pe, assignment_uuid: other_assignment.uuid,
-                                             student_uuid: student_uuid,
-                                             exercise_uuid: assigned_exercise.fetch(:exercise_uuid)
+          FactoryGirl.create :algorithm_assignment_pe_calculation_exercise,
+                             algorithm_assignment_pe_calculation_uuid:
+                               other_assignment_algorithm_pe_calculation.uuid,
+                             assignment_uuid: other_assignment.uuid,
+                             student_uuid: student_uuid,
+                             exercise_uuid: assigned_exercise.fetch(:exercise_uuid)
         end
       end
 
@@ -484,19 +559,19 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and(change     do
                                     AssignedExercise.count
                                   end.by(num_assigned_exercises))
+                                  .and not_change { AssignmentSpeCalculation.count }
+                                  .and not_change { AssignmentPeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and(change     do
-                                    AssignmentSpe.count
+                                    AlgorithmAssignmentSpeCalculationExercise.count
                                   end.by(-num_assigned_exercises))
                                   .and(change     do
-                                    AssignmentPe.count
+                                    AlgorithmAssignmentPeCalculationExercise.count
                                   end.by(-num_assigned_exercises))
                                   .and not_change { ResponseClue.count }
-                                  .and(change     do
-                                    other_assignment.reload.spes_are_assigned
-                                  end.from(true).to(false))
-                                  .and(change     do
-                                    other_assignment.pes_are_assigned
-                                  end.from(true).to(false))
+                                  .and not_change { other_assignment.reload.spes_are_assigned }
+                                  .and not_change { other_assignment.reload.pes_are_assigned }
                                   .and not_change { Response.count }
                                   .and(change     do
                                     course.reload.sequence_number
@@ -519,6 +594,11 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         expect(assignment.spes_are_assigned).to eq spes_are_assigned
         expect(assignment.goal_num_tutor_assigned_pes).to eq goal_num_tutor_assigned_pes
         expect(assignment.pes_are_assigned).to eq pes_are_assigned
+      end
+
+      xcontext 'with an existing assignment with SPE/PE calculations and associated records' do
+        it 'updates the existing assignment' do
+        end
       end
     end
 
@@ -552,8 +632,14 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { Student.count }
                                   .and not_change { Assignment.count }
                                   .and not_change { AssignedExercise.count }
-                                  .and not_change { AssignmentSpe.count }
-                                  .and not_change { AssignmentPe.count }
+                                  .and not_change { AssignmentSpeCalculation.count }
+                                  .and not_change { AssignmentPeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                  .and not_change { AlgorithmAssignmentPeCalculation.count }
+                                  .and(not_change do
+                                    AlgorithmAssignmentSpeCalculationExercise.count
+                                  end)
+                                  .and not_change { AlgorithmAssignmentPeCalculationExercise.count }
                                   .and change     { Response.count }.by(1)
                                   .and change     { ResponseClue.count }.by(-1)
                                   .and(change     do

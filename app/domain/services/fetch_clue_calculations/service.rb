@@ -1,10 +1,28 @@
 class Services::FetchClueCalculations::Service
   def process(algorithm_name:)
-    algorithm_clue_calculation_uuids =
-      AlgorithmClueCalculation.where(algorithm_name: algorithm_name).pluck(:clue_calculation_uuid)
-    clue_calculations = ClueCalculation.where.not(uuid: algorithm_clue_calculation_uuids)
-                                       .limit(1000)
+    scc = StudentClueCalculation.arel_table
+    ascc = AlgorithmStudentClueCalculation.arel_table
+    scc_query = scc[:uuid].eq(ascc[:student_clue_calculation_uuid]).and(
+      ascc[:algorithm_name].eq(algorithm_name)
+    )
+    scc_join = "LEFT OUTER JOIN algorithm_student_clue_calculations ON #{scc_query.to_sql}"
+    student_clue_calculations = StudentClueCalculation
+                                  .joins(scc_join)
+                                  .where(algorithm_student_clue_calculations: {id: nil})
+                                  .limit(1000)
 
+    tcc = TeacherClueCalculation.arel_table
+    atcc = AlgorithmTeacherClueCalculation.arel_table
+    tcc_query = tcc[:uuid].eq(atcc[:teacher_clue_calculation_uuid]).and(
+      atcc[:algorithm_name].eq(algorithm_name)
+    )
+    tcc_join = "LEFT OUTER JOIN algorithm_teacher_clue_calculations ON #{tcc_query.to_sql}"
+    teacher_clue_calculations = TeacherClueCalculation
+                                  .joins(tcc_join)
+                                  .where(algorithm_teacher_clue_calculations: {id: nil})
+                                  .limit(1000)
+
+    clue_calculations = student_clue_calculations + teacher_clue_calculations
     clue_calculation_responses = clue_calculations.map do |clue_calculation|
       {
         calculation_uuid: clue_calculation.uuid,

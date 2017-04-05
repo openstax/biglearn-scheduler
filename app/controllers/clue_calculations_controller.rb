@@ -72,7 +72,7 @@ class ClueCalculationsController < JsonApiController
             'additionalProperties': false
           },
           'minItems': 0,
-          'maxItems': 1000
+          'maxItems': 2000
         },
       },
       'required': ['clue_calculations'],
@@ -101,7 +101,7 @@ class ClueCalculationsController < JsonApiController
             'additionalProperties': false
           },
           'minItems': 1,
-          'maxItems': 1000
+          'maxItems': 2000
         }
       },
       'required': ['clue_calculation_updates'],
@@ -129,7 +129,7 @@ class ClueCalculationsController < JsonApiController
             'additionalProperties': false
           },
           'minItems': 0,
-          'maxItems': 1000
+          'maxItems': 2000
         }
       },
       'required': ['clue_calculation_update_responses'],

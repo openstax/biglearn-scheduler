@@ -70,7 +70,7 @@ class ExerciseCalculationsController < JsonApiController
             'additionalProperties': false
           },
           'minItems': 0,
-          'maxItems': 1000
+          'maxItems': 3000
         },
       },
       'required': ['exercise_calculations'],
@@ -102,7 +102,7 @@ class ExerciseCalculationsController < JsonApiController
             'additionalProperties': false
           },
           'minItems': 1,
-          'maxItems': 1000
+          'maxItems': 3000
         }
       },
       'required': ['exercise_calculation_updates'],
@@ -130,7 +130,7 @@ class ExerciseCalculationsController < JsonApiController
             'additionalProperties': false
           },
           'minItems': 0,
-          'maxItems': 1000
+          'maxItems': 3000
         }
       },
       'required': ['exercise_calculation_update_responses'],
