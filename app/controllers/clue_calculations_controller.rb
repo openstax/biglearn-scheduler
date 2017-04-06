@@ -59,16 +59,26 @@ class ClueCalculationsController < JsonApiController
             'properties': {
               'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
               'ecosystem_uuid': {'$ref': '#standard_definitions/uuid'},
+              'student_uuids': {
+                'type': 'array',
+                'items': {'$ref': '#standard_definitions/uuid'}
+              },
               'exercise_uuids': {
                 'type': 'array',
                 'items': {'$ref': '#standard_definitions/uuid'}
               },
-              'student_uuids': {
+              'response_uuids': {
                 'type': 'array',
                 'items': {'$ref': '#standard_definitions/uuid'}
               }
             },
-            'required': ['calculation_uuid', 'ecosystem_uuid', 'exercise_uuids', 'student_uuids'],
+            'required': [
+              'calculation_uuid',
+              'ecosystem_uuid',
+              'student_uuids',
+              'exercise_uuids',
+              'response_uuids'
+            ],
             'additionalProperties': false
           },
           'minItems': 0,

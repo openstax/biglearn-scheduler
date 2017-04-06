@@ -1,17 +1,16 @@
 require 'rails_helper'
 
-RSpec.describe Services::UpdateClues::Service, type: :service do
+RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
   subject { described_class.new }
 
   context 'with no Responses' do
     it 'does not update any CLUes' do
-      expect(OpenStax::Biglearn::Api).to receive(:update_student_clues).with([])
-      expect(OpenStax::Biglearn::Api).to receive(:update_teacher_clues).with([])
-
-      expect { subject.process }.to  not_change { Response.count     }
-                                .and not_change { ResponseClue.count }
-                                .and not_change { StudentClue.count  }
-                                .and not_change { StudentPe.count    }
+      expect { subject.process }.to  not_change { Response.count                        }
+                                .and not_change { ResponseClue.count                    }
+                                .and not_change { StudentClueCalculation.count          }
+                                .and not_change { TeacherClueCalculation.count          }
+                                .and not_change { AlgorithmStudentClueCalculation.count }
+                                .and not_change { AlgorithmTeacherClueCalculation.count }
     end
   end
 
@@ -94,15 +93,13 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
     after(:all)  { DatabaseCleaner.clean }
 
     it 'marks the Response objects as processed' do
-      expect(OpenStax::Biglearn::Api).to receive(:update_student_clues).with([])
-      expect(OpenStax::Biglearn::Api).to receive(:update_teacher_clues).with([])
-
       expect do
         subject.process
       end.to  not_change { Response.count                     }
          .and change     { ResponseClue.count                 }.by(@unprocessed_responses.size)
-         .and not_change { StudentClue.count                  }
-         .and not_change { StudentPe.count                    }
+         .and not_change { StudentClueCalculation.count       }
+         .and not_change { TeacherClueCalculation.count       }
+         .and not_change { StudentPeCalculation.count         }
          .and not_change { @student_1.reload.pes_are_assigned }
          .and not_change { @student_2.reload.pes_are_assigned }
 
@@ -181,16 +178,16 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
                                                 exercise_group_uuid: @exercise_5.group_uuid,
                                                 book_container_uuids: book_container_uuids_2
 
-        FactoryGirl.create :student_clue, student_uuid: @student_1.uuid,
-                                          book_container_uuid: @ep_1.book_container_uuid,
-                                          value: 1
-        FactoryGirl.create :student_clue, student_uuid: @student_2.uuid,
-                                          book_container_uuid: @ep_2.book_container_uuid,
-                                          value: 1
+        FactoryGirl.create :student_clue_calculation,
+                           student_uuid: @student_1.uuid,
+                           book_container_uuid: @ep_1.book_container_uuid
+        FactoryGirl.create :teacher_clue_calculation,
+                           book_container_uuid: @ep_2.book_container_uuid,
+                           course_container_uuid: @cc_1.uuid,
+                           student_uuids: [ @student_1.uuid, @student_2.uuid ]
 
-        5.times { FactoryGirl.create :student_pe, student_uuid: @student_1.uuid }
-        5.times { FactoryGirl.create :student_pe, student_uuid: @student_2.uuid }
-        @student_1.update_attribute :pes_are_assigned, true
+        FactoryGirl.create :student_pe_calculation, student_uuid: @student_2.uuid
+        @student_1.update_attribute :pes_are_assigned, false
         @student_2.update_attribute :pes_are_assigned, true
 
         # Exclude @response_8 from the Student CLUe (but not the Teacher CLUe)
@@ -202,92 +199,24 @@ RSpec.describe Services::UpdateClues::Service, type: :service do
 
       after(:all)  { DatabaseCleaner.clean }
 
-      it 'sends the correct updated CLUes to biglearn-api' do
+      it 'updates the StudentClueCalculation and TeacherClueCalculation records' do
         student_uuids = [ @student_1.uuid, @student_2.uuid ]
         book_container_uuids = [ @ep_1.book_container_uuid, @ep_2.book_container_uuid ]
 
-        expect(OpenStax::Biglearn::Api).to receive(:update_student_clues) do |requests|
-          expect(requests.size).to eq 3
-
-          requests.each do |request|
-            expect(request.fetch :student_uuid).to be_in student_uuids
-            expect(request.fetch :book_container_uuid).to be_in book_container_uuids
-          end
-
-          clue_data_1 = requests.find do |request|
-            request.fetch(:student_uuid) == @student_1.uuid &&
-            request.fetch(:book_container_uuid) == @ep_2.book_container_uuid
-          end.fetch :clue_data
-          expect(clue_data_1).to(
-            eq subject.send(:calculate_clue_data, [ true, true ])
-                      .merge(ecosystem_uuid: @ecosystem_2.uuid)
-          )
-
-          clue_data_2 = requests.find do |request|
-            request.fetch(:student_uuid) == @student_2.uuid &&
-            request.fetch(:book_container_uuid) == @ep_1.book_container_uuid
-          end.fetch :clue_data
-          expect(clue_data_2).to(
-            eq subject.send(:calculate_clue_data, [ false, true, true ])
-                      .merge(ecosystem_uuid: @ecosystem_2.uuid)
-          )
-
-          clue_data_3 = requests.find do |request|
-            request.fetch(:student_uuid) == @student_2.uuid &&
-            request.fetch(:book_container_uuid) == @ep_2.book_container_uuid
-          end.fetch :clue_data
-          expect(clue_data_3).to(
-            eq subject.send(:calculate_clue_data, [ true ])
-                      .merge(ecosystem_uuid: @ecosystem_2.uuid)
-          )
-        end
-
-        expect(OpenStax::Biglearn::Api).to receive(:update_teacher_clues) do |requests|
-          expect(requests.size).to eq 2
-
-          requests.each do |request|
-            expect(request.fetch :course_container_uuid).to eq @cc_1.uuid
-            expect(request.fetch :book_container_uuid).to be_in book_container_uuids
-          end
-
-          clue_data_1 = requests.find do |request|
-            request.fetch(:book_container_uuid) == @ep_1.book_container_uuid
-          end.fetch :clue_data
-          expect(clue_data_1).to(
-            eq subject.send(:calculate_clue_data, [ true, false, true, false, true, true ])
-                      .merge(ecosystem_uuid: @ecosystem_2.uuid)
-          )
-
-          clue_data_2 = requests.find do |request|
-            request.fetch(:book_container_uuid) == @ep_2.book_container_uuid
-          end.fetch :clue_data
-          expect(clue_data_2).to(
-            eq subject.send(:calculate_clue_data, [ true, true, true, false ])
-                      .merge(ecosystem_uuid: @ecosystem_2.uuid)
-          )
-        end
-
-        # Student 1 has no new responses on the first book container,
-        # so his PracticeWorstAreasExercises are not cleared and he gets no StudentClue there
-        # Not enough responses on the second book container,
-        # so StudentClues there are not created there either
         expect do
           subject.process
         end.to  not_change { Response.count                     }
            .and change     { ResponseClue.count                 }.by(@unprocessed_responses.size)
-           .and change     { StudentClue.count                  }.by(1)
-           .and change     { StudentPe.count                    }.by(-5)
+           .and change     { StudentClueCalculation.count       }.by(3)
+           .and change     { TeacherClueCalculation.count       }.by(1)
+           .and not_change { StudentPeCalculation.count         }
            .and not_change { @student_1.reload.pes_are_assigned }
-           .and change     { @student_2.reload.pes_are_assigned }.from(true).to(false)
+           .and not_change { @student_2.reload.pes_are_assigned }
 
         new_response_clue_uuids = ResponseClue.order(:created_at)
                                               .last(@unprocessed_responses.size)
                                               .map(&:uuid)
         expect(@unprocessed_responses.map(&:uuid)).to match_array(new_response_clue_uuids)
-
-        new_student_clue = StudentClue.order(:created_at).last
-        expect(new_student_clue.student_uuid).to eq @student_2.uuid
-        expect(new_student_clue.book_container_uuid).to eq @ep_1.book_container_uuid
       end
     end
   end

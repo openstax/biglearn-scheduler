@@ -4,5 +4,6 @@ FactoryGirl.define do
     teacher_clue_calculation_uuid { SecureRandom.uuid }
     algorithm_name                { [ 'local_query', 'sparfa' ].sample }
     clue_data                     { { 'most_likely' => rand } }
+    sent_to_api_server            { [true, false].sample }
   end
 end

@@ -20,6 +20,7 @@ class Services::UpdateClueCalculations::Service
           student_clue_calculation_uuid: calculation_uuid,
           algorithm_name: algorithm_name,
           clue_data: clue_data,
+          sent_to_api_server: false,
           student_uuid: student_clue_calculation.student_uuid,
           clue_value: clue_data.fetch('most_likely')
         )
@@ -30,7 +31,8 @@ class Services::UpdateClueCalculations::Service
           uuid: SecureRandom.uuid,
           teacher_clue_calculation_uuid: calculation_uuid,
           algorithm_name: algorithm_name,
-          clue_data: clue_data
+          clue_data: clue_data,
+          sent_to_api_server: false
         )
 
         { calculation_status: 'calculation_accepted' }

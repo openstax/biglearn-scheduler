@@ -1,13 +1,14 @@
 class CreateAlgorithmStudentPeCalculations < ActiveRecord::Migration[5.0]
   def change
     create_table :algorithm_student_pe_calculations do |t|
-      t.uuid   :uuid,                        null: false, index: { unique: true }
-      t.uuid   :student_pe_calculation_uuid, null: false
-      t.citext :algorithm_name,              null: false
-      t.uuid   :student_uuid,                null: false
-      t.uuid   :exercise_uuids,              null: false, array: true
+      t.uuid    :uuid,                        null: false, index: { unique: true }
+      t.uuid    :student_pe_calculation_uuid, null: false
+      t.citext  :algorithm_name,              null: false
+      t.uuid    :student_uuid,                null: false
+      t.uuid    :exercise_uuids,              null: false, array: true
+      t.boolean :sent_to_api_server,          null: false, index: true
 
-      t.timestamps                           null: false
+      t.timestamps                            null: false
     end
 
     add_index :algorithm_student_pe_calculations,

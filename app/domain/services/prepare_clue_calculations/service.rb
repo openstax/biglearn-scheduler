@@ -1,10 +1,9 @@
-class Services::UpdateClues::Service
+class Services::PrepareClueCalculations::Service
   BATCH_SIZE = 1000
-  Z_ALPHA = 0.68
 
   def process
     start_time = Time.now
-    Rails.logger.tagged 'UpdateClues' do |logger|
+    Rails.logger.tagged 'PrepareClueCalculations' do |logger|
       logger.info { "Started at #{start_time}" }
     end
 
@@ -24,21 +23,14 @@ class Services::UpdateClues::Service
 
         # Build some hashes to minimize the number of queries
 
-        # Map the students to courses, course containers and worst CLUes
+        # Map the students to courses and course containers
         student_uuids = responses.map(&:student_uuid)
         course_uuid_by_student_uuid = {}
         course_container_uuids_by_student_uuids = {}
-        worst_clue_book_container_uuids_by_student_uuids = {}
-        worst_clue_values_by_student_uuids = {}
-        Student.where(uuid: student_uuids).preload(:worst_student_clues).each do |student|
+        Student.where(uuid: student_uuids).each do |student|
           uuid = student.uuid
           course_uuid_by_student_uuid[uuid] = student.course_uuid
           course_container_uuids_by_student_uuids[uuid] = student.course_container_uuids
-          worst_student_clues = student.worst_student_clues
-          worst_clue_book_container_uuids = worst_student_clues.map(&:book_container_uuid)
-          worst_clue_book_container_uuids_by_student_uuids[uuid] = worst_clue_book_container_uuids
-          worst_clue_values = worst_student_clues.map(&:value)
-          worst_clue_values_by_student_uuids[uuid] = worst_clue_values
         end
 
         # Map the course containers back to students
@@ -110,7 +102,7 @@ class Services::UpdateClues::Service
                                                        .pluck(:uuid, :group_uuid)
                                                        .to_h
 
-        trial_uuids = responses.map(&:uuid)
+        trial_uuids = responses.map(&:trial_uuid)
         assignment_uuid_by_trial_uuid = AssignedExercise.where(uuid: trial_uuids)
                                                         .pluck(:uuid, :assignment_uuid)
                                                         .to_h
@@ -161,15 +153,19 @@ class Services::UpdateClues::Service
         # Map student_uuids and exercise_group_uuids to correctness information
         # Take only the latest answer for each exercise_group_uuid
         # Mark responses found here as used in CLUe calculations
-        student_responses_map = Hash.new { |hash, key| hash[key] = {} }
-        teacher_responses_map = Hash.new { |hash, key| hash[key] = {} }
+        student_response_uuids_map = Hash.new do |hash, key|
+          hash[key] = Hash.new { |hash, key| hash[key] = [] }
+        end
+        teacher_response_uuids_map = Hash.new do |hash, key|
+          hash[key] = Hash.new { |hash, key| hash[key] = [] }
+        end
         Response.where(response_queries)
                 .order(:responded_at)
-                .pluck(:uuid, :student_uuid, :exercise_uuid, :is_correct)
-                .each do |trial_uuid, student_uuid, exercise_uuid, is_correct|
+                .pluck(:uuid, :trial_uuid, :student_uuid, :exercise_uuid, :is_correct)
+                .each do |response_uuid, trial_uuid, student_uuid, exercise_uuid, is_correct|
           exercise_group_uuid = exercise_group_uuid_by_exercise_uuid[exercise_uuid]
           if exercise_group_uuid.nil?
-            Rails.logger.tagged('UpdateClues') do |logger|
+            Rails.logger.tagged 'PrepareClueCalculations' do |logger|
               logger.warn do
                 "Response skipped due to no information about exercise #{exercise_uuid}"
               end
@@ -179,22 +175,20 @@ class Services::UpdateClues::Service
           end
 
           assignment_uuid = assignment_uuid_by_trial_uuid[trial_uuid]
-          student_responses_map[student_uuid][exercise_group_uuid] = is_correct \
+          student_response_uuids_map[student_uuid][exercise_group_uuid] << response_uuid \
             unless ongoing_assignment_uuids.include?(assignment_uuid)
-          teacher_responses_map[student_uuid][exercise_group_uuid] = is_correct
+          teacher_response_uuids_map[student_uuid][exercise_group_uuid] << response_uuid
 
           course_uuid = course_uuid_by_student_uuid[student_uuid]
-          used_responses << [trial_uuid, course_uuid]
+          used_responses << [response_uuid, course_uuid]
         end unless response_queries.nil?
 
         # Calculate student CLUes
-        student_clues = []
-        student_clue_requests = []
-        student_uuids_to_update_worst_areas_exercises = []
-        student_clues_to_update.each do |book_container_uuid, student_uuids|
+        student_clue_calculations =
+          student_clues_to_update.flat_map do |book_container_uuid, student_uuids|
           ecosystem_uuid = ecosystem_uuid_by_book_container_uuid[book_container_uuid]
           if ecosystem_uuid.nil?
-            Rails.logger.tagged('UpdateClues') do |logger|
+            Rails.logger.tagged 'PrepareClueCalculations' do |logger|
               logger.warn do
                 "Student CLUe skipped due to no information about book container #{
                   book_container_uuid
@@ -206,50 +200,34 @@ class Services::UpdateClues::Service
           end
 
           exercise_uuids = exercise_uuids_by_book_container_uuids[book_container_uuid]
+          next if exercise_uuids.empty?
+
           exercise_group_uuids = exercise_group_uuid_by_exercise_uuid.values_at(*exercise_uuids)
                                                                      .compact
                                                                      .uniq
 
-          student_uuids.uniq.each do |student_uuid|
-            worst_clue_book_container_uuids = \
-              worst_clue_book_container_uuids_by_student_uuids[student_uuid]
-            worst_clue_values = worst_clue_values_by_student_uuids[student_uuid]
+          student_uuids.uniq.map do |student_uuid|
+            response_uuids_map = student_response_uuids_map[student_uuid]
+            response_uuids = response_uuids_map.values_at(*exercise_group_uuids).compact.flatten
+            next if response_uuids.empty?
 
-            student_responses = student_responses_map[student_uuid]
-            clue_responses = student_responses.values_at(*exercise_group_uuids).compact.flatten
-            clue_data = calculate_clue_data(clue_responses).merge(ecosystem_uuid: ecosystem_uuid)
-            clue_value = clue_data.fetch(:most_likely)
-            is_real = clue_data.fetch(:is_real)
-
-            student_uuids_to_update_worst_areas_exercises << student_uuid \
-              if is_real && (
-                   worst_clue_book_container_uuids.size < Student::NUM_WORST_CLUES ||
-                   worst_clue_values.size < Student::NUM_WORST_CLUES ||
-                   worst_clue_book_container_uuids.include?(book_container_uuid) ||
-                   worst_clue_values.any? { |worst_clue_value| worst_clue_value >= clue_value }
-                 )
-
-            student_clues << StudentClue.new(
+            StudentClueCalculation.new(
               uuid: SecureRandom.uuid,
-              student_uuid: student_uuid,
+              ecosystem_uuid: ecosystem_uuid,
               book_container_uuid: book_container_uuid,
-              value: clue_value
-            ) if is_real
-
-            student_clue_requests << {
               student_uuid: student_uuid,
-              book_container_uuid: book_container_uuid,
-              clue_data: clue_data
-            }
+              exercise_uuids: exercise_uuids,
+              response_uuids: response_uuids
+            )
           end
-        end
+        end.compact
 
         # Calculate teacher CLUes
-        teacher_clue_requests = []
-        teacher_clues_to_update.each do |book_container_uuid, course_container_uuids|
+        teacher_clue_calculations =
+          teacher_clues_to_update.flat_map do |book_container_uuid, course_container_uuids|
           ecosystem_uuid = ecosystem_uuid_by_book_container_uuid[book_container_uuid]
           if ecosystem_uuid.nil?
-            Rails.logger.tagged('UpdateClues') do |logger|
+            Rails.logger.tagged 'PrepareClueCalculations' do |logger|
               logger.warn do
                 "Teacher CLUe skipped due to no information about book container #{
                   book_container_uuid
@@ -261,14 +239,16 @@ class Services::UpdateClues::Service
           end
 
           exercise_uuids = exercise_uuids_by_book_container_uuids[book_container_uuid]
+          next if exercise_uuids.empty?
+
           exercise_group_uuids = exercise_group_uuid_by_exercise_uuid.values_at(*exercise_uuids)
                                                                      .compact
                                                                      .uniq
 
-          course_container_uuids.uniq.each do |course_container_uuid|
+          course_container_uuids.uniq.map do |course_container_uuid|
             student_uuids = student_uuids_by_course_container_uuids[course_container_uuid]
             if student_uuids.nil?
-              Rails.logger.tagged('UpdateClues') do |logger|
+              Rails.logger.tagged 'PrepareClueCalculations' do |logger|
                 logger.warn do
                   container_uuid = course_container_uuid
 
@@ -280,29 +260,39 @@ class Services::UpdateClues::Service
 
               next
             end
+            # Empty period
+            next if student_uuids.empty?
 
-            teacher_response_maps = teacher_responses_map.values_at(*student_uuids).compact
-            clue_responses = teacher_response_maps.map do |teacher_response_map|
-              teacher_response_map.values_at(*exercise_group_uuids)
+            response_uuids_maps = teacher_response_uuids_map.values_at(*student_uuids).compact
+            response_uuids = response_uuids_maps.map do |response_uuids_map|
+              response_uuids_map.values_at(*exercise_group_uuids)
             end.flatten.compact
-            clue_data = calculate_clue_data(clue_responses).merge(ecosystem_uuid: ecosystem_uuid)
+            next if response_uuids.empty?
 
-            teacher_clue_requests << {
-              course_container_uuid: course_container_uuid,
+            TeacherClueCalculation.new(
+              uuid: SecureRandom.uuid,
+              ecosystem_uuid: ecosystem_uuid,
               book_container_uuid: book_container_uuid,
-              clue_data: clue_data
-            }
+              course_container_uuid: course_container_uuid,
+              student_uuids: student_uuids,
+              exercise_uuids: exercise_uuids,
+              response_uuids: response_uuids
+            )
           end
-        end
+        end.compact
 
-        # Send CLUes to biglearn-api
-        OpenStax::Biglearn::Api.update_student_clues student_clue_requests
-        OpenStax::Biglearn::Api.update_teacher_clues teacher_clue_requests
-
-        # Record the student CLUe values
-        StudentClue.import student_clues, validate: false, on_duplicate_key_update: {
+        # Record the student CLUe calculations
+        StudentClueCalculation.import student_clue_calculations, validate: false,
+                                                                 on_duplicate_key_update: {
           conflict_target: [ :student_uuid, :book_container_uuid ],
-          columns: [ :value ]
+          columns: [ :exercise_uuids ]
+        }
+
+        # Record the teacher CLUe calculations
+        TeacherClueCalculation.import teacher_clue_calculations, validate: false,
+                                                                 on_duplicate_key_update: {
+          conflict_target: [ :course_container_uuid, :book_container_uuid ],
+          columns: [ :student_uuids, :exercise_uuids ]
         }
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
@@ -313,11 +303,6 @@ class Services::UpdateClues::Service
           conflict_target: [ :uuid ]
         }
 
-        # Mark relevant Students for PracticeWorstAreasExercises updates
-        StudentPe.where(student_uuid: student_uuids_to_update_worst_areas_exercises).delete_all
-        Student.where(uuid: student_uuids_to_update_worst_areas_exercises)
-               .update_all(pes_are_assigned: false)
-
         responses.size
       end
 
@@ -326,41 +311,10 @@ class Services::UpdateClues::Service
       break if num_responses < BATCH_SIZE
     end
 
-    Rails.logger.tagged 'UpdateClues' do |logger|
+    Rails.logger.tagged 'PrepareClueCalculations' do |logger|
       logger.info do
-        time = Time.now - start_time
-
-        "Updated: #{total_responses} response(s) - Took: #{time} second(s)"
+        "#{total_responses} response(s) processed in #{Time.now - start_time} second(s)"
       end
-    end
-  end
-
-  protected
-
-  def calculate_clue_data(responses)
-    if responses.size >= 3
-      tot = responses.count
-      suc = responses.count { |bool| !!bool }
-
-      p_hat = (suc + 0.5*Z_ALPHA**2) / (tot + Z_ALPHA**2)
-
-      var = responses.map { |bool| (p_hat - (bool ? 1 : 0))**2 }.reduce(&:+) / (tot - 1)
-
-      interval = Z_ALPHA * Math.sqrt(p_hat*(1-p_hat)/(tot + Z_ALPHA**2)) + 0.1*Math.sqrt(var) + 0.05
-
-      {
-        minimum: [p_hat - interval, 0].max,
-        most_likely: p_hat,
-        maximum: [p_hat + interval, 1].min,
-        is_real: true
-      }
-    else
-      {
-        minimum: 0,
-        most_likely: 0.5,
-        maximum: 1,
-        is_real: false
-      }
     end
   end
 end

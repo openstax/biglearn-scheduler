@@ -219,15 +219,16 @@ class Services::FetchCourseEvents::Service
         # Record response saves a student response used to compute the CLUes
         record_responses = events_by_type['record_response'] || []
         record_responses.group_by do |record_response|
-          record_response.fetch(:event_data).fetch(:trial_uuid)
-        end.each do |trial_uuid, record_responses|
+          record_response.fetch(:event_data).fetch(:response_uuid)
+        end.each do |response_uuid, record_responses|
           last_record_response = record_responses.last
           data = last_record_response.fetch(:event_data)
 
-          response_uuids << trial_uuid
+          response_uuids << response_uuid
 
           responses << Response.new(
-            uuid: trial_uuid,
+            uuid: response_uuid,
+            trial_uuid: data.fetch(:trial_uuid),
             student_uuid: data.fetch(:student_uuid),
             exercise_uuid: data.fetch(:exercise_uuid),
             responded_at: data.fetch(:responded_at),
@@ -417,9 +418,9 @@ class Services::FetchCourseEvents::Service
       a_spe_c_e = AssignmentSpeCalculationExercise.arel_table
       a_pe_c_e = AssignmentPeCalculationExercise.arel_table
       s_pe_c_e = StudentPeCalculationExercise.arel_table
-      a_spe_c_e_queries = [a_spe_c_e[:assignment_uuid].in(updated_assignment_uuids)]
-      a_pe_c_e_queries = [a_pe_c_e[:assignment_uuid].in(updated_assignment_uuids)]
-      s_pe_c_e_queries = [s_pe_c_e[:student_uuid].in(affected_student_uuids)]
+      a_spe_c_e_queries = [ a_spe_c_e[:assignment_uuid].in(updated_assignment_uuids)]
+      a_pe_c_e_queries =  [ a_pe_c_e[:assignment_uuid].in(updated_assignment_uuids) ]
+      s_pe_c_e_queries =  [ s_pe_c_e[:student_uuid].in(affected_student_uuids)      ]
       assignments.each do |assignment|
         assignment_uuid = assignment.uuid
         student_uuid = assignment.student_uuid
@@ -439,7 +440,7 @@ class Services::FetchCourseEvents::Service
       end
 
       # TODO: Optimize this code (remove assigned exercises instead of recalculating everything)
-      # Recalculate only if 0 SPEs left
+      # TODO: Recalculate only if 0 SPEs left
       a_spe_c_e_query = a_spe_c_e_queries.reduce(:or)
       affected_assignment_spe_calculation_uuids =
         AssignmentSpeCalculationExercise.where(a_spe_c_e_query)
@@ -454,7 +455,7 @@ class Services::FetchCourseEvents::Service
         .where(assignment_spe_calculation_uuid: affected_assignment_spe_calculation_uuids)
         .delete_all
 
-      # Recalculate if < 3 PEs left (reading) or < 5 PEs left (practice)
+      # TODO: Recalculate if < 3 PEs left (reading) or < 5 PEs left (practice)
       a_pe_c_e_query = a_pe_c_e_queries.reduce(:or)
       affected_assignment_pe_calculation_uuids =
         AssignmentPeCalculationExercise.where(a_pe_c_e_query)
@@ -469,7 +470,7 @@ class Services::FetchCourseEvents::Service
         .where(assignment_pe_calculation_uuid: affected_assignment_pe_calculation_uuids)
         .delete_all
 
-      # Recalculate if < 5 PEs left
+      # TODO: Recalculate if < 5 PEs left
       s_pe_c_e_query = s_pe_c_e_queries.reduce(:or)
       affected_student_pe_calculation_uuids =
         StudentPeCalculationExercise.where(s_pe_c_e_query)
@@ -488,6 +489,7 @@ class Services::FetchCourseEvents::Service
         responses, validate: false, on_duplicate_key_update: {
           conflict_target: [ :uuid ],
           columns: [
+            :trial_uuid,
             :student_uuid,
             :exercise_uuid,
             :responded_at,
@@ -496,8 +498,10 @@ class Services::FetchCourseEvents::Service
         }
       )
 
-      # Mark CLUes for recalculation for updated course ecosystems and responses
+      # Mark CLUes for recalculation for updated responses and course ecosystems
+      # Updated responses
       ResponseClue.where(uuid: response_uuids).delete_all
+      # Updated ecosystems
       ResponseClue.where(course_uuid: course_uuids_with_changed_ecosystems).delete_all
 
       Rails.logger.tagged 'FetchCourseEvents' do |logger|

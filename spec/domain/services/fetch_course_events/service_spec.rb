@@ -607,7 +607,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         }
       end
 
-      let!(:response_clue) { FactoryGirl.create :response_clue, uuid: trial_uuid }
+      let!(:response_clue) { FactoryGirl.create :response_clue, uuid: event_uuid }
 
       it 'creates a Response for the Course' do
         expect { subject.process }.to  not_change { Course.count }
@@ -634,7 +634,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { course.global_excluded_exercise_uuids }
                                   .and not_change { course.global_excluded_exercise_group_uuids }
 
-        response = Response.find_by uuid: trial_uuid
+        response = Response.find_by uuid: event_uuid
         expect(response.student_uuid).to eq student_uuid
         expect(response.exercise_uuid).to eq exercise_uuid
         expect(response.is_correct).to eq is_correct

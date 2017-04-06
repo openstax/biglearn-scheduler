@@ -24,6 +24,7 @@ class Services::UpdateExerciseCalculations::Service
           assignment_spe_calculation_uuid: calculation_uuid,
           algorithm_name: algorithm_name,
           exercise_uuids: exercise_uuids,
+          sent_to_api_server: false,
           assignment_uuid: assignment_spe_calculation.assignment_uuid,
           student_uuid: assignment_spe_calculation.student_uuid
         )
@@ -38,6 +39,7 @@ class Services::UpdateExerciseCalculations::Service
             assignment_pe_calculation_uuid: calculation_uuid,
             algorithm_name: algorithm_name,
             exercise_uuids: exercise_uuids,
+            sent_to_api_server: false,
             assignment_uuid: assignment_pe_calculation.assignment_uuid,
             student_uuid: assignment_pe_calculation.student_uuid
           )
@@ -52,6 +54,7 @@ class Services::UpdateExerciseCalculations::Service
               student_pe_calculation_uuid: calculation_uuid,
               algorithm_name: algorithm_name,
               exercise_uuids: exercise_uuids,
+              sent_to_api_server: false,
               student_uuid: student_pe_calculation.student_uuid
             )
 

@@ -27,8 +27,9 @@ class Services::FetchClueCalculations::Service
       {
         calculation_uuid: clue_calculation.uuid,
         ecosystem_uuid: clue_calculation.ecosystem_uuid,
+        student_uuids: clue_calculation.student_uuids,
         exercise_uuids: clue_calculation.exercise_uuids,
-        student_uuids: clue_calculation.student_uuids
+        response_uuids: clue_calculation.response_uuids
       }
     end
 
