@@ -1,3 +1,5 @@
+# NOTE: We could modify these APIs to have priority numbers for each exercise
+#       instead of using the order in which they appear in the array
 class ExerciseCalculationsController < JsonApiController
 
   def fetch_exercise_calculations

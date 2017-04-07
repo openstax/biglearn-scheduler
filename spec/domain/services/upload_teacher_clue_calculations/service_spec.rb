@@ -7,18 +7,18 @@ RSpec.describe Services::UploadTeacherClueCalculations::Service, type: :service 
     @scc_1 = FactoryGirl.create :student_clue_calculation
     @ascc_1 = FactoryGirl.create :algorithm_student_clue_calculation,
                                  student_clue_calculation_uuid: @scc_1.uuid,
-                                 sent_to_api_server: false
+                                 is_uploaded: false
 
     @scc_2 = FactoryGirl.create :student_clue_calculation
     @ascc_2 = FactoryGirl.create :algorithm_student_clue_calculation,
                                  student_clue_calculation_uuid: @scc_2.uuid,
-                                 sent_to_api_server: true
+                                 is_uploaded: true
 
     @ascc_3 = FactoryGirl.create :algorithm_student_clue_calculation,
-                                 sent_to_api_server: false
+                                 is_uploaded: false
 
     @ascc_4 = FactoryGirl.create :algorithm_student_clue_calculation,
-                                 sent_to_api_server: false
+                                 is_uploaded: false
   end
 
   context 'with no AlgorithmTeacherClueCalculations' do
@@ -27,7 +27,6 @@ RSpec.describe Services::UploadTeacherClueCalculations::Service, type: :service 
       expect(OpenStax::Biglearn::Api).not_to receive(:update_teacher_clues)
 
       expect { subject.process }.to  not_change { Response.count                        }
-                                .and not_change { ResponseClue.count                    }
                                 .and not_change { StudentClueCalculation.count          }
                                 .and not_change { TeacherClueCalculation.count          }
                                 .and not_change { AlgorithmStudentClueCalculation.count }
@@ -42,18 +41,18 @@ RSpec.describe Services::UploadTeacherClueCalculations::Service, type: :service 
       @tcc_1 = FactoryGirl.create :teacher_clue_calculation
       @atcc_1 = FactoryGirl.create :algorithm_teacher_clue_calculation,
                                    teacher_clue_calculation_uuid: @tcc_1.uuid,
-                                   sent_to_api_server: false
+                                   is_uploaded: false
 
       @tcc_2 = FactoryGirl.create :teacher_clue_calculation
       @atcc_2 = FactoryGirl.create :algorithm_teacher_clue_calculation,
                                    teacher_clue_calculation_uuid: @tcc_2.uuid,
-                                   sent_to_api_server: true
+                                   is_uploaded: true
 
       @atcc_3 = FactoryGirl.create :algorithm_teacher_clue_calculation,
-                                   sent_to_api_server: false
+                                   is_uploaded: false
 
       @atcc_4 = FactoryGirl.create :algorithm_teacher_clue_calculation,
-                                   sent_to_api_server: true
+                                   is_uploaded: true
     end
 
     after(:all)  { DatabaseCleaner.clean }
@@ -64,14 +63,13 @@ RSpec.describe Services::UploadTeacherClueCalculations::Service, type: :service 
         expect(requests.size).to eq 1
 
         request = requests.first
+        expect(request.fetch :algorithm_name).to eq @atcc_1.algorithm_name
         expect(request.fetch :book_container_uuid).to eq @tcc_1.book_container_uuid
         expect(request.fetch :course_container_uuid).to eq @tcc_1.course_container_uuid
-        expect(request.fetch :algorithm_name).to eq @atcc_1.algorithm_name
         expect(request.fetch :clue_data).to eq @atcc_1.clue_data
       end
 
       expect { subject.process }.to  not_change { Response.count                        }
-                                .and not_change { ResponseClue.count                    }
                                 .and not_change { StudentClueCalculation.count          }
                                 .and not_change { TeacherClueCalculation.count          }
                                 .and not_change { AlgorithmStudentClueCalculation.count }

@@ -11,8 +11,8 @@ class Services::UploadStudentClueCalculations::Service
     total_calculations = 0
     loop do
       num_calculations = AlgorithmStudentClueCalculation.transaction do
-        # sent_to_api_server tracks the status of each calculation
-        algorithm_calculations = AlgorithmStudentClueCalculation.where(sent_to_api_server: false)
+        # is_uploaded tracks the status of each calculation
+        algorithm_calculations = AlgorithmStudentClueCalculation.where(is_uploaded: false)
                                                                 .take(BATCH_SIZE)
 
         algorithm_calculations.size.tap do |num_calculations|
@@ -50,7 +50,7 @@ class Services::UploadStudentClueCalculations::Service
 
           algorithm_calculation_uuids = algorithm_calculations.map(&:uuid)
           AlgorithmStudentClueCalculation.where(uuid: algorithm_calculation_uuids)
-                                         .update_all(sent_to_api_server: true)
+                                         .update_all(is_uploaded: true)
         end
       end
 

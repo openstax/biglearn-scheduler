@@ -14,12 +14,8 @@ class Services::PrepareClueCalculations::Service
     total_responses = 0
     loop do
       num_responses = Response.transaction do
-        # ResponseClue records keep track of which Responses have been used in CLUes and
-        # are cleared after every ecosystem update
-        responses = Response.joins(:course, :exercise)
-                            .left_outer_joins(:response_clue)
-                            .where(response_clues: { uuid: nil })
-                            .take(BATCH_SIZE)
+        # Get Responses that have not yet been used in CLUes
+        responses = Response.where(used_in_latest_clue_calculations: false).take(BATCH_SIZE)
 
         # Build some hashes to minimize the number of queries
 
@@ -55,7 +51,7 @@ class Services::PrepareClueCalculations::Service
         # Build a query to obtain the book_container_uuids for the new Responses
         # Mark the responses as used in CLUe calculations
         # (in case we don't use them later because they got removed from the book or something)
-        used_responses = []
+        used_response_uuids = []
         ee_queries = responses.map do |response|
           student_uuid = response.student_uuid
           course_uuid = course_uuid_by_student_uuid[student_uuid]
@@ -64,7 +60,7 @@ class Services::PrepareClueCalculations::Service
           exercise_uuid = response.exercise_uuid
           exercise_group_uuid = exercise_group_uuid_by_exercise_uuid[exercise_uuid]
 
-          used_responses << [response.uuid, course_uuid]
+          used_response_uuids << response.uuid
 
           ee[:ecosystem_uuid].eq(ecosystem_uuid).and(
             ee[:exercise_group_uuid].eq(exercise_group_uuid)
@@ -180,7 +176,7 @@ class Services::PrepareClueCalculations::Service
           teacher_response_uuids_map[student_uuid][exercise_group_uuid] << response_uuid
 
           course_uuid = course_uuid_by_student_uuid[student_uuid]
-          used_responses << [response_uuid, course_uuid]
+          used_response_uuids << response_uuid
         end unless response_queries.nil?
 
         # Calculate student CLUes
@@ -296,12 +292,7 @@ class Services::PrepareClueCalculations::Service
         }
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
-        response_clues = used_responses.map do |uuid, course_uuid|
-          ResponseClue.new uuid: uuid, course_uuid: course_uuid
-        end
-        ResponseClue.import response_clues, validate: false, on_duplicate_key_ignore: {
-          conflict_target: [ :uuid ]
-        }
+        Response.where(uuid: used_response_uuids).update_all(used_in_latest_clue_calculations: true)
 
         responses.size
       end

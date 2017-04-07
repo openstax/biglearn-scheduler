@@ -1,8 +1,6 @@
 class Student < ApplicationRecord
   NUM_WORST_CLUES = 5
 
-  belongs_to :course, primary_key: :uuid, foreign_key: :course_uuid
-
   has_many :worst_student_clues,
            -> { order(:value).limit(NUM_WORST_CLUES) },
            class_name: 'StudentClue',

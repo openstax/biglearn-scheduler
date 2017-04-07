@@ -6,5 +6,6 @@ FactoryGirl.define do
     exercise_uuid                    { SecureRandom.uuid }
     responded_at                     { Time.now }
     is_correct                       { [true, false].sample }
+    used_in_latest_clue_calculations { [true, false].sample }
   end
 end

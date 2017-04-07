@@ -232,7 +232,8 @@ class Services::FetchCourseEvents::Service
             student_uuid: data.fetch(:student_uuid),
             exercise_uuid: data.fetch(:exercise_uuid),
             responded_at: data.fetch(:responded_at),
-            is_correct: data.fetch(:is_correct)
+            is_correct: data.fetch(:is_correct),
+            used_in_latest_clue_calculations: false
           )
         end
 
@@ -398,10 +399,30 @@ class Services::FetchCourseEvents::Service
         assigned_exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
       )
 
-      updated_assignment_uuids = assignments.map(&:uuid)
+      results << Response.import(
+        responses, validate: false, on_duplicate_key_update: {
+          conflict_target: [ :uuid ],
+          columns: [
+            :trial_uuid,
+            :student_uuid,
+            :exercise_uuid,
+            :responded_at,
+            :is_correct
+          ]
+        }
+      )
 
+      # Event side-effects
+      # Get students in courses with updated ecosystems
       affected_student_uuids = Student.where(course_uuid: course_uuids_with_changed_ecosystems)
                                       .pluck(:uuid)
+
+      # Mark CLUes for recalculation for students in courses with updated ecosystems
+      Response.where(student_uuid: affected_student_uuids)
+              .update_all(used_in_latest_clue_calculations: false)
+
+      # Get updated assignments
+      updated_assignment_uuids = assignments.map(&:uuid)
 
       # Updated assignments and students in courses with changed ecosystems need complete SPE/PE
       # recalculations, including re-running the scheduler code
@@ -484,25 +505,6 @@ class Services::FetchCourseEvents::Service
       AlgorithmStudentPeCalculation
         .where(student_pe_calculation_uuid: affected_student_pe_calculation_uuids)
         .delete_all
-
-      results << Response.import(
-        responses, validate: false, on_duplicate_key_update: {
-          conflict_target: [ :uuid ],
-          columns: [
-            :trial_uuid,
-            :student_uuid,
-            :exercise_uuid,
-            :responded_at,
-            :is_correct
-          ]
-        }
-      )
-
-      # Mark CLUes for recalculation for updated responses and course ecosystems
-      # Updated responses
-      ResponseClue.where(uuid: response_uuids).delete_all
-      # Updated ecosystems
-      ResponseClue.where(course_uuid: course_uuids_with_changed_ecosystems).delete_all
 
       Rails.logger.tagged 'FetchCourseEvents' do |logger|
         logger.info do

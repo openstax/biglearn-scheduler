@@ -5,7 +5,7 @@ class CreateAlgorithmTeacherClueCalculations < ActiveRecord::Migration[5.0]
       t.uuid    :teacher_clue_calculation_uuid, null: false
       t.citext  :algorithm_name,                null: false
       t.jsonb   :clue_data,                     null: false
-      t.boolean :sent_to_api_server,            null: false, index: true
+      t.boolean :is_uploaded,                   null: false, index: true
 
       t.timestamps                              null: false
     end

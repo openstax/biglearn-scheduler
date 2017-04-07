@@ -7,5 +7,6 @@ FactoryGirl.define do
     student_uuid        { SecureRandom.uuid }
     book_container_uuid { SecureRandom.uuid }
     exercise_uuids      { num_exercise_uuids.times.map { SecureRandom.uuid } }
+    exercise_count      { rand(num_exercise_uuids) + 1 }
   end
 end

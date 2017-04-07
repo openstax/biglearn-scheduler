@@ -4,7 +4,7 @@ FactoryGirl.define do
     student_clue_calculation_uuid { SecureRandom.uuid }
     algorithm_name                { [ 'local_query', 'sparfa' ].sample }
     clue_data                     { { 'most_likely' => clue_value } }
-    sent_to_api_server            { [true, false].sample }
+    is_uploaded            { [true, false].sample }
     student_uuid                  { SecureRandom.uuid }
     clue_value                    { rand }
   end

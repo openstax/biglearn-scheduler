@@ -6,7 +6,6 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
   context 'with no Responses' do
     it 'does not update any CLUes' do
       expect { subject.process }.to  not_change { Response.count                        }
-                                .and not_change { ResponseClue.count                    }
                                 .and not_change { StudentClueCalculation.count          }
                                 .and not_change { TeacherClueCalculation.count          }
                                 .and not_change { AlgorithmStudentClueCalculation.count }
@@ -44,48 +43,53 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
       @response_1 = FactoryGirl.create :response,
                                        is_correct: true,
                                        student_uuid: @student_1.uuid,
-                                       exercise_uuid: @exercise_1.uuid
-      FactoryGirl.create :response_clue, uuid: @response_1.uuid
+                                       exercise_uuid: @exercise_1.uuid,
+                                       used_in_latest_clue_calculations: true
       @response_2 = FactoryGirl.create :response,
                                        is_correct: false,
                                        student_uuid: @student_1.uuid,
-                                       exercise_uuid: @exercise_2.uuid
-      FactoryGirl.create :response_clue, uuid: @response_2.uuid
+                                       exercise_uuid: @exercise_2.uuid,
+                                       used_in_latest_clue_calculations: true
       @response_3 = FactoryGirl.create :response,
                                        is_correct: true,
                                        student_uuid: @student_1.uuid,
-                                       exercise_uuid: @exercise_3.uuid
-      FactoryGirl.create :response_clue, uuid: @response_3.uuid
+                                       exercise_uuid: @exercise_3.uuid,
+                                       used_in_latest_clue_calculations: true
       @response_4 = FactoryGirl.create :response,
                                        is_correct: true,
                                        student_uuid: @student_1.uuid,
-                                       exercise_uuid: @exercise_4.uuid
+                                       exercise_uuid: @exercise_4.uuid,
+                                       used_in_latest_clue_calculations: false
       @response_5 = FactoryGirl.create :response,
                                        is_correct: true,
                                        student_uuid: @student_1.uuid,
-                                       exercise_uuid: @exercise_5.uuid
+                                       exercise_uuid: @exercise_5.uuid,
+                                       used_in_latest_clue_calculations: false
       @response_6 = FactoryGirl.create :response,
                                        is_correct: false,
                                        student_uuid: @student_2.uuid,
-                                       exercise_uuid: @exercise_1.uuid
-      FactoryGirl.create :response_clue, uuid: @response_6.uuid
+                                       exercise_uuid: @exercise_1.uuid,
+                                       used_in_latest_clue_calculations: true
       @response_7 = FactoryGirl.create :response,
                                        is_correct: true,
                                        student_uuid: @student_2.uuid,
-                                       exercise_uuid: @exercise_2.uuid
-      FactoryGirl.create :response_clue, uuid: @response_7.uuid
+                                       exercise_uuid: @exercise_2.uuid,
+                                       used_in_latest_clue_calculations: true
       @response_8 = FactoryGirl.create :response,
                                        is_correct: true,
                                        student_uuid: @student_2.uuid,
-                                       exercise_uuid: @exercise_3.uuid
+                                       exercise_uuid: @exercise_3.uuid,
+                                       used_in_latest_clue_calculations: false
       @response_9 = FactoryGirl.create :response,
                                        is_correct: true,
                                        student_uuid: @student_2.uuid,
-                                       exercise_uuid: @exercise_4.uuid
+                                       exercise_uuid: @exercise_4.uuid,
+                                       used_in_latest_clue_calculations: false
       @response_10 = FactoryGirl.create :response,
                                        is_correct: false,
                                        student_uuid: @student_2.uuid,
-                                       exercise_uuid: @exercise_5.uuid
+                                       exercise_uuid: @exercise_5.uuid,
+                                       used_in_latest_clue_calculations: false
 
       @unprocessed_responses = [ @response_4, @response_5, @response_8, @response_9, @response_10 ]
     end
@@ -96,17 +100,15 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
       expect do
         subject.process
       end.to  not_change { Response.count                     }
-         .and change     { ResponseClue.count                 }.by(@unprocessed_responses.size)
          .and not_change { StudentClueCalculation.count       }
          .and not_change { TeacherClueCalculation.count       }
          .and not_change { StudentPeCalculation.count         }
          .and not_change { @student_1.reload.pes_are_assigned }
          .and not_change { @student_2.reload.pes_are_assigned }
 
-      new_response_clue_uuids = ResponseClue.order(:created_at)
-                                            .last(@unprocessed_responses.size)
-                                            .map(&:uuid)
-      expect(@unprocessed_responses.map(&:uuid)).to match_array(new_response_clue_uuids)
+      @unprocessed_responses.each do |response|
+        expect(response.reload.used_in_latest_clue_calculations).to eq true
+      end
     end
 
     context 'with other associated records' do
@@ -206,17 +208,15 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
         expect do
           subject.process
         end.to  not_change { Response.count                     }
-           .and change     { ResponseClue.count                 }.by(@unprocessed_responses.size)
            .and change     { StudentClueCalculation.count       }.by(3)
            .and change     { TeacherClueCalculation.count       }.by(1)
            .and not_change { StudentPeCalculation.count         }
            .and not_change { @student_1.reload.pes_are_assigned }
            .and not_change { @student_2.reload.pes_are_assigned }
 
-        new_response_clue_uuids = ResponseClue.order(:created_at)
-                                              .last(@unprocessed_responses.size)
-                                              .map(&:uuid)
-        expect(@unprocessed_responses.map(&:uuid)).to match_array(new_response_clue_uuids)
+        @unprocessed_responses.each do |response|
+          expect(response.reload.used_in_latest_clue_calculations).to eq true
+        end
       end
     end
   end

@@ -6,6 +6,6 @@ FactoryGirl.define do
     assignment_uuid                 { SecureRandom.uuid }
     student_uuid                    { SecureRandom.uuid }
     exercise_uuids                  { [] }
-    sent_to_api_server              { [true, false].sample }
+    is_uploaded                     { [true, false].sample }
   end
 end

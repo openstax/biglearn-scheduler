@@ -8,10 +8,20 @@ RSpec.describe 'update_exercises:assignments', type: :task do
   end
 
   it 'calls the appropriate service' do
-    service_class = Services::UpdateAssignmentExercises::Service
-    service_spy = instance_spy(service_class)
-    expect(service_class).to receive(:new).and_return(service_spy)
-    expect(service_spy).to receive(:process)
+    service_class_1 = Services::PrepareExerciseCalculations::Service
+    service_spy_1 = instance_spy(service_class_1)
+    expect(service_class_1).to receive(:new).and_return(service_spy_1)
+    expect(service_spy_1).to receive(:process)
+
+    service_class_2 = Services::UploadAssignmentPeCalculations::Service
+    service_spy_2 = instance_spy(service_class_2)
+    expect(service_class_2).to receive(:new).and_return(service_spy_2)
+    expect(service_spy_2).to receive(:process)
+
+    service_class_3 = Services::UploadAssignmentSpeCalculations::Service
+    service_spy_3 = instance_spy(service_class_3)
+    expect(service_class_3).to receive(:new).and_return(service_spy_3)
+    expect(service_spy_3).to receive(:process)
 
     subject.invoke
   end

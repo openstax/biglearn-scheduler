@@ -1,10 +1,15 @@
 class Services::FetchEcosystemMatrixUpdates::Service
   def process(algorithm_name:)
-    algorithm_ecosystem_matrix_update_uuids =
-      AlgorithmEcosystemMatrixUpdate.where(algorithm_name: algorithm_name)
-                                    .pluck(:ecosystem_matrix_update_uuid)
-    ecosystem_matrix_updates =
-      EcosystemMatrixUpdate.where.not(uuid: algorithm_ecosystem_matrix_update_uuids).limit(1000)
+    emu = EcosystemMatrixUpdate.arel_table
+    aemu = AlgorithmEcosystemMatrixUpdate.arel_table
+    emu_query = emu[:uuid].eq(aemu[:ecosystem_matrix_update_uuid]).and(
+      aemu[:algorithm_name].eq(algorithm_name)
+    )
+    emu_join = "LEFT OUTER JOIN algorithm_ecosystem_matrix_updates ON #{emu_query.to_sql}"
+    ecosystem_matrix_updates = EcosystemMatrixUpdate
+                                 .joins(emu_join)
+                                 .where(algorithm_ecosystem_matrix_updates: {id: nil})
+                                 .limit(1000)
 
     ecosystem_matrix_update_responses = ecosystem_matrix_updates.map do |ecosystem_matrix_update|
       {

@@ -23,10 +23,11 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "assignment_uuid",                null: false
     t.uuid     "student_uuid",                   null: false
     t.uuid     "exercise_uuids",                 null: false, array: true
-    t.boolean  "sent_to_api_server",             null: false
+    t.boolean  "is_uploaded",                    null: false
     t.datetime "created_at",                     null: false
     t.datetime "updated_at",                     null: false
     t.index ["assignment_pe_calculation_uuid", "algorithm_name"], name: "index_alg_a_pe_calc_on_a_pe_calc_uuid_and_alg_name", unique: true, using: :btree
+    t.index ["is_uploaded"], name: "index_algorithm_assignment_pe_calculations_on_is_uploaded", using: :btree
     t.index ["uuid"], name: "index_algorithm_assignment_pe_calculations_on_uuid", unique: true, using: :btree
   end
 
@@ -37,10 +38,11 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "assignment_uuid",                 null: false
     t.uuid     "student_uuid",                    null: false
     t.uuid     "exercise_uuids",                  null: false, array: true
-    t.boolean  "sent_to_api_server",              null: false
+    t.boolean  "is_uploaded",                     null: false
     t.datetime "created_at",                      null: false
     t.datetime "updated_at",                      null: false
     t.index ["assignment_spe_calculation_uuid", "algorithm_name"], name: "index_alg_a_spe_calc_on_a_spe_calc_uuid_and_alg_name", unique: true, using: :btree
+    t.index ["is_uploaded"], name: "index_algorithm_assignment_spe_calculations_on_is_uploaded", using: :btree
     t.index ["uuid"], name: "index_algorithm_assignment_spe_calculations_on_uuid", unique: true, using: :btree
   end
 
@@ -59,11 +61,12 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "student_clue_calculation_uuid", null: false
     t.citext   "algorithm_name",                null: false
     t.jsonb    "clue_data",                     null: false
-    t.boolean  "sent_to_api_server",            null: false
+    t.boolean  "is_uploaded",                   null: false
     t.uuid     "student_uuid",                  null: false
     t.decimal  "clue_value",                    null: false
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
+    t.index ["is_uploaded"], name: "index_algorithm_student_clue_calculations_on_is_uploaded", using: :btree
     t.index ["student_clue_calculation_uuid", "algorithm_name"], name: "index_alg_s_clue_calc_on_s_clue_calc_uuid_and_alg_name", unique: true, using: :btree
     t.index ["student_uuid", "clue_value"], name: "index_alg_s_clue_calc_on_s_uuid_and_clue_val", using: :btree
     t.index ["uuid"], name: "index_algorithm_student_clue_calculations_on_uuid", unique: true, using: :btree
@@ -75,9 +78,10 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.citext   "algorithm_name",              null: false
     t.uuid     "student_uuid",                null: false
     t.uuid     "exercise_uuids",              null: false, array: true
-    t.boolean  "sent_to_api_server",          null: false
+    t.boolean  "is_uploaded",                 null: false
     t.datetime "created_at",                  null: false
     t.datetime "updated_at",                  null: false
+    t.index ["is_uploaded"], name: "index_algorithm_student_pe_calculations_on_is_uploaded", using: :btree
     t.index ["student_pe_calculation_uuid", "algorithm_name"], name: "index_alg_s_pe_calc_on_s_pe_calc_uuid_and_alg_name", unique: true, using: :btree
     t.index ["uuid"], name: "index_algorithm_student_pe_calculations_on_uuid", unique: true, using: :btree
   end
@@ -87,9 +91,10 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "teacher_clue_calculation_uuid", null: false
     t.citext   "algorithm_name",                null: false
     t.jsonb    "clue_data",                     null: false
-    t.boolean  "sent_to_api_server",            null: false
+    t.boolean  "is_uploaded",                   null: false
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
+    t.index ["is_uploaded"], name: "index_algorithm_teacher_clue_calculations_on_is_uploaded", using: :btree
     t.index ["teacher_clue_calculation_uuid", "algorithm_name"], name: "index_alg_t_clue_calc_on_t_clue_calc_uuid_and_alg_name", unique: true, using: :btree
     t.index ["uuid"], name: "index_algorithm_teacher_clue_calculations_on_uuid", unique: true, using: :btree
   end
@@ -128,6 +133,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "book_container_uuid", null: false
     t.uuid     "student_uuid",        null: false
     t.uuid     "exercise_uuids",      null: false, array: true
+    t.integer  "exercise_count",      null: false
     t.datetime "created_at",          null: false
     t.datetime "updated_at",          null: false
     t.index ["assignment_uuid", "book_container_uuid"], name: "index_a_pe_calc_on_a_uuid_and_bc_uuid", unique: true, using: :btree
@@ -161,6 +167,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "book_container_uuid"
     t.uuid     "student_uuid",        null: false
     t.uuid     "exercise_uuids",      null: false, array: true
+    t.integer  "exercise_count",      null: false
     t.datetime "created_at",          null: false
     t.datetime "updated_at",          null: false
     t.index ["assignment_uuid", "book_container_uuid", "k_ago", "history_type"], name: "index_a_spe_calc_on_a_uuid_and_bc_uuid_and_k_ago_and_hist_type", unique: true, using: :btree
@@ -301,28 +308,21 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.index ["uuid"], name: "index_exercises_on_uuid", unique: true, using: :btree
   end
 
-  create_table "response_clues", force: :cascade do |t|
-    t.uuid     "uuid",        null: false
-    t.uuid     "course_uuid", null: false
-    t.datetime "created_at",  null: false
-    t.datetime "updated_at",  null: false
-    t.index ["course_uuid"], name: "index_response_clues_on_course_uuid", using: :btree
-    t.index ["uuid"], name: "index_response_clues_on_uuid", unique: true, using: :btree
-  end
-
   create_table "responses", force: :cascade do |t|
-    t.uuid     "uuid",          null: false
-    t.uuid     "trial_uuid",    null: false
-    t.uuid     "student_uuid",  null: false
-    t.uuid     "exercise_uuid", null: false
-    t.datetime "responded_at",  null: false
-    t.boolean  "is_correct",    null: false
-    t.datetime "created_at",    null: false
-    t.datetime "updated_at",    null: false
+    t.uuid     "uuid",                             null: false
+    t.uuid     "trial_uuid",                       null: false
+    t.uuid     "student_uuid",                     null: false
+    t.uuid     "exercise_uuid",                    null: false
+    t.datetime "responded_at",                     null: false
+    t.boolean  "is_correct",                       null: false
+    t.boolean  "used_in_latest_clue_calculations", null: false
+    t.datetime "created_at",                       null: false
+    t.datetime "updated_at",                       null: false
     t.index ["exercise_uuid"], name: "index_responses_on_exercise_uuid", using: :btree
     t.index ["responded_at"], name: "index_responses_on_responded_at", using: :btree
     t.index ["student_uuid"], name: "index_responses_on_student_uuid", using: :btree
     t.index ["trial_uuid"], name: "index_responses_on_trial_uuid", using: :btree
+    t.index ["used_in_latest_clue_calculations"], name: "index_responses_on_used_in_latest_clue_calculations", using: :btree
     t.index ["uuid"], name: "index_responses_on_uuid", unique: true, using: :btree
   end
 
@@ -360,6 +360,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "book_container_uuid", null: false
     t.uuid     "student_uuid",        null: false
     t.uuid     "exercise_uuids",      null: false, array: true
+    t.integer  "exercise_count",      null: false
     t.datetime "created_at",          null: false
     t.datetime "updated_at",          null: false
     t.index ["book_container_uuid"], name: "index_student_pe_calculations_on_book_container_uuid", using: :btree

@@ -6,7 +6,7 @@ class CreateAlgorithmStudentPeCalculations < ActiveRecord::Migration[5.0]
       t.citext  :algorithm_name,              null: false
       t.uuid    :student_uuid,                null: false
       t.uuid    :exercise_uuids,              null: false, array: true
-      t.boolean :sent_to_api_server,          null: false, index: true
+      t.boolean :is_uploaded,                 null: false, index: true
 
       t.timestamps                            null: false
     end

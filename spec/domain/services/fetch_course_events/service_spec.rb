@@ -19,7 +19,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                 .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                 .and not_change { AlgorithmAssignmentPeCalculation.count }
                                 .and not_change { Response.count }
-                                .and not_change { ResponseClue.count }
     end
   end
 
@@ -115,7 +114,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                     .and not_change { AlgorithmAssignmentPeCalculation.count }
                                     .and not_change { Response.count }
-                                    .and not_change { ResponseClue.count }
                                     .and(change     do
                                       course.reload.sequence_number
                                     end.from(0).to(sequence_number + 1))
@@ -171,7 +169,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                     .and not_change { AlgorithmAssignmentPeCalculation.count }
                                     .and not_change { Response.count }
-                                    .and not_change { ResponseClue.count }
                                     .and(change     do
                                       course.reload.sequence_number
                                     end.from(0).to(sequence_number + 1))
@@ -201,13 +198,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         }
       end
 
-      let(:num_response_clues) { rand(10) }
-      let!(:response_clues)    do
-        num_response_clues.times.map do
-          FactoryGirl.create :response_clue, course_uuid: course.uuid
-        end
-      end
-
       it "updates the Course's ecosystem_uuid" do
         new_ecosystem_uuid = preparation.ecosystem_uuid
 
@@ -225,7 +215,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                   .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and not_change { Response.count }
-                                  .and change     { ResponseClue.count }.by(-num_response_clues)
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -295,7 +284,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                   .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and not_change { Response.count }
-                                  .and not_change { ResponseClue.count }
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -350,7 +338,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                   .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and not_change { Response.count }
-                                  .and not_change { ResponseClue.count }
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -410,7 +397,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                   .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and not_change { Response.count }
-                                  .and not_change { ResponseClue.count }
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -554,10 +540,9 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   end.by(-num_assigned_exercises))
                                   .and change { AlgorithmAssignmentSpeCalculation.count }.by(-1)
                                   .and change { AlgorithmAssignmentPeCalculation.count }.by(-1)
-                                  .and not_change { ResponseClue.count }
+                                  .and not_change { Response.count }
                                   .and not_change { other_assignment.reload.spes_are_assigned }
                                   .and not_change { other_assignment.reload.pes_are_assigned }
-                                  .and not_change { Response.count }
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -607,8 +592,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         }
       end
 
-      let!(:response_clue) { FactoryGirl.create :response_clue, uuid: event_uuid }
-
       it 'creates a Response for the Course' do
         expect { subject.process }.to  not_change { Course.count }
                                   .and not_change { EcosystemPreparation.count }
@@ -624,7 +607,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                   .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and change     { Response.count }.by(1)
-                                  .and change     { ResponseClue.count }.by(-1)
                                   .and(change     do
                                     course.reload.sequence_number
                                   end.from(0).to(sequence_number + 1))
@@ -638,6 +620,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         expect(response.student_uuid).to eq student_uuid
         expect(response.exercise_uuid).to eq exercise_uuid
         expect(response.is_correct).to eq is_correct
+        expect(response.used_in_latest_clue_calculations).to eq false
       end
     end
   end
