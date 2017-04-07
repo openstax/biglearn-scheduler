@@ -408,9 +408,8 @@ RSpec.describe Services::UpdatePracticeWorstAreasExercises::Service, type: :serv
         )
 
         expect { subject.process }.to  not_change { Student.count   }
-                                  .and(change     do
-                                    StudentPe.count
-                                  end.by(5 - @num_already_assigned_exercises))
+                                  .and change     { StudentPe.count }
+                                                    .by(5 - @num_already_assigned_exercises)
 
         new_student_pes = StudentPe.order(:created_at).last(5 - @num_already_assigned_exercises)
         book_container_uuids = new_student_pes.map { |student_pe| student_pe.book_container_uuid }

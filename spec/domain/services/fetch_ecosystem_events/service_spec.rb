@@ -133,9 +133,8 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
                                   .and change { ExercisePool.count }.by(num_pools)
                                   .and change { Exercise.count }.by(num_exercises - 1)
                                   .and change { EcosystemExercise.count }.by(num_exercises)
-                                  .and(change do
-                                    ecosystem.reload.sequence_number
-                                  end.from(0).to(sequence_number + 1))
+                                  .and change { ecosystem.reload.sequence_number }
+                                                .from(0).to(sequence_number + 1)
       end
     end
   end

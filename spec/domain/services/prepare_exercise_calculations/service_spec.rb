@@ -613,12 +613,10 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
       end
 
       it 'creates the correct numbers of SPE and PE calculations with the correct pools' do
-        expect { subject.process }.to change {
-                                    AssignmentSpeCalculation.count
-                                  }.by(expected_assignment_spe_calculations.size)
-                                  .and change {
-                                    AssignmentPeCalculation.count
-                                  }.by(expected_assignment_pe_calculations.size)
+        expect { subject.process }.to  change { AssignmentSpeCalculation.count }
+                                                .by(expected_assignment_spe_calculations.size)
+                                  .and change { AssignmentPeCalculation.count }
+                                                .by(expected_assignment_pe_calculations.size)
 
         AssignmentSpeCalculation.all.each do |calc|
           index = [calc.assignment_uuid, calc.book_container_uuid, calc.history_type, calc.k_ago]
@@ -681,12 +679,10 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         after(:all)  { DatabaseCleaner.clean }
 
         it 'creates only the missing SPE and PE calculations with the correct pools' do
-          expect { subject.process }.to change {
-                                      AssignmentSpeCalculation.count
-                                    }.by(expected_assignment_spe_calculations.size - 4)
-                                    .and change {
-                                      AssignmentPeCalculation.count
-                                    }.by(expected_assignment_pe_calculations.size - 1)
+          expect { subject.process }.to  change { AssignmentSpeCalculation.count }
+                                                  .by(expected_assignment_spe_calculations.size - 4)
+                                    .and change { AssignmentPeCalculation.count }
+                                                  .by(expected_assignment_pe_calculations.size - 1)
 
           AssignmentSpeCalculation.all.each do |calc|
             index = [calc.assignment_uuid, calc.book_container_uuid, calc.history_type, calc.k_ago]
@@ -854,12 +850,10 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
       end
 
       it 'creates the correct numbers of SPE and PE calculations with the correct pools' do
-        expect { subject.process }.to change {
-                                    AssignmentSpeCalculation.count
-                                  }.by(expected_assignment_spe_calculations.size)
-                                  .and change {
-                                    AssignmentPeCalculation.count
-                                  }.by(expected_assignment_pe_calculations.size)
+        expect { subject.process }.to  change { AssignmentSpeCalculation.count }
+                                                .by(expected_assignment_spe_calculations.size)
+                                  .and change { AssignmentPeCalculation.count }
+                                                .by(expected_assignment_pe_calculations.size)
 
         AssignmentSpeCalculation.all.each do |calc|
           index = [calc.assignment_uuid, calc.book_container_uuid, calc.history_type, calc.k_ago]
@@ -931,12 +925,10 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         after(:all)  { DatabaseCleaner.clean }
 
         it 'creates only the missing  SPE and PE calculations with the correct pools' do
-          expect { subject.process }.to change {
-                                      AssignmentSpeCalculation.count
-                                    }.by(expected_assignment_spe_calculations.size - 3)
-                                    .and change {
-                                      AssignmentPeCalculation.count
-                                    }.by(expected_assignment_pe_calculations.size - 1)
+          expect { subject.process }.to  change { AssignmentSpeCalculation.count }
+                                                  .by(expected_assignment_spe_calculations.size - 3)
+                                    .and change { AssignmentPeCalculation.count }
+                                                  .by(expected_assignment_pe_calculations.size - 1)
 
           AssignmentSpeCalculation.all.each do |calc|
             index = [calc.assignment_uuid, calc.book_container_uuid, calc.history_type, calc.k_ago]

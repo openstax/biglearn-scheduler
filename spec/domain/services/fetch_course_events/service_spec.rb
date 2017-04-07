@@ -100,9 +100,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
            ' and reverse BookContainerMappings for the Course' do
           expect { subject.process }.to  not_change { Course.count }
                                     .and change     { EcosystemPreparation.count }.by(1)
-                                    .and(change     do
-                                      BookContainerMapping.count
-                                    end.by(2 * num_bc_mappings))
+                                    .and change     { BookContainerMapping.count }
+                                                      .by(2 * num_bc_mappings)
                                     .and not_change { CourseContainer.count }
                                     .and not_change { Student.count }
                                     .and not_change { Assignment.count }
@@ -114,9 +113,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                     .and not_change { AlgorithmAssignmentPeCalculation.count }
                                     .and not_change { Response.count }
-                                    .and(change     do
-                                      course.reload.sequence_number
-                                    end.from(0).to(sequence_number + 1))
+                                    .and change     { course.reload.sequence_number }
+                                                      .from(0).to(sequence_number + 1)
                                     .and not_change { course.ecosystem_uuid }
                                     .and not_change { course.course_excluded_exercise_uuids }
                                     .and not_change { course.course_excluded_exercise_group_uuids }
@@ -155,9 +153,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
            ' chain BookContainerMappings and reverse BookContainerMappings for the Course' do
           expect { subject.process }.to  not_change { Course.count }
                                     .and change     { EcosystemPreparation.count }.by(1)
-                                    .and(change     do
-                                      BookContainerMapping.count
-                                    end.by(6 * num_bc_mappings))
+                                    .and change     { BookContainerMapping.count }
+                                                      .by(6 * num_bc_mappings)
                                     .and not_change { CourseContainer.count }
                                     .and not_change { Student.count }
                                     .and not_change { Assignment.count }
@@ -169,9 +166,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                     .and not_change { AlgorithmAssignmentPeCalculation.count }
                                     .and not_change { Response.count }
-                                    .and(change     do
-                                      course.reload.sequence_number
-                                    end.from(0).to(sequence_number + 1))
+                                    .and change     { course.reload.sequence_number }
+                                                      .from(0).to(sequence_number + 1)
                                     .and not_change { course.ecosystem_uuid }
                                     .and not_change { course.course_excluded_exercise_uuids }
                                     .and not_change { course.course_excluded_exercise_group_uuids }
@@ -215,9 +211,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                   .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and not_change { Response.count }
-                                  .and(change     do
-                                    course.reload.sequence_number
-                                  end.from(0).to(sequence_number + 1))
+                                  .and change     { course.reload.sequence_number }
+                                                    .from(0).to(sequence_number + 1)
                                   .and change     { course.ecosystem_uuid }.to(new_ecosystem_uuid)
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
@@ -284,9 +279,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                   .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and not_change { Response.count }
-                                  .and(change     do
-                                    course.reload.sequence_number
-                                  end.from(0).to(sequence_number + 1))
+                                  .and change     { course.reload.sequence_number }
+                                                    .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
@@ -338,9 +332,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                   .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and not_change { Response.count }
-                                  .and(change     do
-                                    course.reload.sequence_number
-                                  end.from(0).to(sequence_number + 1))
+                                  .and change     { course.reload.sequence_number }
+                                                    .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
@@ -397,9 +390,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                   .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and not_change { Response.count }
-                                  .and(change     do
-                                    course.reload.sequence_number
-                                  end.from(0).to(sequence_number + 1))
+                                  .and change     { course.reload.sequence_number }
+                                                    .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
                                   .and change     { course.course_excluded_exercise_uuids }
                                   .and change     { course.course_excluded_exercise_group_uuids }
@@ -527,25 +519,21 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { CourseContainer.count }
                                   .and not_change { Student.count }
                                   .and change     { Assignment.count }.by(1)
-                                  .and(change     do
-                                    AssignedExercise.count
-                                  end.by(num_assigned_exercises))
+                                  .and change     { AssignedExercise.count }
+                                                    .by(num_assigned_exercises)
                                   .and change { AssignmentSpeCalculation.count }.by(-1)
                                   .and change { AssignmentPeCalculation.count }.by(-1)
-                                  .and(change do
-                                    AssignmentSpeCalculationExercise.count
-                                  end.by(-num_assigned_exercises))
-                                  .and(change do
-                                    AssignmentPeCalculationExercise.count
-                                  end.by(-num_assigned_exercises))
+                                  .and change { AssignmentSpeCalculationExercise.count }
+                                                .by(-num_assigned_exercises)
+                                  .and change { AssignmentPeCalculationExercise.count }
+                                                .by(-num_assigned_exercises)
                                   .and change { AlgorithmAssignmentSpeCalculation.count }.by(-1)
                                   .and change { AlgorithmAssignmentPeCalculation.count }.by(-1)
                                   .and not_change { Response.count }
                                   .and not_change { other_assignment.reload.spes_are_assigned }
                                   .and not_change { other_assignment.reload.pes_are_assigned }
-                                  .and(change     do
-                                    course.reload.sequence_number
-                                  end.from(0).to(sequence_number + 1))
+                                  .and change     { course.reload.sequence_number }
+                                                    .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
@@ -607,9 +595,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { AlgorithmAssignmentSpeCalculation.count }
                                   .and not_change { AlgorithmAssignmentPeCalculation.count }
                                   .and change     { Response.count }.by(1)
-                                  .and(change     do
-                                    course.reload.sequence_number
-                                  end.from(0).to(sequence_number + 1))
+                                  .and change     { course.reload.sequence_number }
+                                                    .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
