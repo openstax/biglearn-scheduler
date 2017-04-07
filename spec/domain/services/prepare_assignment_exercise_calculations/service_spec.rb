@@ -1,6 +1,6 @@
 require 'rails_helper'
 
-RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
+RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :service do
   subject { described_class.new }
 
   context 'with no Assignments' do

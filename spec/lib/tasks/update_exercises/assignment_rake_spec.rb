@@ -8,7 +8,7 @@ RSpec.describe 'update_exercises:assignments', type: :task do
   end
 
   it 'calls the appropriate service' do
-    service_class_1 = Services::PrepareExerciseCalculations::Service
+    service_class_1 = Services::PrepareAssignmentExerciseCalculations::Service
     service_spy_1 = instance_spy(service_class_1)
     expect(service_class_1).to receive(:new).and_return(service_spy_1)
     expect(service_spy_1).to receive(:process)

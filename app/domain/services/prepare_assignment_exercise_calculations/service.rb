@@ -1,4 +1,4 @@
-class Services::PrepareExerciseCalculations::Service
+class Services::PrepareAssignmentExerciseCalculations::Service
   BATCH_SIZE = 1000
 
   DEFAULT_NUM_PES_PER_BOOK_CONTAINER = 3
@@ -10,7 +10,7 @@ class Services::PrepareExerciseCalculations::Service
   # like book_container_uuid and k_ago to these records
   def process
     start_time = Time.now
-    Rails.logger.tagged 'PrepareExerciseCalculations' do |logger|
+    Rails.logger.tagged 'PrepareAssignmentExerciseCalculations' do |logger|
       logger.info { "Started at #{start_time}" }
     end
 
@@ -377,7 +377,7 @@ class Services::PrepareExerciseCalculations::Service
       break if num_assignments < BATCH_SIZE
     end
 
-    Rails.logger.tagged 'PrepareExerciseCalculations' do |logger|
+    Rails.logger.tagged 'PrepareAssignmentExerciseCalculations' do |logger|
       logger.info do
         "#{total_assignments} assignment(s) processed in #{Time.now - start_time} second(s)"
       end
