@@ -99,12 +99,10 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
     it 'marks the Response objects as processed' do
       expect do
         subject.process
-      end.to  not_change { Response.count                     }
-         .and not_change { StudentClueCalculation.count       }
-         .and not_change { TeacherClueCalculation.count       }
-         .and not_change { StudentPeCalculation.count         }
-         .and not_change { @student_1.reload.pes_are_assigned }
-         .and not_change { @student_2.reload.pes_are_assigned }
+      end.to  not_change { Response.count               }
+         .and not_change { StudentClueCalculation.count }
+         .and not_change { TeacherClueCalculation.count }
+         .and not_change { StudentPeCalculation.count   }
 
       @unprocessed_responses.each do |response|
         expect(response.reload.used_in_latest_clue_calculations).to eq true
@@ -188,10 +186,6 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                            course_container_uuid: @cc_1.uuid,
                            student_uuids: [ @student_1.uuid, @student_2.uuid ]
 
-        FactoryGirl.create :student_pe_calculation, student_uuid: @student_2.uuid
-        @student_1.update_attribute :pes_are_assigned, false
-        @student_2.update_attribute :pes_are_assigned, true
-
         # Exclude @response_8 from the Student CLUe (but not the Teacher CLUe)
         assignment = FactoryGirl.create :assignment, student_uuid: @student_2.uuid,
                                                      due_at: Time.now.tomorrow
@@ -207,12 +201,10 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
 
         expect do
           subject.process
-        end.to  not_change { Response.count                     }
-           .and change     { StudentClueCalculation.count       }.by(3)
-           .and change     { TeacherClueCalculation.count       }.by(1)
-           .and not_change { StudentPeCalculation.count         }
-           .and not_change { @student_1.reload.pes_are_assigned }
-           .and not_change { @student_2.reload.pes_are_assigned }
+        end.to  not_change { Response.count               }
+           .and change     { StudentClueCalculation.count }.by(3)
+           .and change     { TeacherClueCalculation.count }.by(1)
+           .and not_change { StudentPeCalculation.count   }
 
         @unprocessed_responses.each do |response|
           expect(response.reload.used_in_latest_clue_calculations).to eq true

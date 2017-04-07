@@ -1,5 +1,6 @@
 namespace :update_exercises do
   task practice_worst_areas: :environment do
-    Services::UpdatePracticeWorstAreasExercises::Service.new.process
+    Services::PrepareStudentExerciseCalculations::Service.new.process
+    Services::UploadStudentPeCalculations::Service.new.process
   end
 end

@@ -6,6 +6,10 @@ class CreateAlgorithmStudentClueCalculations < ActiveRecord::Migration[5.0]
       t.citext  :algorithm_name,                null: false
       t.jsonb   :clue_data,                     null: false
       t.boolean :is_uploaded,                   null: false, index: true
+      t.uuid    :ecosystem_uuid,                null: false, index: true
+      t.uuid    :book_container_uuid,           null: false, index: {
+        name: 'index_alg_s_clue_calc_on_bc_uuid'
+      }
       t.uuid    :student_uuid,                  null: false
       t.decimal :clue_value,                    null: false
 

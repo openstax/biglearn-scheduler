@@ -924,7 +924,7 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
 
         after(:all)  { DatabaseCleaner.clean }
 
-        it 'creates only the missing  SPE and PE calculations with the correct pools' do
+        it 'creates only the missing SPE and PE calculations with the correct pools' do
           expect { subject.process }.to  change { AssignmentSpeCalculation.count }
                                                   .by(expected_assignment_spe_calculations.size - 3)
                                     .and change { AssignmentPeCalculation.count }

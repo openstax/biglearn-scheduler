@@ -62,10 +62,14 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.citext   "algorithm_name",                null: false
     t.jsonb    "clue_data",                     null: false
     t.boolean  "is_uploaded",                   null: false
+    t.uuid     "ecosystem_uuid",                null: false
+    t.uuid     "book_container_uuid",           null: false
     t.uuid     "student_uuid",                  null: false
     t.decimal  "clue_value",                    null: false
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
+    t.index ["book_container_uuid"], name: "index_alg_s_clue_calc_on_bc_uuid", using: :btree
+    t.index ["ecosystem_uuid"], name: "index_algorithm_student_clue_calculations_on_ecosystem_uuid", using: :btree
     t.index ["is_uploaded"], name: "index_algorithm_student_clue_calculations_on_is_uploaded", using: :btree
     t.index ["student_clue_calculation_uuid", "algorithm_name"], name: "index_alg_s_clue_calc_on_s_clue_calc_uuid_and_alg_name", unique: true, using: :btree
     t.index ["student_uuid", "clue_value"], name: "index_alg_s_clue_calc_on_s_uuid_and_clue_val", using: :btree
@@ -163,7 +167,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "ecosystem_uuid",      null: false
     t.uuid     "assignment_uuid",     null: false
     t.integer  "history_type",        null: false
-    t.integer  "k_ago"
+    t.integer  "k_ago",               null: false
     t.uuid     "book_container_uuid"
     t.uuid     "student_uuid",        null: false
     t.uuid     "exercise_uuids",      null: false, array: true
@@ -171,6 +175,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.datetime "created_at",          null: false
     t.datetime "updated_at",          null: false
     t.index ["assignment_uuid", "book_container_uuid", "k_ago", "history_type"], name: "index_a_spe_calc_on_a_uuid_and_bc_uuid_and_k_ago_and_hist_type", unique: true, using: :btree
+    t.index ["assignment_uuid", "k_ago", "history_type"], name: "index_a_spe_calc_on_a_uuid_and_k_ago_and_hist_type", unique: true, where: "(book_container_uuid IS NULL)", using: :btree
     t.index ["book_container_uuid"], name: "index_assignment_spe_calculations_on_book_container_uuid", using: :btree
     t.index ["ecosystem_uuid"], name: "index_assignment_spe_calculations_on_ecosystem_uuid", using: :btree
     t.index ["student_uuid"], name: "index_assignment_spe_calculations_on_student_uuid", using: :btree
@@ -356,6 +361,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
 
   create_table "student_pe_calculations", force: :cascade do |t|
     t.uuid     "uuid",                null: false
+    t.citext   "clue_algorithm_name", null: false
     t.uuid     "ecosystem_uuid",      null: false
     t.uuid     "book_container_uuid", null: false
     t.uuid     "student_uuid",        null: false
@@ -365,7 +371,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.datetime "updated_at",          null: false
     t.index ["book_container_uuid"], name: "index_student_pe_calculations_on_book_container_uuid", using: :btree
     t.index ["ecosystem_uuid"], name: "index_student_pe_calculations_on_ecosystem_uuid", using: :btree
-    t.index ["student_uuid", "book_container_uuid"], name: "index_s_pe_calc_on_s_uuid_and_bc_uuid", unique: true, using: :btree
+    t.index ["student_uuid", "book_container_uuid", "clue_algorithm_name"], name: "index_s_pe_calc_on_s_uuid_and_bc_uuid_and_clue_alg_name", unique: true, using: :btree
     t.index ["uuid"], name: "index_student_pe_calculations_on_uuid", unique: true, using: :btree
   end
 

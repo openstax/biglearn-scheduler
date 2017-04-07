@@ -1,7 +1,5 @@
 class CreateAlgorithmAssignmentPeCalculations < ActiveRecord::Migration[5.0]
   def change
-    enable_extension :citext
-
     create_table :algorithm_assignment_pe_calculations do |t|
       t.uuid    :uuid,                           null: false, index: { unique: true }
       t.uuid    :assignment_pe_calculation_uuid, null: false

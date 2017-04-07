@@ -3,11 +3,12 @@ require 'rails_helper'
 RSpec.describe StudentPeCalculation, type: :model do
   subject { FactoryGirl.create :student_pe_calculation }
 
+  it { is_expected.to validate_presence_of :clue_algorithm_name }
   it { is_expected.to validate_presence_of :ecosystem_uuid      }
   it { is_expected.to validate_presence_of :student_uuid        }
   it { is_expected.to validate_presence_of :book_container_uuid }
   it { is_expected.to validate_presence_of :exercise_uuids      }
-  it { is_expected.to validate_presence_of :exercise_count  }
+  it { is_expected.to validate_presence_of :exercise_count      }
 
   it do
     is_expected.to(

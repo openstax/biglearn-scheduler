@@ -3,6 +3,7 @@ FactoryGirl.define do
     transient           { num_exercise_uuids { rand(10) + 1 } }
 
     uuid                { SecureRandom.uuid }
+    clue_algorithm_name { [ 'local_query', 'sparfa' ].sample }
     ecosystem_uuid      { SecureRandom.uuid }
     student_uuid        { SecureRandom.uuid }
     book_container_uuid { SecureRandom.uuid }

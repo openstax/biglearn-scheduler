@@ -286,6 +286,11 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { course.course_excluded_exercise_group_uuids }
                                   .and not_change { course.global_excluded_exercise_uuids }
                                   .and not_change { course.global_excluded_exercise_group_uuids }
+
+       student_uuids = students.map { |student| student[:student_uuid] }
+       Student.where(uuid: student_uuids).each do |student|
+         expect(student.pes_are_assigned).to eq true
+       end
       end
     end
 

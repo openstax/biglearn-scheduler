@@ -117,11 +117,13 @@ class Services::FetchCourseEvents::Service
               current_container_uuid = parent_uuids_by_container_uuid[current_container_uuid]
             end
 
+            # pes_are_assigned starts as true because there is no point in trying to assign PEs
+            # until we have some CLUes, at which point it will be set to false
             students << Student.new(
               uuid: student_uuid,
               course_uuid: course_uuid,
               course_container_uuids: container_uuids,
-              pes_are_assigned: false
+              pes_are_assigned: true
             )
           end
 
@@ -371,7 +373,7 @@ class Services::FetchCourseEvents::Service
       results << Student.import(
         students, validate: false, on_duplicate_key_update: {
           conflict_target: [ :uuid ],
-          columns: [ :course_uuid, :course_container_uuids, :pes_are_assigned ]
+          columns: [ :course_uuid, :course_container_uuids ]
         }
       )
 

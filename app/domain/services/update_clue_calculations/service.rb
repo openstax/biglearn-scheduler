@@ -22,6 +22,8 @@ class Services::UpdateClueCalculations::Service
           clue_data: clue_data,
           is_uploaded: false,
           student_uuid: student_clue_calculation.student_uuid,
+          ecosystem_uuid: student_clue_calculation.ecosystem_uuid,
+          book_container_uuid: student_clue_calculation.book_container_uuid,
           clue_value: clue_data.fetch('most_likely')
         )
 
@@ -54,6 +56,9 @@ class Services::UpdateClueCalculations::Service
         columns: [ :clue_data ]
       }
     )
+
+    student_uuids_with_updated_clues = algorithm_student_clue_calculations.map(&:student_uuid)
+    Student.where(uuid: student_uuids_with_updated_clues).update_all(pes_are_assigned: false)
 
     { clue_calculation_update_responses: clue_calculation_update_responses }
   end

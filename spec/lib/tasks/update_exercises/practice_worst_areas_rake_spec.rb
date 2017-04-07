@@ -7,11 +7,16 @@ RSpec.describe 'update_exercises:practice_worst_areas', type: :task do
     expect(subject.prerequisites).to eq ['environment']
   end
 
-  it 'calls the appropriate service' do
-    service_class = Services::UpdatePracticeWorstAreasExercises::Service
-    service_spy = instance_spy(service_class)
-    expect(service_class).to receive(:new).and_return(service_spy)
-    expect(service_spy).to receive(:process)
+  it 'calls the appropriate services' do
+    service_class_1 = Services::PrepareStudentExerciseCalculations::Service
+    service_spy_1 = instance_spy(service_class_1)
+    expect(service_class_1).to receive(:new).and_return(service_spy_1)
+    expect(service_spy_1).to receive(:process)
+
+    service_class_2 = Services::UploadStudentPeCalculations::Service
+    service_spy_2 = instance_spy(service_class_2)
+    expect(service_class_2).to receive(:new).and_return(service_spy_2)
+    expect(service_spy_2).to receive(:process)
 
     subject.invoke
   end

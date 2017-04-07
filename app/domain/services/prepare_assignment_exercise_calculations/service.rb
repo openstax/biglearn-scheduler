@@ -245,17 +245,17 @@ class Services::PrepareAssignmentExerciseCalculations::Service
 
         # Get exercises that have already been assigned to each student
         student_uuids = assignments.map(&:student_uuid)
-        other_assignments = Assignment
-                              .where(student_uuid: student_uuids)
-                              .pluck(:uuid, :student_uuid, :due_at, :assigned_exercise_uuids)
-        other_assignment_uuids = other_assignments.map(&:first)
+        student_assignments = Assignment
+                                .where(student_uuid: student_uuids)
+                                .pluck(:uuid, :student_uuid, :due_at, :assigned_exercise_uuids)
+        student_assignment_uuids = student_assignments.map(&:first)
         times_assigned_by_student_uuid_and_exercise_uuid = Hash.new do |hash, key|
           hash[key] = Hash.new(0)
         end
         assigned_and_not_due_exercise_uuids_by_student_uuid = Hash.new do |hash, key|
           hash[key] = []
         end
-        other_assignments.each do |uuid, student_uuid, due_at, assigned_exercise_uuids|
+        student_assignments.each do |uuid, student_uuid, due_at, assigned_exercise_uuids|
           assigned_exercise_uuids.each do |exercise_uuid|
             times_assigned_by_student_uuid_and_exercise_uuid[student_uuid][exercise_uuid] += 1
           end
@@ -267,7 +267,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service
 
         # Convert relevant exercise uuids to group uuids
         relevant_exercise_uuids = ( @exercise_uuids_map.values.map(&:values) +
-                                    other_assignments.map(&:fourth) ).flatten
+                                    student_assignments.map(&:fourth) ).flatten
         @exercise_group_uuid_by_uuid = Exercise.where(uuid: relevant_exercise_uuids)
                                                .pluck(:uuid, :group_uuid)
                                                .to_h
@@ -293,7 +293,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service
             @exercise_group_uuid_by_uuid.values_at(*assigned_and_not_due_exercise_uuids).unique
         end
 
-        # Assign Spaced Practice and Personalized exercises
+        # Create SPE and PE calculations to be sent to the algorithms
         assignment_pe_calculations = []
         assignment_spe_calculations = []
         assignments.group_by(&:course_uuid).each do |course_uuid, assignments|
@@ -358,14 +358,16 @@ class Services::PrepareAssignmentExerciseCalculations::Service
         )
 
         AssignmentSpeCalculation.import(
-          assignment_spe_calculations, validate: false, on_duplicate_key_ignore: {
-            conflict_target: [ :assignment_uuid, :history_type, :k_ago, :book_container_uuid ]
+          assignment_spe_calculations, validate: false, on_duplicate_key_update: {
+            conflict_target: [ :assignment_uuid, :history_type, :k_ago, :book_container_uuid ],
+            columns: [ :exercise_uuids, :exercise_count ]
           }
         )
 
         AssignmentPeCalculation.import(
-          assignment_pe_calculations, validate: false, on_duplicate_key_ignore: {
-            conflict_target: [ :assignment_uuid, :book_container_uuid ]
+          assignment_pe_calculations, validate: false, on_duplicate_key_update: {
+            conflict_target: [ :assignment_uuid, :book_container_uuid ],
+            columns: [ :exercise_uuids, :exercise_count ]
           }
         )
 
@@ -445,27 +447,24 @@ class Services::PrepareAssignmentExerciseCalculations::Service
       @exercise_uuids_map[book_container_uuid][assignment_type]
     end
 
-    # Remove duplicates (same assignment - already assigned or already PEs/SPEs) and exclusions
-    candidate_exercise_uuids = book_container_exercise_uuids -
-                               assignment.assigned_exercise_uuids -
-                               course_excluded_uuids
-
-    # Collect exercise_uuids that have already been assigned to this student
+    # Collect info about exercises that have already been assigned to this student
     times_assigned_by_exercise_group_uuid =
       @times_assigned_by_student_uuid_and_exercise_group_uuid[student_uuid]
     assigned_and_not_due_exercise_group_uuids =
       @assigned_and_not_due_exercise_group_uuids_by_student_uuid[student_uuid]
 
-    # Remove assigned but not due exercises
-    candidate_exercise_uuids = candidate_exercise_uuids.reject do |candidate_exercise_uuid|
-      exercise_group_uuid = @exercise_group_uuid_by_uuid[candidate_exercise_uuid]
+    # Remove duplicates (same assignment), exclusions and assigned and not yet due exercises
+    allowed_exercise_uuids = ( book_container_exercise_uuids -
+                               assignment.assigned_exercise_uuids -
+                               course_excluded_uuids ).reject do |allowed_exercise_uuid|
+      exercise_group_uuid = @exercise_group_uuid_by_uuid[allowed_exercise_uuid]
       assigned_and_not_due_exercise_group_uuids.include?(exercise_group_uuid)
     end
 
-    # Shuffle then sort remaining exercises based on the number of times assigned
+    # Shuffle then sort allowed exercises based on the number of times assigned
     # In the future we can replace this with explicitly returning the number of times assigned
     # and sending it to the algorithms
-    candidate_exercise_uuids.shuffle.sort_by do |exercise_uuid|
+    allowed_exercise_uuids.shuffle.sort_by do |exercise_uuid|
       exercise_group_uuid = @exercise_group_uuid_by_uuid[exercise_uuid]
       times_assigned_by_exercise_group_uuid[exercise_group_uuid]
     end

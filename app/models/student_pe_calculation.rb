@@ -1,4 +1,5 @@
 class StudentPeCalculation < ApplicationRecord
+  validates :clue_algorithm_name, presence: true
   validates :ecosystem_uuid,      presence: true
   validates :student_uuid,        presence: true
   validates :book_container_uuid, presence: true, uniqueness: { scope: :student_uuid }
