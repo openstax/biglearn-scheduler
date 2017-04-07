@@ -26,8 +26,7 @@ RSpec.describe Services::UploadTeacherClueCalculations::Service, type: :service 
       expect(OpenStax::Biglearn::Api).not_to receive(:update_student_clues)
       expect(OpenStax::Biglearn::Api).not_to receive(:update_teacher_clues)
 
-      expect { subject.process }.to  not_change { Response.count                        }
-                                .and not_change { StudentClueCalculation.count          }
+      expect { subject.process }.to  not_change { StudentClueCalculation.count          }
                                 .and not_change { TeacherClueCalculation.count          }
                                 .and not_change { AlgorithmStudentClueCalculation.count }
                                 .and not_change { AlgorithmTeacherClueCalculation.count }
@@ -69,8 +68,7 @@ RSpec.describe Services::UploadTeacherClueCalculations::Service, type: :service 
         expect(request.fetch :clue_data).to eq @atcc_1.clue_data
       end
 
-      expect { subject.process }.to  not_change { Response.count                        }
-                                .and not_change { StudentClueCalculation.count          }
+      expect { subject.process }.to  not_change { StudentClueCalculation.count          }
                                 .and not_change { TeacherClueCalculation.count          }
                                 .and not_change { AlgorithmStudentClueCalculation.count }
                                 .and not_change { AlgorithmTeacherClueCalculation.count }

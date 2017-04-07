@@ -225,6 +225,23 @@ class Services::PrepareStudentExerciseCalculations::Service
           }
         )
 
+        student_pe_calculation_exercises = student_pe_calculations
+                                             .flat_map do |student_pe_calculation|
+          student_pe_calculation.exercise_uuids.map do |exercise_uuid|
+            StudentPeCalculationExercise.new(
+              uuid: SecureRandom.uuid,
+              student_pe_calculation_uuid: student_pe_calculation.uuid,
+              exercise_uuid: exercise_uuid,
+              student_uuid: student_pe_calculation.student_uuid
+            )
+          end
+        end
+        StudentPeCalculationExercise.import(
+          student_pe_calculation_exercises, validate: false, on_duplicate_key_ignore: {
+            conflict_target: [ :student_pe_calculation_uuid, :exercise_uuid ]
+          }
+        )
+
         Student.import(
           students, validate: false, on_duplicate_key_update: {
             conflict_target: [ :uuid ], columns: [ :pes_are_assigned ]
@@ -248,7 +265,6 @@ class Services::PrepareStudentExerciseCalculations::Service
 
   protected
 
-  # TODO: Make sure this is really the mapping we want
   def get_worst_clue_num_pes_map(num_clues)
     case num_clues
     when 0

@@ -364,10 +364,46 @@ class Services::PrepareAssignmentExerciseCalculations::Service
           }
         )
 
+        assignment_spe_calculation_exercises = assignment_spe_calculations
+                                                 .flat_map do |assignment_spe_calculation|
+          assignment_spe_calculation.exercise_uuids.map do |exercise_uuid|
+            AssignmentSpeCalculationExercise.new(
+              uuid: SecureRandom.uuid,
+              assignment_spe_calculation_uuid: assignment_spe_calculation.uuid,
+              exercise_uuid: exercise_uuid,
+              assignment_uuid: assignment_spe_calculation.assignment_uuid,
+              student_uuid: assignment_spe_calculation.student_uuid
+            )
+          end
+        end
+        AssignmentSpeCalculationExercise.import(
+          assignment_spe_calculation_exercises, validate: false, on_duplicate_key_ignore: {
+            conflict_target: [ :assignment_spe_calculation_uuid, :exercise_uuid ]
+          }
+        )
+
         AssignmentPeCalculation.import(
           assignment_pe_calculations, validate: false, on_duplicate_key_update: {
             conflict_target: [ :assignment_uuid, :book_container_uuid ],
             columns: [ :exercise_uuids, :exercise_count ]
+          }
+        )
+
+        assignment_pe_calculation_exercises = assignment_pe_calculations
+                                                .flat_map do |assignment_pe_calculation|
+          assignment_pe_calculation.exercise_uuids.map do |exercise_uuid|
+            AssignmentPeCalculationExercise.new(
+              uuid: SecureRandom.uuid,
+              assignment_pe_calculation_uuid: assignment_pe_calculation.uuid,
+              exercise_uuid: exercise_uuid,
+              assignment_uuid: assignment_pe_calculation.assignment_uuid,
+              student_uuid: assignment_pe_calculation.student_uuid
+            )
+          end
+        end
+        AssignmentPeCalculationExercise.import(
+          assignment_pe_calculation_exercises, validate: false, on_duplicate_key_ignore: {
+            conflict_target: [ :assignment_pe_calculation_uuid, :exercise_uuid ]
           }
         )
 

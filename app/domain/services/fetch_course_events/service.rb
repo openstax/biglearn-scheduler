@@ -462,8 +462,6 @@ class Services::FetchCourseEvents::Service
                             )
       end
 
-      # TODO: Optimize this code (remove assigned exercises instead of recalculating everything)
-      # TODO: Recalculate only if 0 SPEs left
       a_spe_c_e_query = a_spe_c_e_queries.reduce(:or)
       affected_assignment_spe_calculation_uuids =
         AssignmentSpeCalculationExercise.where(a_spe_c_e_query)
@@ -478,7 +476,6 @@ class Services::FetchCourseEvents::Service
         .where(assignment_spe_calculation_uuid: affected_assignment_spe_calculation_uuids)
         .delete_all
 
-      # TODO: Recalculate if < 3 PEs left (reading) or < 5 PEs left (practice)
       a_pe_c_e_query = a_pe_c_e_queries.reduce(:or)
       affected_assignment_pe_calculation_uuids =
         AssignmentPeCalculationExercise.where(a_pe_c_e_query)
@@ -493,7 +490,6 @@ class Services::FetchCourseEvents::Service
         .where(assignment_pe_calculation_uuid: affected_assignment_pe_calculation_uuids)
         .delete_all
 
-      # TODO: Recalculate if < 5 PEs left
       s_pe_c_e_query = s_pe_c_e_queries.reduce(:or)
       affected_student_pe_calculation_uuids =
         StudentPeCalculationExercise.where(s_pe_c_e_query)

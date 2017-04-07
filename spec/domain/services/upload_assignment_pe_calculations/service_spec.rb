@@ -26,9 +26,10 @@ RSpec.describe Services::UploadAssignmentPeCalculations::Service, type: :service
       expect(OpenStax::Biglearn::Api).not_to receive(:update_assignment_pes)
       expect(OpenStax::Biglearn::Api).not_to receive(:update_assignment_spes)
 
-      expect { subject.process }.to  not_change { Response.count                          }
-                                .and not_change { AssignmentPeCalculation.count           }
+      expect { subject.process }.to  not_change { AssignmentPeCalculation.count           }
+                                .and not_change { AssignmentPeCalculationExercise.count   }
                                 .and not_change { AssignmentSpeCalculation.count          }
+                                .and not_change { AssignmentSpeCalculationExercise.count  }
                                 .and not_change { AlgorithmAssignmentPeCalculation.count  }
                                 .and not_change { AlgorithmAssignmentSpeCalculation.count }
     end
@@ -68,11 +69,16 @@ RSpec.describe Services::UploadAssignmentPeCalculations::Service, type: :service
       end
       expect(OpenStax::Biglearn::Api).not_to receive(:update_assignment_spes)
 
-      expect { subject.process }.to  not_change { Response.count                          }
-                                .and not_change { AssignmentPeCalculation.count           }
+      expect { subject.process }.to  not_change { AssignmentPeCalculation.count           }
+                                .and not_change { AssignmentPeCalculationExercise.count   }
                                 .and not_change { AssignmentSpeCalculation.count          }
+                                .and not_change { AssignmentSpeCalculationExercise.count  }
                                 .and not_change { AlgorithmAssignmentPeCalculation.count  }
                                 .and not_change { AlgorithmAssignmentSpeCalculation.count }
+
+      AlgorithmAssignmentPeCalculation.all.each do |algorithm_assignment_pe_calculation|
+        expect(algorithm_assignment_pe_calculation.is_uploaded).to eq true
+      end
     end
   end
 end

@@ -1,3 +1,4 @@
+# Used to detect AssignmentSpeCalculations that must be updated
 class AssignmentSpeCalculationExercise < ApplicationRecord
   validates :assignment_spe_calculation_uuid, presence: true
   validates :exercise_uuid, presence: true,
