@@ -21,10 +21,10 @@ class Services::PrepareStudentExerciseCalculations::Service
           hash[key] = Hash.new { |hash, key| hash[key] = [] }
         end
         AlgorithmStudentClueCalculation
-          .with_rank_by_student_and_algorithm
-          .where("rank_by_student_and_algorithm <= #{MAX_NUM_WORST_CLUES}")
+          .with_partitioned_rank
+          .where("partitioned_rank <= #{MAX_NUM_WORST_CLUES}")
           .where(student_uuid: student_uuids)
-          .order(:rank_by_student_and_algorithm)
+          .order(:partitioned_rank)
           .each do |algorithm_student_clue_calculation|
           student_uuid = algorithm_student_clue_calculation.student_uuid
           algorithm_name = algorithm_student_clue_calculation.algorithm_name

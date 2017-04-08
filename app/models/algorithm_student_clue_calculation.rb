@@ -1,6 +1,6 @@
 class AlgorithmStudentClueCalculation < ApplicationRecord
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
-  scope :with_rank_by_student_and_algorithm, -> do
+  scope :with_partitioned_rank, -> do
     from(
       <<-SQL.strip_heredoc
         (
@@ -10,7 +10,7 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
                  algorithm_student_clue_calculations.algorithm_name
               ORDER BY algorithm_student_clue_calculations.clue_value ASC,
                 algorithm_student_clue_calculations.created_at ASC
-            ) AS rank_by_student_and_algorithm
+            ) AS partitioned_rank
           FROM algorithm_student_clue_calculations
         ) AS algorithm_student_clue_calculations
       SQL

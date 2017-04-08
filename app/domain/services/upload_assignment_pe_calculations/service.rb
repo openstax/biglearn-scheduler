@@ -5,7 +5,7 @@ class Services::UploadAssignmentPeCalculations::Service
   # from the list of exercises
   # Reason:
   # If the assignment receiving the SPEs/PEs is a practice assignment,
-  # we consider planned exercises as if they were already assigned to prevent
+  # we remove exercises we plan to assign to open non-practice assignments to prevent
   # students from practicing all exercises and getting all the answers ahead of time
   def process
     start_time = Time.now

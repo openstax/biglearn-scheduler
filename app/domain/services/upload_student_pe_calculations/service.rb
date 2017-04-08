@@ -2,14 +2,15 @@ class Services::UploadStudentPeCalculations::Service
   BATCH_SIZE = 1000
 
   # TODO: In the future we could allow Tutor to pick any combination of algorithms
+  # (by adding the clue_algorithm_name to the PracticeWorstAreas API)
   # But for now we hardcode the allowed combinations
   ALLOWED_ALGORITHM_COMBINATIONS = [ [ 'sparfa', 'tesr' ], [ 'local_query', 'local_query' ] ]
 
-  # TODO: Because these exercises are used in practice assignments,
-  # exclude exercises we plan to assign (to real assignments) from the list of exercises
+  # TODO: For practice assignments, exclude exercises we plan to assign (to real assignments)
+  # from the list of exercises
   # Reason:
   # If the assignment receiving the SPEs/PEs is a practice assignment,
-  # we consider planned exercises as if they were already assigned to prevent
+  # we remove exercises we plan to assign to open non-practice assignments to prevent
   # students from practicing all exercises and getting all the answers ahead of time
   def process
     start_time = Time.now
