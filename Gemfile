@@ -87,3 +87,8 @@ group :test do
   # Convenience matchers for specs
   gem 'shoulda-matchers'
 end
+
+group :production do
+  # Unicorn production server
+  gem 'unicorn'
+end
