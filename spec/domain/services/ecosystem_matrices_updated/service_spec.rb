@@ -71,6 +71,8 @@ RSpec.describe Services::EcosystemMatricesUpdated::Service, type: :service do
       it 'does not create new records and returns calculation_status: "calculation_accepted"' do
         expect { action }.not_to change { AlgorithmEcosystemMatrixUpdate.count }
 
+        calculation_uuids = results.map { |result| result[:calculation_uuid] }
+        expect(calculation_uuids).to match_array given_calculation_uuids
         results.each { |result| expect(result[:calculation_status]).to eq 'calculation_accepted' }
       end
     end

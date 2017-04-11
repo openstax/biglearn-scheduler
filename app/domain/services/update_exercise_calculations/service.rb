@@ -29,7 +29,7 @@ class Services::UpdateExerciseCalculations::Service
           student_uuid: assignment_spe_calculation.student_uuid
         )
 
-        { calculation_status: 'calculation_accepted' }
+        { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
       else
         assignment_pe_calculation = assignment_pe_calculations_by_uuid[calculation_uuid]
 
@@ -44,7 +44,7 @@ class Services::UpdateExerciseCalculations::Service
             student_uuid: assignment_pe_calculation.student_uuid
           )
 
-          { calculation_status: 'calculation_accepted' }
+          { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
         else
           student_pe_calculation = student_pe_calculations_by_uuid[calculation_uuid]
 
@@ -58,9 +58,9 @@ class Services::UpdateExerciseCalculations::Service
               student_uuid: student_pe_calculation.student_uuid
             )
 
-            { calculation_status: 'calculation_accepted' }
+            { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
           else
-            { calculation_status: 'calculation_unknown' }
+            { calculation_uuid: calculation_uuid, calculation_status: 'calculation_unknown' }
           end
         end
       end

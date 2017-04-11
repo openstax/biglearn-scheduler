@@ -16,9 +16,9 @@ class Services::EcosystemMatricesUpdated::Service
           algorithm_name: ecosystem_matrix_updated.fetch(:algorithm_name)
         )
 
-        { calculation_status: 'calculation_accepted' }
+        { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
       else
-        { calculation_status: 'calculation_unknown' }
+        { calculation_uuid: calculation_uuid, calculation_status: 'calculation_unknown' }
       end
     end
 

@@ -117,6 +117,8 @@ RSpec.describe Services::UpdateExerciseCalculations::Service, type: :service do
                          .and not_change { AlgorithmAssignmentPeCalculation.count  }
                          .and not_change { AlgorithmStudentPeCalculation.count     }
 
+        calculation_uuids = results.map { |result| result[:calculation_uuid] }
+        expect(calculation_uuids).to match_array exercise_uuids_by_calculation_uuid.keys
         results.each { |result| expect(result[:calculation_status]).to eq 'calculation_accepted' }
 
         algorithm_assignment_spe_calculation = AlgorithmAssignmentSpeCalculation.find_by(

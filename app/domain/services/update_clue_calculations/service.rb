@@ -27,7 +27,7 @@ class Services::UpdateClueCalculations::Service
           clue_value: clue_data.fetch('most_likely')
         )
 
-        { calculation_status: 'calculation_accepted' }
+        { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
       elsif teacher_clue_calculation_uuids.include? calculation_uuid
         algorithm_teacher_clue_calculations << AlgorithmTeacherClueCalculation.new(
           uuid: SecureRandom.uuid,
@@ -37,9 +37,9 @@ class Services::UpdateClueCalculations::Service
           is_uploaded: false
         )
 
-        { calculation_status: 'calculation_accepted' }
+        { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
       else
-        { calculation_status: 'calculation_unknown' }
+        { calculation_uuid: calculation_uuid, calculation_status: 'calculation_unknown' }
       end
     end
 

@@ -111,6 +111,8 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
       expect { action }.to  not_change { AlgorithmStudentClueCalculation.count }
                        .and not_change { AlgorithmTeacherClueCalculation.count }
 
+        calculation_uuids = results.map { |result| result[:calculation_uuid] }
+        expect(calculation_uuids).to match_array clue_data_by_calculation_uuid.keys
         results.each { |result| expect(result[:calculation_status]).to eq 'calculation_accepted' }
 
         algorithm_student_clue_calculation = AlgorithmStudentClueCalculation.find_by(
