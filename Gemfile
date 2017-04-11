@@ -66,6 +66,12 @@ group :development, :test do
 
   # Lorem Ipsum generator
   gem 'faker'
+
+  # Stubs HTTP requests
+  gem 'webmock'
+
+  # Records HTTP requests
+  gem 'vcr'
 end
 
 group :development do
@@ -82,12 +88,6 @@ group :development do
   # Needed for Guard to work on Ruby's built without readline
   gem 'rb-readline'
   gem 'guard-rspec'
-
-  # Stubs HTTP requests
-  gem 'webmock'
-
-  # Records HTTP requests
-  gem 'vcr'
 end
 
 group :test do

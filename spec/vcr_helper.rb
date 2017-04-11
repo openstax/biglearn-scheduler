@@ -1,5 +1,4 @@
 require 'spec_helper'
-require 'vcr'
 
 VCR.configure do |c|
   c.cassette_library_dir = 'spec/cassettes'

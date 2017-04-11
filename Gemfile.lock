@@ -54,7 +54,7 @@ GEM
       execjs
     coffee-script-source (1.12.2)
     concurrent-ruby (1.0.5)
-    crack (0.4.2)
+    crack (0.4.3)
       safe_yaml (~> 1.0.0)
     daemons (1.2.4)
     database_cleaner (1.5.3)
@@ -89,6 +89,7 @@ GEM
       guard (~> 2.1)
       guard-compat (~> 1.1)
       rspec (>= 2.99.0, < 4.0)
+    hashdiff (0.3.2)
     i18n (0.8.1)
     jbuilder (2.6.1)
       activesupport (>= 3.0.0, < 5.1)
@@ -237,15 +238,16 @@ GEM
     unicorn-rails (2.2.1)
       rack
       unicorn
-    vcr (2.9.3)
+    vcr (3.0.3)
     web-console (3.4.0)
       actionview (>= 5.0)
       activemodel (>= 5.0)
       debug_inspector
       railties (>= 5.0)
-    webmock (1.20.4)
+    webmock (2.3.2)
       addressable (>= 2.3.6)
       crack (>= 0.3.2)
+      hashdiff
     websocket-driver (0.6.5)
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.2)
