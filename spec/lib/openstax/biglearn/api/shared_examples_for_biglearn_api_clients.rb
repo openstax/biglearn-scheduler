@@ -1,4 +1,3 @@
-require 'rails_helper'
 require 'vcr_helper'
 
 RSpec.shared_examples 'a biglearn api client' do
