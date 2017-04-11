@@ -42,14 +42,17 @@ gem 'unicorn-rails'
 # This allows us to easily start using it in the future if we decide to
 gem 'oauth2'
 
+# Used for input/output payload schema validation
+gem 'json-schema'
+
 # ActiveRecord import method (upsert)
 gem 'activerecord-import'
 
 # Daemonize our custom background tasks
 gem 'daemons'
 
-# Used for input/output payload schema validation
-gem 'json-schema'
+# Entity-relationship diagram gem
+gem 'rails-erd'
 
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console
@@ -73,6 +76,12 @@ group :development do
   # Spring speeds up development by keeping your application running in the background. Read more: https://github.com/rails/spring
   gem 'spring'
   gem 'spring-watcher-listen', '~> 2.0.0'
+
+  # Re-run specs when files change
+  gem 'spring-commands-rspec'
+  # Needed for Guard to work on Ruby's built without readline
+  gem 'rb-readline'
+  gem 'guard-rspec'
 
   # Stubs HTTP requests
   gem 'webmock'

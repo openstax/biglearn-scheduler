@@ -1,5 +1,4 @@
-## postgres 9.5 setup adapted from: https://github.com/travis-ci/travis-ci/issues/4264
-
+# PostgreSQL 9.5 setup adapted from: https://github.com/travis-ci/travis-ci/issues/4264
 sudo: false
 dist: trusty
 addons:
