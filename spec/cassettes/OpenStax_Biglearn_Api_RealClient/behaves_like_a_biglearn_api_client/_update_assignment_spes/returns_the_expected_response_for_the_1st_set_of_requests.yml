@@ -6,8 +6,10 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"spe_updates":[{"request_uuid":"<UPDATE_ASSIGNMENT_SPES EXAMPLE 1
-        REQUEST 1 UUID>","assignment_uuid":"<ASSIGNMENT UUID>","exercise_uuids":["4c36f80d-4d58-4fac-bf0b-ccb93e37994f","e7511e71-2732-48bc-93b0-1051c6edd2ae","9a72598a-788e-4afa-a0fe-fa7854278084","e2475070-845f-4bc6-87b5-f216743def82","42a40dec-8de2-49c6-a14a-f95ad374680d","1b14e239-ea84-4305-b73d-684a354dae7e","d4cee8de-9f2e-4c95-9982-f4914fc87fc8"],"algorithm_name":"local_query_instructor_driven"},{"request_uuid":"<UPDATE_ASSIGNMENT_SPES
-        EXAMPLE 1 REQUEST 2 UUID>","assignment_uuid":"<ASSIGNMENT UUID>","exercise_uuids":["4c36f80d-4d58-4fac-bf0b-ccb93e37994f","e7511e71-2732-48bc-93b0-1051c6edd2ae","9a72598a-788e-4afa-a0fe-fa7854278084","e2475070-845f-4bc6-87b5-f216743def82","42a40dec-8de2-49c6-a14a-f95ad374680d","1b14e239-ea84-4305-b73d-684a354dae7e","d4cee8de-9f2e-4c95-9982-f4914fc87fc8"],"algorithm_name":"local_query_student_driven"}]}'
+        REQUEST 1 UUID>","assignment_uuid":"<ASSIGNMENT UUID>","exercise_uuids":<EXERCISE
+        UUIDS>,"algorithm_name":"local_query_instructor_driven"},{"request_uuid":"<UPDATE_ASSIGNMENT_SPES
+        EXAMPLE 1 REQUEST 2 UUID>","assignment_uuid":"<ASSIGNMENT UUID>","exercise_uuids":<EXERCISE
+        UUIDS>,"algorithm_name":"local_query_student_driven"}]}'
     headers:
       User-Agent:
       - Faraday v0.9.2
@@ -22,6 +24,10 @@ http_interactions:
       code: 200
       message: OK
     headers:
+      Date:
+      - Wed, 12 Apr 2017 00:06:07 GMT
+      Connection:
+      - close
       X-Frame-Options:
       - SAMEORIGIN
       X-Xss-Protection:
@@ -31,22 +37,18 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"bb3959dca6bef75ad35bb64cc61d90f1"
+      - W/"91a30e1af5c48e9211af1e444b384f8f"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - b9faa8de-6b43-4011-a0cd-211cfde1ac33
+      - d58df7d2-63e7-40aa-914a-c69cc5aced0d
       X-Runtime:
-      - '0.034117'
-      Connection:
-      - close
-      Server:
-      - thin
+      - '0.056397'
     body:
       encoding: UTF-8
       string: '{"spe_update_responses":[{"request_uuid":"<UPDATE_ASSIGNMENT_SPES EXAMPLE
         1 REQUEST 1 UUID>","update_status":"accepted"},{"request_uuid":"<UPDATE_ASSIGNMENT_SPES
         EXAMPLE 1 REQUEST 2 UUID>","update_status":"accepted"}]}'
     http_version: 
-  recorded_at: Wed, 22 Mar 2017 23:49:16 GMT
-recorded_with: VCR 2.9.3
+  recorded_at: Wed, 12 Apr 2017 00:06:07 GMT
+recorded_with: VCR 3.0.3

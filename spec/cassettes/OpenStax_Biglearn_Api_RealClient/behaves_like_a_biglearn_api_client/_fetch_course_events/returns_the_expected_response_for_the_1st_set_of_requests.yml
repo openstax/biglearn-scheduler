@@ -6,7 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"course_event_requests":[{"request_uuid":"<FETCH_COURSE_EVENTS EXAMPLE
-        1 REQUEST 1 UUID>","event_types":["record_response","create_course","prepare_course_ecosystem","update_course_excluded_exercises","update_roster","update_globally_excluded_exercises","update_course_ecosystem"],"course_uuid":"<COURSE
+        1 REQUEST 1 UUID>","event_types":<COURSE EVENT TYPES>,"course_uuid":"<COURSE
         UUID>","sequence_number_offset":42,"event_limit":1000}]}'
     headers:
       User-Agent:
@@ -22,6 +22,10 @@ http_interactions:
       code: 200
       message: OK
     headers:
+      Date:
+      - Wed, 12 Apr 2017 00:06:07 GMT
+      Connection:
+      - close
       X-Frame-Options:
       - SAMEORIGIN
       X-Xss-Protection:
@@ -31,21 +35,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"4a776014d25deba0dea6fd8ee4e9acb2"
+      - W/"d26dea23c2843bfdd4942ed11c187a4e"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 8583aa43-07e7-43f9-af93-c908ad4756c8
+      - e55e427a-c8dc-411e-bd9e-dab0badc8d2c
       X-Runtime:
-      - '0.041636'
-      Connection:
-      - close
-      Server:
-      - thin
+      - '0.049023'
     body:
       encoding: UTF-8
       string: '{"course_event_responses":[{"request_uuid":"<FETCH_COURSE_EVENTS EXAMPLE
         1 REQUEST 1 UUID>","course_uuid":"<COURSE UUID>","events":[],"is_stopped_at_gap":false}]}'
     http_version: 
-  recorded_at: Tue, 07 Mar 2017 00:32:00 GMT
-recorded_with: VCR 2.9.3
+  recorded_at: Wed, 12 Apr 2017 00:06:07 GMT
+recorded_with: VCR 3.0.3

@@ -6,7 +6,7 @@ http_interactions:
     body:
       encoding: UTF-8
       string: '{"ecosystem_event_requests":[{"request_uuid":"<FETCH_ECOSYSTEM_EVENTS
-        EXAMPLE 1 REQUEST 1 UUID>","event_types":["create_ecosystem"],"ecosystem_uuid":"<ECOSYSTEM
+        EXAMPLE 1 REQUEST 1 UUID>","event_types":<ECOSYSTEM EVENT TYPES>,"ecosystem_uuid":"<ECOSYSTEM
         UUID>","sequence_number_offset":42,"event_limit":1000}]}'
     headers:
       User-Agent:
@@ -22,6 +22,10 @@ http_interactions:
       code: 200
       message: OK
     headers:
+      Date:
+      - Wed, 12 Apr 2017 00:06:07 GMT
+      Connection:
+      - close
       X-Frame-Options:
       - SAMEORIGIN
       X-Xss-Protection:
@@ -31,21 +35,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"f6f5fd028d749aa8bd29f7f0ffca8398"
+      - W/"733d8ffdcad797912f11fcf947e7a57f"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 704a7a94-a4c7-4446-ae1a-06448052ea2d
+      - a8c2dada-aced-4de5-943a-e1f0b764670e
       X-Runtime:
-      - '0.042992'
-      Connection:
-      - close
-      Server:
-      - thin
+      - '0.041465'
     body:
       encoding: UTF-8
       string: '{"ecosystem_event_responses":[{"request_uuid":"<FETCH_ECOSYSTEM_EVENTS
         EXAMPLE 1 REQUEST 1 UUID>","ecosystem_uuid":"<ECOSYSTEM UUID>","events":[],"is_stopped_at_gap":false}]}'
     http_version: 
-  recorded_at: Tue, 07 Mar 2017 00:32:00 GMT
-recorded_with: VCR 2.9.3
+  recorded_at: Wed, 12 Apr 2017 00:06:07 GMT
+recorded_with: VCR 3.0.3

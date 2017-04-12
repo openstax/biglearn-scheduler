@@ -7,7 +7,7 @@ http_interactions:
       encoding: UTF-8
       string: '{"teacher_clue_updates":[{"request_uuid":"<UPDATE_TEACHER_CLUES EXAMPLE
         1 REQUEST 1 UUID>","book_container_uuid":"<BOOK CONTAINER UUID>","course_container_uuid":"<COURSE
-        CONTAINER UUID>","clue_data":{"minimum":0.0950411351989291,"most_likely":0.12915402213876548,"maximum":0.8276084867318947,"is_real":false,"ecosystem_uuid":"<ECOSYSTEM
+        CONTAINER UUID>","clue_data":{"minimum":0.0004811711908467853,"most_likely":0.0460969196706682,"maximum":0.23904664943669496,"is_real":true,"ecosystem_uuid":"<ECOSYSTEM
         UUID>"},"algorithm_name":"local_query"}]}'
     headers:
       User-Agent:
@@ -23,6 +23,10 @@ http_interactions:
       code: 200
       message: OK
     headers:
+      Date:
+      - Wed, 12 Apr 2017 00:06:07 GMT
+      Connection:
+      - close
       X-Frame-Options:
       - SAMEORIGIN
       X-Xss-Protection:
@@ -32,21 +36,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"612ed0017e1629a2d7a9792cc3e0cad6"
+      - W/"0380848812333a230471867e803bec19"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - ad287dbf-f118-4e93-a467-00dd4e784b68
+      - 6aa309e8-555b-4abd-b45f-acccc624765d
       X-Runtime:
-      - '0.060262'
-      Connection:
-      - close
-      Server:
-      - thin
+      - '0.066875'
     body:
       encoding: UTF-8
       string: '{"teacher_clue_update_responses":[{"request_uuid":"<UPDATE_TEACHER_CLUES
         EXAMPLE 1 REQUEST 1 UUID>","update_status":"accepted"}]}'
-    http_version:
-  recorded_at: Tue, 07 Mar 2017 00:32:00 GMT
-recorded_with: VCR 2.9.3
+    http_version: 
+  recorded_at: Wed, 12 Apr 2017 00:06:07 GMT
+recorded_with: VCR 3.0.3

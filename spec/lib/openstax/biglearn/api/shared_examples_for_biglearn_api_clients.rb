@@ -53,15 +53,19 @@ RSpec.shared_examples 'a biglearn api client' do
 
   before(:all, when_tagged_with_vcr) do
     VCR.configure do |config|
-      config.define_cassette_placeholder('<ECOSYSTEM EVENT TYPES>') { ecosystem_event_types       }
-      config.define_cassette_placeholder('<COURSE EVENT TYPES>'   ) { course_event_types          }
+      config.define_cassette_placeholder('<ECOSYSTEM EVENT TYPES>') do
+        ecosystem_event_types.to_json
+      end
+      config.define_cassette_placeholder('<COURSE EVENT TYPES>'   ) { course_event_types.to_json  }
       config.define_cassette_placeholder('<BOOK CONTAINER UUID>'  ) { dummy_book_container_uuid   }
       config.define_cassette_placeholder('<ECOSYSTEM UUID>'       ) { dummy_ecosystem.uuid        }
       config.define_cassette_placeholder('<COURSE UUID>'          ) { dummy_course.uuid           }
       config.define_cassette_placeholder('<COURSE CONTAINER UUID>') { dummy_course_container.uuid }
       config.define_cassette_placeholder('<STUDENT UUID>'         ) { dummy_student.uuid          }
       config.define_cassette_placeholder('<ASSIGNMENT UUID>'      ) { dummy_assignment.uuid       }
-      config.define_cassette_placeholder('<EXERCISE UUIDS>'       ) { dummy_exercises.map(&:uuid) }
+      config.define_cassette_placeholder('<EXERCISE UUIDS>'       ) do
+        dummy_exercises.map(&:uuid).to_json
+      end
     end
   end
 

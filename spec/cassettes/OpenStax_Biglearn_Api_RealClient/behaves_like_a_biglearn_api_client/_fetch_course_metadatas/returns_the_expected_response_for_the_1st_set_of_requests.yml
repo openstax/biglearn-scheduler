@@ -22,6 +22,10 @@ http_interactions:
       code: 200
       message: OK
     headers:
+      Date:
+      - Wed, 12 Apr 2017 00:06:07 GMT
+      Connection:
+      - close
       X-Frame-Options:
       - SAMEORIGIN
       X-Xss-Protection:
@@ -31,20 +35,16 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"058c6e33bbda15d834f08ef5e14561f5"
+      - W/"8da416d6e86b2cbae48931cb75dea88c"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - b78212c9-602a-4f0c-b802-86de000a44f0
+      - 2cfc21a4-acda-4a71-803b-1411b4c1771b
       X-Runtime:
-      - '0.037504'
-      Connection:
-      - close
-      Server:
-      - thin
+      - '0.025991'
     body:
       encoding: UTF-8
       string: '{"course_responses":[]}'
     http_version: 
-  recorded_at: Tue, 07 Mar 2017 00:32:00 GMT
-recorded_with: VCR 2.9.3
+  recorded_at: Wed, 12 Apr 2017 00:06:07 GMT
+recorded_with: VCR 3.0.3
