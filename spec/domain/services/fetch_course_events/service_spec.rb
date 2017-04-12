@@ -567,6 +567,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
 
     context 'record_response events' do
       let(:event_type)     { 'record_response' }
+      let(:ecosystem_uuid) { SecureRandom.uuid }
       let(:trial_uuid)     { SecureRandom.uuid }
       let(:student_uuid)   { SecureRandom.uuid }
       let(:exercise_uuid)  { SecureRandom.uuid }
@@ -577,6 +578,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           response_uuid: event_uuid,
           course_uuid: course.uuid,
           sequence_number: sequence_number,
+          ecosystem_uuid: ecosystem_uuid,
           trial_uuid: trial_uuid,
           student_uuid: student_uuid,
           exercise_uuid: exercise_uuid,
@@ -609,10 +611,12 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and not_change { course.global_excluded_exercise_group_uuids }
 
         response = Response.find_by uuid: event_uuid
+        expect(response.ecosystem_uuid).to eq ecosystem_uuid
+        expect(response.trial_uuid).to eq trial_uuid
         expect(response.student_uuid).to eq student_uuid
         expect(response.exercise_uuid).to eq exercise_uuid
         expect(response.is_correct).to eq is_correct
-        expect(response.used_in_latest_clue_calculations).to eq false
+        expect(response.used_in_clue_calculations).to eq false
       end
     end
   end

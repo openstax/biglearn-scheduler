@@ -230,12 +230,14 @@ class Services::FetchCourseEvents::Service
 
           responses << Response.new(
             uuid: response_uuid,
+            ecosystem_uuid: data.fetch(:ecosystem_uuid),
             trial_uuid: data.fetch(:trial_uuid),
             student_uuid: data.fetch(:student_uuid),
             exercise_uuid: data.fetch(:exercise_uuid),
             responded_at: data.fetch(:responded_at),
             is_correct: data.fetch(:is_correct),
-            used_in_latest_clue_calculations: false
+            used_in_clue_calculations: false,
+            used_in_ecosystem_matrix_updates: false
           )
         end
 
@@ -419,9 +421,10 @@ class Services::FetchCourseEvents::Service
       affected_student_uuids = Student.where(course_uuid: course_uuids_with_changed_ecosystems)
                                       .pluck(:uuid)
 
-      # Mark CLUes for recalculation for students in courses with updated ecosystems
+      # Mark CLUes and ecosystem matrices for recalculation
+      # for students in courses with updated ecosystems
       Response.where(student_uuid: affected_student_uuids)
-              .update_all(used_in_latest_clue_calculations: false)
+              .update_all(used_in_clue_calculations: false, used_in_ecosystem_matrix_updates: false)
 
       # Get updated assignments
       updated_assignment_uuids = assignments.map(&:uuid)

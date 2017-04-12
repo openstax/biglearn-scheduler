@@ -15,7 +15,7 @@ class Services::PrepareClueCalculations::Service
     loop do
       num_responses = Response.transaction do
         # Get Responses that have not yet been used in CLUes
-        responses = Response.where(used_in_latest_clue_calculations: false).take(BATCH_SIZE)
+        responses = Response.where(used_in_clue_calculations: false).take(BATCH_SIZE)
 
         # Build some hashes to minimize the number of queries
 
@@ -297,7 +297,7 @@ class Services::PrepareClueCalculations::Service
         }
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
-        Response.where(uuid: used_response_uuids).update_all(used_in_latest_clue_calculations: true)
+        Response.where(uuid: used_response_uuids).update_all(used_in_clue_calculations: true)
 
         responses.size
       end

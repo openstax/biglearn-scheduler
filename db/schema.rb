@@ -265,7 +265,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "ecosystem_uuid", null: false
     t.datetime "created_at",     null: false
     t.datetime "updated_at",     null: false
-    t.index ["ecosystem_uuid"], name: "index_ecosystem_matrix_updates_on_ecosystem_uuid", using: :btree
+    t.index ["ecosystem_uuid"], name: "index_ecosystem_matrix_updates_on_ecosystem_uuid", unique: true, using: :btree
     t.index ["uuid"], name: "index_ecosystem_matrix_updates_on_uuid", unique: true, using: :btree
   end
 
@@ -315,19 +315,23 @@ ActiveRecord::Schema.define(version: 20170404212728) do
 
   create_table "responses", force: :cascade do |t|
     t.uuid     "uuid",                             null: false
+    t.uuid     "ecosystem_uuid",                   null: false
     t.uuid     "trial_uuid",                       null: false
     t.uuid     "student_uuid",                     null: false
     t.uuid     "exercise_uuid",                    null: false
     t.datetime "responded_at",                     null: false
     t.boolean  "is_correct",                       null: false
-    t.boolean  "used_in_latest_clue_calculations", null: false
+    t.boolean  "used_in_clue_calculations",        null: false
+    t.boolean  "used_in_ecosystem_matrix_updates", null: false
     t.datetime "created_at",                       null: false
     t.datetime "updated_at",                       null: false
+    t.index ["ecosystem_uuid", "used_in_ecosystem_matrix_updates"], name: "index_responses_on_eco_uuid_and_used_in_eco_mtx_updates", using: :btree
     t.index ["exercise_uuid"], name: "index_responses_on_exercise_uuid", using: :btree
     t.index ["responded_at"], name: "index_responses_on_responded_at", using: :btree
     t.index ["student_uuid"], name: "index_responses_on_student_uuid", using: :btree
     t.index ["trial_uuid"], name: "index_responses_on_trial_uuid", using: :btree
-    t.index ["used_in_latest_clue_calculations"], name: "index_responses_on_used_in_latest_clue_calculations", using: :btree
+    t.index ["used_in_clue_calculations"], name: "index_responses_on_used_in_clue_calculations", using: :btree
+    t.index ["used_in_ecosystem_matrix_updates"], name: "index_responses_on_used_in_ecosystem_matrix_updates", using: :btree
     t.index ["uuid"], name: "index_responses_on_uuid", unique: true, using: :btree
   end
 

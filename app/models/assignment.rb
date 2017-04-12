@@ -22,7 +22,7 @@ class Assignment < ApplicationRecord
               ON responses.uuid = assigned_exercises.uuid
             WHERE assigned_exercises.is_spe = FALSE
             GROUP BY assigned_exercises.assignment_uuid
-            HAVING COUNT(assigned_exercises.uuid) = COUNT(responses.uuid)
+            HAVING COUNT(assigned_exercises.*) = COUNT(DISTINCT responses.trial_uuid)
           ) AS assignment_core_steps_completion
             ON assignment_core_steps_completion.assignment_uuid = assignments.uuid
         ) AS assignments
