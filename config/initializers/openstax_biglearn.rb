@@ -6,5 +6,5 @@ OpenStax::Biglearn::Api.configure do |config|
   config.secret     = biglearn_secrets['secret']
 end
 
-biglearn_secrets.fetch('stub', true) ? OpenStax::Biglearn::Api.use_fake_client :
-                                       OpenStax::Biglearn::Api.use_real_client
+biglearn_secrets.fetch('stub', false) ? OpenStax::Biglearn::Api.use_fake_client :
+                                        OpenStax::Biglearn::Api.use_real_client
