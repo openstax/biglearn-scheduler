@@ -17,35 +17,12 @@ RSpec.describe Services::FetchClueCalculations::Service, type: :service do
     let(:calculation_uuid_1)   { SecureRandom.uuid }
     let(:calculation_uuid_2)   { SecureRandom.uuid }
 
-    let(:num_exercise_uuids_1) { rand(10) + 1 }
-    let(:num_response_uuids_1) { rand(10) + 1 }
-    let(:ecosystem_uuid_1)     { SecureRandom.uuid }
-    let(:student_uuid_1)       { SecureRandom.uuid }
-    let(:exercise_uuids_1)     { num_exercise_uuids_1.times.map { SecureRandom.uuid } }
-    let(:response_uuids_1)     { num_response_uuids_1.times.map { SecureRandom.uuid } }
-
-    let(:num_student_uuids_2)  { rand(10) + 1 }
-    let(:num_exercise_uuids_2) { rand(10) + 1 }
-    let(:num_response_uuids_2) { rand(10) + 1 }
-    let(:ecosystem_uuid_2)     { SecureRandom.uuid }
-    let(:student_uuids_2)      { num_student_uuids_2.times.map  { SecureRandom.uuid } }
-    let(:exercise_uuids_2)     { num_exercise_uuids_2.times.map { SecureRandom.uuid } }
-    let(:response_uuids_2)     { num_response_uuids_2.times.map { SecureRandom.uuid } }
-
     let!(:student_clue_calculation) do
-      FactoryGirl.create :student_clue_calculation, uuid: calculation_uuid_1,
-                                                    ecosystem_uuid: ecosystem_uuid_1,
-                                                    student_uuid: student_uuid_1,
-                                                    exercise_uuids: exercise_uuids_1,
-                                                    response_uuids: response_uuids_1
+      FactoryGirl.create :student_clue_calculation, uuid: calculation_uuid_1
     end
 
     let!(:teacher_clue_calculation) do
-      FactoryGirl.create :teacher_clue_calculation, uuid: calculation_uuid_2,
-                                                    ecosystem_uuid: ecosystem_uuid_2,
-                                                    student_uuids: student_uuids_2,
-                                                    exercise_uuids: exercise_uuids_2,
-                                                    response_uuids: response_uuids_2
+      FactoryGirl.create :teacher_clue_calculation, uuid: calculation_uuid_2
     end
 
     context "when the ClueCalculations have already been calculated" do
@@ -77,7 +54,7 @@ RSpec.describe Services::FetchClueCalculations::Service, type: :service do
           expect(response.fetch(:ecosystem_uuid)).to eq clue_calculation.ecosystem_uuid
           expect(response.fetch(:student_uuids)).to eq clue_calculation.student_uuids
           expect(response.fetch(:exercise_uuids)).to eq clue_calculation.exercise_uuids
-          expect(response.fetch(:response_uuids)).to eq clue_calculation.response_uuids
+          expect(response.fetch(:responses)).to match_array clue_calculation.responses
         end
       end
     end

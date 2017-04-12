@@ -29,7 +29,7 @@ class Services::FetchClueCalculations::Service
         ecosystem_uuid: clue_calculation.ecosystem_uuid,
         student_uuids: clue_calculation.student_uuids,
         exercise_uuids: clue_calculation.exercise_uuids,
-        response_uuids: clue_calculation.response_uuids
+        responses: clue_calculation.responses
       }
     end
 

@@ -337,7 +337,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "book_container_uuid", null: false
     t.uuid     "student_uuid",        null: false
     t.uuid     "exercise_uuids",      null: false, array: true
-    t.uuid     "response_uuids",      null: false, array: true
+    t.text     "responses",           null: false
     t.datetime "created_at",          null: false
     t.datetime "updated_at",          null: false
     t.index ["book_container_uuid"], name: "index_student_clue_calculations_on_book_container_uuid", using: :btree
@@ -393,7 +393,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "course_container_uuid", null: false
     t.uuid     "student_uuids",         null: false, array: true
     t.uuid     "exercise_uuids",        null: false, array: true
-    t.uuid     "response_uuids",        null: false, array: true
+    t.text     "responses",             null: false
     t.datetime "created_at",            null: false
     t.datetime "updated_at",            null: false
     t.index ["book_container_uuid"], name: "index_teacher_clue_calculations_on_book_container_uuid", using: :btree

@@ -9,19 +9,35 @@ RSpec.describe ClueCalculationsController, type: :request do
   context '#fetch_clue_calculations' do
     let(:num_student_uuids_1)  { rand(10) + 1 }
     let(:num_exercise_uuids_1) { rand(10) + 1 }
-    let(:num_response_uuids_1) { rand(10) + 1 }
+    let(:num_responses_1)      { rand(10) + 1 }
     let(:ecosystem_uuid_1)     { SecureRandom.uuid }
     let(:student_uuids_1)      { num_student_uuids_1.times.map  { SecureRandom.uuid } }
     let(:exercise_uuids_1)     { num_exercise_uuids_1.times.map { SecureRandom.uuid } }
-    let(:response_uuids_1)     { num_response_uuids_1.times.map { SecureRandom.uuid } }
+    let(:responses_1)          do
+      num_responses_1.times.map do
+        {
+          response_uuid: SecureRandom.uuid,
+          trial_uuid: SecureRandom.uuid,
+          is_correct: [true, false].sample
+        }
+      end
+    end
 
     let(:num_student_uuids_2)  { rand(10) + 1 }
     let(:num_exercise_uuids_2) { rand(10) + 1 }
-    let(:num_response_uuids_2) { rand(10) + 1 }
+    let(:num_responses_2)      { rand(10) + 1 }
     let(:ecosystem_uuid_2)     { SecureRandom.uuid }
     let(:student_uuids_2)      { num_student_uuids_2.times.map  { SecureRandom.uuid } }
     let(:exercise_uuids_2)     { num_exercise_uuids_2.times.map { SecureRandom.uuid } }
-    let(:response_uuids_2)     { num_response_uuids_2.times.map { SecureRandom.uuid } }
+    let(:responses_2)          do
+      num_responses_2.times.map do
+        {
+          response_uuid: SecureRandom.uuid,
+          trial_uuid: SecureRandom.uuid,
+          is_correct: [true, false].sample
+        }
+      end
+    end
 
     let(:request_payload)      { { algorithm_name: given_algorithm_name } }
 
@@ -33,14 +49,14 @@ RSpec.describe ClueCalculationsController, type: :request do
             ecosystem_uuid: ecosystem_uuid_1,
             student_uuids: student_uuids_1,
             exercise_uuids: exercise_uuids_1,
-            response_uuids: response_uuids_1
+            responses: responses_1
           },
           {
             calculation_uuid: calculation_uuid_2,
             ecosystem_uuid: ecosystem_uuid_2,
             student_uuids: student_uuids_2,
             exercise_uuids: exercise_uuids_2,
-            response_uuids: response_uuids_2
+            responses: responses_2
           }
         ]
       }

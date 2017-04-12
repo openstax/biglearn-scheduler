@@ -40,9 +40,7 @@ class ExerciseCalculationsController < JsonApiController
       '$schema': JSON_SCHEMA,
       'type': 'object',
       'properties': {
-        'algorithm_name': {
-          'type': 'string'
-        }
+        'algorithm_name': { 'type': 'string' }
       },
       'required': ['algorithm_name'],
       'additionalProperties': false,
@@ -92,12 +90,10 @@ class ExerciseCalculationsController < JsonApiController
             'type': 'object',
             'properties': {
               'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
-              'algorithm_name':   {
-                'type': 'string'
-              },
+              'algorithm_name':   { 'type': 'string' },
               'exercise_uuids':   {
-                type: 'array',
-                items: {'$ref': '#standard_definitions/uuid'}
+                'type': 'array',
+                'items': {'$ref': '#standard_definitions/uuid'}
               }
             },
             'required': ['calculation_uuid', 'algorithm_name', 'exercise_uuids'],

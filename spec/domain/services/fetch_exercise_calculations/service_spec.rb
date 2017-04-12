@@ -18,41 +18,16 @@ RSpec.describe Services::FetchExerciseCalculations::Service, type: :service do
     let(:calculation_uuid_2)   { SecureRandom.uuid }
     let(:calculation_uuid_3)   { SecureRandom.uuid }
 
-    let(:num_exercise_uuids_1) { rand(10) + 1 }
-    let(:exercise_uuids_1)     { num_exercise_uuids_1.times.map { SecureRandom.uuid } }
-    let(:student_uuid_1)       { SecureRandom.uuid }
-    let(:ecosystem_uuid_1)     { SecureRandom.uuid }
-
-
-    let(:num_exercise_uuids_2) { rand(10) + 1 }
-    let(:exercise_uuids_2)     { num_exercise_uuids_2.times.map { SecureRandom.uuid } }
-    let(:student_uuid_2)       { SecureRandom.uuid }
-    let(:ecosystem_uuid_2)     { SecureRandom.uuid }
-
-    let(:num_exercise_uuids_3) { rand(10) + 1 }
-    let(:exercise_uuids_3)     { num_exercise_uuids_3.times.map { SecureRandom.uuid } }
-    let(:student_uuid_3)       { SecureRandom.uuid }
-    let(:ecosystem_uuid_3)     { SecureRandom.uuid }
-
     let!(:assignment_pe_calculation) do
-      FactoryGirl.create :assignment_pe_calculation, uuid: calculation_uuid_1,
-                                                     ecosystem_uuid: ecosystem_uuid_1,
-                                                     student_uuid: student_uuid_1,
-                                                     exercise_uuids: exercise_uuids_1
+      FactoryGirl.create :assignment_pe_calculation, uuid: calculation_uuid_1
     end
 
     let!(:assignment_spe_calculation) do
-      FactoryGirl.create :assignment_spe_calculation, uuid: calculation_uuid_2,
-                                                      ecosystem_uuid: ecosystem_uuid_2,
-                                                      student_uuid: student_uuid_2,
-                                                      exercise_uuids: exercise_uuids_2
+      FactoryGirl.create :assignment_spe_calculation, uuid: calculation_uuid_2
     end
 
     let!(:student_pe_calculation) do
-      FactoryGirl.create :student_pe_calculation, uuid: calculation_uuid_3,
-                                                  ecosystem_uuid: ecosystem_uuid_3,
-                                                  student_uuid: student_uuid_3,
-                                                  exercise_uuids: exercise_uuids_3
+      FactoryGirl.create :student_pe_calculation, uuid: calculation_uuid_3
     end
 
     context "when the ExerciseCalculations have already been calculated" do

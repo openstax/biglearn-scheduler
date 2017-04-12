@@ -37,9 +37,7 @@ class EcosystemMatricesController < JsonApiController
       '$schema': JSON_SCHEMA,
       'type': 'object',
       'properties': {
-        'algorithm_name': {
-          'type': 'string'
-        }
+        'algorithm_name': { 'type': 'string' }
       },
       'required': ['algorithm_name'],
       'additionalProperties': false,
@@ -84,9 +82,7 @@ class EcosystemMatricesController < JsonApiController
             'type': 'object',
             'properties': {
               'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
-              'algorithm_name':   {
-                'type': 'string'
-              }
+              'algorithm_name':   { 'type': 'string' }
             },
             'required': ['calculation_uuid', 'algorithm_name'],
             'additionalProperties': false

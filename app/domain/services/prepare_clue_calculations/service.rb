@@ -149,10 +149,10 @@ class Services::PrepareClueCalculations::Service
         # Map student_uuids and exercise_group_uuids to correctness information
         # Take only the latest answer for each exercise_group_uuid
         # Mark responses found here as used in CLUe calculations
-        student_response_uuids_map = Hash.new do |hash, key|
+        student_responses_map = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = [] }
         end
-        teacher_response_uuids_map = Hash.new do |hash, key|
+        teacher_responses_map = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = [] }
         end
         Response.where(response_queries)
@@ -171,9 +171,14 @@ class Services::PrepareClueCalculations::Service
           end
 
           assignment_uuid = assignment_uuid_by_trial_uuid[trial_uuid]
-          student_response_uuids_map[student_uuid][exercise_group_uuid] << response_uuid \
+          response = {
+            response_uuid: response_uuid,
+            trial_uuid: trial_uuid,
+            is_correct: is_correct
+          }
+          student_responses_map[student_uuid][exercise_group_uuid] << response \
             unless ongoing_assignment_uuids.include?(assignment_uuid)
-          teacher_response_uuids_map[student_uuid][exercise_group_uuid] << response_uuid
+          teacher_responses_map[student_uuid][exercise_group_uuid] << response
 
           course_uuid = course_uuid_by_student_uuid[student_uuid]
           used_response_uuids << response_uuid
@@ -203,9 +208,9 @@ class Services::PrepareClueCalculations::Service
                                                                      .uniq
 
           student_uuids.uniq.map do |student_uuid|
-            response_uuids_map = student_response_uuids_map[student_uuid]
-            response_uuids = response_uuids_map.values_at(*exercise_group_uuids).compact.flatten
-            next if response_uuids.empty?
+            responses_map = student_responses_map[student_uuid]
+            responses = responses_map.values_at(*exercise_group_uuids).compact.flatten
+            next if responses.empty?
 
             StudentClueCalculation.new(
               uuid: SecureRandom.uuid,
@@ -213,7 +218,7 @@ class Services::PrepareClueCalculations::Service
               book_container_uuid: book_container_uuid,
               student_uuid: student_uuid,
               exercise_uuids: exercise_uuids,
-              response_uuids: response_uuids
+              responses: responses
             )
           end
         end.compact
@@ -259,11 +264,11 @@ class Services::PrepareClueCalculations::Service
             # Empty period
             next if student_uuids.empty?
 
-            response_uuids_maps = teacher_response_uuids_map.values_at(*student_uuids).compact
-            response_uuids = response_uuids_maps.map do |response_uuids_map|
-              response_uuids_map.values_at(*exercise_group_uuids)
+            responses_maps = teacher_responses_map.values_at(*student_uuids).compact
+            responses = responses_maps.map do |responses_map|
+              responses_map.values_at(*exercise_group_uuids)
             end.flatten.compact
-            next if response_uuids.empty?
+            next if responses.empty?
 
             TeacherClueCalculation.new(
               uuid: SecureRandom.uuid,
@@ -272,7 +277,7 @@ class Services::PrepareClueCalculations::Service
               course_container_uuid: course_container_uuid,
               student_uuids: student_uuids,
               exercise_uuids: exercise_uuids,
-              response_uuids: response_uuids
+              responses: responses
             )
           end
         end.compact
@@ -281,14 +286,14 @@ class Services::PrepareClueCalculations::Service
         StudentClueCalculation.import student_clue_calculations, validate: false,
                                                                  on_duplicate_key_update: {
           conflict_target: [ :student_uuid, :book_container_uuid ],
-          columns: [ :exercise_uuids ]
+          columns: [ :exercise_uuids, :responses ]
         }
 
         # Record the teacher CLUe calculations
         TeacherClueCalculation.import teacher_clue_calculations, validate: false,
                                                                  on_duplicate_key_update: {
           conflict_target: [ :course_container_uuid, :book_container_uuid ],
-          columns: [ :student_uuids, :exercise_uuids ]
+          columns: [ :student_uuids, :exercise_uuids, :responses ]
         }
 
         # Record the fact that the CLUes are up-to-date with the latest Responses

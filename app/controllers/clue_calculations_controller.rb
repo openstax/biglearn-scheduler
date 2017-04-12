@@ -37,9 +37,7 @@ class ClueCalculationsController < JsonApiController
       '$schema': JSON_SCHEMA,
       'type': 'object',
       'properties': {
-        'algorithm_name': {
-          'type': 'string'
-        }
+        'algorithm_name': { 'type': 'string' }
       },
       'required': ['algorithm_name'],
       'additionalProperties': false,
@@ -67,9 +65,18 @@ class ClueCalculationsController < JsonApiController
                 'type': 'array',
                 'items': {'$ref': '#standard_definitions/uuid'}
               },
-              'response_uuids': {
+              'responses': {
                 'type': 'array',
-                'items': {'$ref': '#standard_definitions/uuid'}
+                'items': {
+                  'type': 'object',
+                  'properties': {
+                    'response_uuid': {'$ref': '#standard_definitions/uuid'},
+                    'trial_uuid':    {'$ref': '#standard_definitions/uuid'},
+                    'is_correct':    { 'type': 'boolean' }
+                  },
+                  'required': [ 'response_uuid', 'trial_uuid', 'is_correct' ],
+                  'additionalProperties': false
+                }
               }
             },
             'required': [
@@ -77,7 +84,7 @@ class ClueCalculationsController < JsonApiController
               'ecosystem_uuid',
               'student_uuids',
               'exercise_uuids',
-              'response_uuids'
+              'responses'
             ],
             'additionalProperties': false
           },
@@ -102,9 +109,7 @@ class ClueCalculationsController < JsonApiController
             'type': 'object',
             'properties': {
               'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
-              'algorithm_name':   {
-                'type': 'string'
-              },
+              'algorithm_name':   { 'type': 'string' },
               'clue_data':        {'$ref': '#standard_definitions/clue_data'}
             },
             'required': ['calculation_uuid', 'algorithm_name', 'clue_data'],

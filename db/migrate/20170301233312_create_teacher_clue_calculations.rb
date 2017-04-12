@@ -7,7 +7,7 @@ class CreateTeacherClueCalculations < ActiveRecord::Migration[5.0]
       t.uuid :course_container_uuid, null: false
       t.uuid :student_uuids,         null: false, array: true
       t.uuid :exercise_uuids,        null: false, array: true
-      t.uuid :response_uuids,        null: false, array: true
+      t.text :responses,             null: false
 
       t.timestamps                   null: false
     end

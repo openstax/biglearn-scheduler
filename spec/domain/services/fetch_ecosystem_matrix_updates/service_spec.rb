@@ -17,15 +17,10 @@ RSpec.describe Services::FetchEcosystemMatrixUpdates::Service, type: :service do
     let(:calculation_uuid_1)   { SecureRandom.uuid }
     let(:calculation_uuid_2)   { SecureRandom.uuid }
 
-    let(:ecosystem_uuid_1)     { SecureRandom.uuid }
-    let(:ecosystem_uuid_2)     { SecureRandom.uuid }
-
     before do
-      FactoryGirl.create :ecosystem_matrix_update, uuid: calculation_uuid_1,
-                                                   ecosystem_uuid: ecosystem_uuid_1
+      FactoryGirl.create :ecosystem_matrix_update, uuid: calculation_uuid_1
 
-      FactoryGirl.create :ecosystem_matrix_update, uuid: calculation_uuid_2,
-                                                   ecosystem_uuid: ecosystem_uuid_2
+      FactoryGirl.create :ecosystem_matrix_update, uuid: calculation_uuid_2
     end
 
     context "when the EcosystemMatrixUpdates have already been updated" do

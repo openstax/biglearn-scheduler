@@ -7,5 +7,5 @@ RSpec.describe TeacherClueCalculation, type: :model do
   it { is_expected.to validate_presence_of :book_container_uuid }
   it { is_expected.to validate_presence_of :student_uuids       }
   it { is_expected.to validate_presence_of :exercise_uuids      }
-  it { is_expected.to validate_presence_of :response_uuids      }
+  it { is_expected.to validate_presence_of :responses           }
 end
