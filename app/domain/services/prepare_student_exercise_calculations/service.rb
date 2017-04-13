@@ -218,12 +218,21 @@ class Services::PrepareStudentExerciseCalculations::Service
           end
         end
 
-        StudentPeCalculation.import(
+        # Record the StudentPeCalculations
+        s_pe_calc_ids = StudentPeCalculation.import(
           student_pe_calculations, validate: false, on_duplicate_key_update: {
             conflict_target: [ :student_uuid, :book_container_uuid, :clue_algorithm_name ],
             columns: [ :exercise_uuids, :exercise_count ]
           }
-        )
+        ).ids
+
+        # Delete existing AlgorithmStudentPeCalculations for affected StudentPeCalculations,
+        # since they need to be recalculated
+        student_pe_calculation_uuids = StudentPeCalculation.where(id: s_pe_calc_ids)
+                                                           .pluck(:uuid)
+        AlgorithmStudentPeCalculation
+          .where(student_pe_calculation_uuid: student_pe_calculation_uuids)
+          .delete_all
 
         student_pe_calculation_exercises = student_pe_calculations
                                              .flat_map do |student_pe_calculation|

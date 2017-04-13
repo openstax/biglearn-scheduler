@@ -34,6 +34,14 @@ class Services::PrepareEcosystemMatrixUpdates::Service
           }
         )
 
+        # Delete existing AlgorithmEcosystemMatrixUpdate for affected EcosystemMatrixUpdates,
+        # since they need to be recalculated
+        ecosystem_matrix_update_uuids = EcosystemMatrixUpdate.where(ecosystem_uuid: ecosystem_uuids)
+                                                             .pluck(:uuid)
+        AlgorithmEcosystemMatrixUpdate
+          .where(ecosystem_matrix_update_uuid: ecosystem_matrix_update_uuids)
+          .delete_all
+
         # Record the fact that the Ecosystem matrices are up-to-date with the latest Responses
         Response.where(ecosystem_uuid: ecosystem_uuids)
                 .update_all(used_in_ecosystem_matrix_updates: true)

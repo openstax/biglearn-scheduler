@@ -282,19 +282,37 @@ class Services::PrepareClueCalculations::Service
           end
         end.compact
 
-        # Record the student CLUe calculations
-        StudentClueCalculation.import student_clue_calculations, validate: false,
-                                                                 on_duplicate_key_update: {
-          conflict_target: [ :student_uuid, :book_container_uuid ],
-          columns: [ :exercise_uuids, :responses ]
-        }
+        # Record the StudentClueCalculations
+        student_clue_calc_ids = StudentClueCalculation.import(
+          student_clue_calculations, validate: false, on_duplicate_key_update: {
+            conflict_target: [ :student_uuid, :book_container_uuid ],
+            columns: [ :exercise_uuids, :responses ]
+          }
+        )
 
-        # Record the teacher CLUe calculations
-        TeacherClueCalculation.import teacher_clue_calculations, validate: false,
-                                                                 on_duplicate_key_update: {
-          conflict_target: [ :course_container_uuid, :book_container_uuid ],
-          columns: [ :student_uuids, :exercise_uuids, :responses ]
-        }
+        # Delete existing AlgorithmStudentClueCalculations for affected StudentClueCalculations,
+        # since they need to be recalculated
+        student_clue_calculation_uuids = StudentClueCalculation.where(id: student_clue_calc_ids)
+                                                               .pluck(:uuid)
+        AlgorithmStudentClueCalculation
+          .where(student_clue_calculation_uuid: student_clue_calculation_uuids)
+          .delete_all
+
+        # Record the TeacherClueCalculations
+        teacher_clue_calc_ids = TeacherClueCalculation.import(
+          teacher_clue_calculations, validate: false, on_duplicate_key_update: {
+            conflict_target: [ :course_container_uuid, :book_container_uuid ],
+            columns: [ :student_uuids, :exercise_uuids, :responses ]
+          }
+        ).ids
+
+        # Delete existing AlgorithmTeacherClueCalculations for affected TeacherClueCalculations,
+        # since they need to be recalculated
+        teacher_clue_calculation_uuids = TeacherClueCalculation.where(id: teacher_clue_calc_ids)
+                                                               .pluck(:uuid)
+        AlgorithmTeacherClueCalculation
+          .where(teacher_clue_calculation_uuid: teacher_clue_calculation_uuids)
+          .delete_all
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
         Response.where(uuid: used_response_uuids).update_all(used_in_clue_calculations: true)

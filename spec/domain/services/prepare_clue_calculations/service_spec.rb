@@ -10,6 +10,7 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                 .and not_change { TeacherClueCalculation.count          }
                                 .and not_change { AlgorithmStudentClueCalculation.count }
                                 .and not_change { AlgorithmTeacherClueCalculation.count }
+                                .and not_change { StudentPeCalculation.count            }
     end
   end
 
@@ -96,12 +97,14 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
 
     after(:all)  { DatabaseCleaner.clean }
 
-    it 'marks the Response objects as processed' do
+    it 'marks the Responses as processed' do
       expect do
         subject.process
       end.to  not_change { Response.count               }
          .and not_change { StudentClueCalculation.count }
          .and not_change { TeacherClueCalculation.count }
+         .and not_change { AlgorithmStudentClueCalculation.count }
+         .and not_change { AlgorithmTeacherClueCalculation.count }
          .and not_change { StudentPeCalculation.count   }
 
       @unprocessed_responses.each do |response|
@@ -178,13 +181,20 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                                 exercise_group_uuid: @exercise_5.group_uuid,
                                                 book_container_uuids: book_container_uuids_2
 
-        FactoryGirl.create :student_clue_calculation,
-                           student_uuid: @student_1.uuid,
-                           book_container_uuid: @ep_1.book_container_uuid
-        FactoryGirl.create :teacher_clue_calculation,
-                           book_container_uuid: @ep_2.book_container_uuid,
-                           course_container_uuid: @cc_1.uuid,
-                           student_uuids: [ @student_1.uuid, @student_2.uuid ]
+        # Will not updated due to no new responses
+        calc_1 = FactoryGirl.create :student_clue_calculation,
+                                    student_uuid: @student_1.uuid,
+                                    book_container_uuid: @ep_1.book_container_uuid
+        FactoryGirl.create :algorithm_student_clue_calculation,
+                           student_clue_calculation_uuid: calc_1.uuid
+
+        # Will be updated
+        calc_2 = FactoryGirl.create :teacher_clue_calculation,
+                                    book_container_uuid: @ep_2.book_container_uuid,
+                                    course_container_uuid: @cc_1.uuid,
+                                    student_uuids: [ @student_1.uuid, @student_2.uuid ]
+        FactoryGirl.create :algorithm_teacher_clue_calculation,
+                           teacher_clue_calculation_uuid: calc_2.uuid
 
         # Exclude @response_8 from the Student CLUe (but not the Teacher CLUe)
         assignment = FactoryGirl.create :assignment, student_uuid: @student_2.uuid,
@@ -195,16 +205,19 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
 
       after(:all)  { DatabaseCleaner.clean }
 
-      it 'updates the StudentClueCalculation and TeacherClueCalculation records' do
+      it 'creates the StudentClueCalculation and TeacherClueCalculation records' +
+         ' and marks the Responses as processed' do
         student_uuids = [ @student_1.uuid, @student_2.uuid ]
         book_container_uuids = [ @ep_1.book_container_uuid, @ep_2.book_container_uuid ]
 
         expect do
           subject.process
-        end.to  not_change { Response.count               }
-           .and change     { StudentClueCalculation.count }.by(3)
-           .and change     { TeacherClueCalculation.count }.by(1)
-           .and not_change { StudentPeCalculation.count   }
+        end.to  not_change { Response.count                        }
+           .and change     { StudentClueCalculation.count          }.by(3)
+           .and change     { TeacherClueCalculation.count          }.by(1)
+           .and not_change { AlgorithmStudentClueCalculation.count }
+           .and change     { AlgorithmTeacherClueCalculation.count }.by(-1)
+           .and not_change { StudentPeCalculation.count            }
 
         @unprocessed_responses.each do |response|
           expect(response.reload.used_in_clue_calculations).to eq true

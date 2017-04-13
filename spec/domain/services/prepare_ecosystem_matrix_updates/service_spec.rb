@@ -63,11 +63,11 @@ RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service 
 
       after(:all)  { DatabaseCleaner.clean }
 
-      it 'marks the Response objects as processed and deletes' +
-         ' AlgorithmEcosystemMatrixUpdates that need to be updated' do
+      it 'marks the Response objects as processed and' +
+         ' deletes AlgorithmEcosystemMatrixUpdates that need to be updated' do
         expect { subject.process }.to  not_change { Response.count                       }
                                   .and not_change { EcosystemMatrixUpdate.count          }
-                                  #.and change     { AlgorithmEcosystemMatrixUpdate.count }.by(-1)
+                                  .and change     { AlgorithmEcosystemMatrixUpdate.count }.by(-1)
 
         @unprocessed_responses.each do |response|
           expect(response.reload.used_in_ecosystem_matrix_updates).to eq true

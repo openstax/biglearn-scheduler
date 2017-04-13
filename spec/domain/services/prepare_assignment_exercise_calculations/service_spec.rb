@@ -5,10 +5,12 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
 
   context 'with no Assignments' do
     it 'does not create any SPE or PE calculations' do
-      expect { subject.process }.to  not_change { AssignmentSpeCalculation.count         }
-                                .and not_change { AssignmentSpeCalculationExercise.count }
-                                .and not_change { AssignmentPeCalculation.count          }
-                                .and not_change { AssignmentPeCalculationExercise.count  }
+      expect { subject.process }.to  not_change { AssignmentSpeCalculation.count          }
+                                .and not_change { AssignmentSpeCalculationExercise.count  }
+                                .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                .and not_change { AssignmentPeCalculation.count           }
+                                .and not_change { AssignmentPeCalculationExercise.count   }
+                                .and not_change { AlgorithmAssignmentPeCalculation.count  }
     end
   end
 
@@ -652,51 +654,64 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
           reading_3_assigned_pe_pool = [@reading_pool_4_new, @reading_pool_5_new].sample
           reading_3_available_pe_uuids = reading_3_assigned_pe_pool.exercise_uuids -
                                          @reading_3.assigned_exercise_uuids
-          FactoryGirl.create :assignment_pe_calculation,
-                             student_uuid: @reading_3.student_uuid,
-                             ecosystem_uuid: @reading_3.ecosystem_uuid,
-                             book_container_uuid: reading_3_assigned_pe_pool.book_container_uuid,
-                             assignment_uuid: @reading_3.uuid,
-                             exercise_uuids: reading_3_available_pe_uuids,
-                             exercise_count: 1
+          calc = FactoryGirl.create(
+            :assignment_pe_calculation,
+            student_uuid: @reading_3.student_uuid,
+            ecosystem_uuid: @reading_3.ecosystem_uuid,
+            book_container_uuid: reading_3_assigned_pe_pool.book_container_uuid,
+            assignment_uuid: @reading_3.uuid,
+            exercise_uuids: reading_3_available_pe_uuids,
+            exercise_count: 1
+          )
+          FactoryGirl.create :algorithm_assignment_pe_calculation,
+                             assignment_pe_calculation_uuid: calc.uuid
 
           reading_3_assigned_spe_pool = @reading_pool_1_new
           [ :instructor_driven, :student_driven ].each do |history_type|
-            FactoryGirl.create :assignment_spe_calculation,
-                               student_uuid: @reading_3.student_uuid,
-                               ecosystem_uuid: @reading_3.ecosystem_uuid,
-                               book_container_uuid: reading_3_assigned_spe_pool.book_container_uuid,
-                               assignment_uuid: @reading_3.uuid,
-                               history_type: history_type,
-                               k_ago: 2,
-                               exercise_uuids: reading_3_assigned_spe_pool.exercise_uuids,
-                               exercise_count: 1
+            calc = FactoryGirl.create(
+              :assignment_spe_calculation,
+              student_uuid: @reading_3.student_uuid,
+              ecosystem_uuid: @reading_3.ecosystem_uuid,
+              book_container_uuid: reading_3_assigned_spe_pool.book_container_uuid,
+              assignment_uuid: @reading_3.uuid,
+              history_type: history_type,
+              k_ago: 2,
+              exercise_uuids: reading_3_assigned_spe_pool.exercise_uuids,
+              exercise_count: 1
+            )
+            FactoryGirl.create :algorithm_assignment_spe_calculation,
+                               assignment_spe_calculation_uuid: calc.uuid
           end
 
           homework_3_assigned_spe_pool = @homework_pool_1_new
           [ :instructor_driven, :student_driven ].each do |history_type|
-            FactoryGirl.create :assignment_spe_calculation,
-                               student_uuid: @homework_3.student_uuid,
-                               ecosystem_uuid: @homework_3.ecosystem_uuid,
-                               book_container_uuid:
-                                 homework_3_assigned_spe_pool.book_container_uuid,
-                               assignment_uuid: @homework_3.uuid,
-                               history_type: history_type,
-                               k_ago: 2,
-                               exercise_uuids: homework_3_assigned_spe_pool.exercise_uuids,
-                               exercise_count: 1
+            calc = FactoryGirl.create(
+              :assignment_spe_calculation,
+              student_uuid: @homework_3.student_uuid,
+              ecosystem_uuid: @homework_3.ecosystem_uuid,
+              book_container_uuid: homework_3_assigned_spe_pool.book_container_uuid,
+              assignment_uuid: @homework_3.uuid,
+              history_type: history_type,
+              k_ago: 2,
+              exercise_uuids: homework_3_assigned_spe_pool.exercise_uuids,
+              exercise_count: 1
+            )
+            FactoryGirl.create :algorithm_assignment_spe_calculation,
+                               assignment_spe_calculation_uuid: calc.uuid
           end
         end
 
         after(:all)  { DatabaseCleaner.clean }
 
         it 'creates only the missing SPE and PE calculations with the correct pools' do
-        expect { subject.process }.to  change { AssignmentSpeCalculation.count         }
-                                                .by(expected_assignment_spe_calculations.size - 4)
-                                  .and change { AssignmentSpeCalculationExercise.count }
-                                  .and change { AssignmentPeCalculation.count          }
-                                                .by(expected_assignment_pe_calculations.size - 1)
-                                  .and change { AssignmentPeCalculationExercise.count  }
+        expect { subject.process }.to  change { AssignmentSpeCalculation.count          }
+                                         .by(expected_assignment_spe_calculations.size - 4)
+                                  .and change { AssignmentSpeCalculationExercise.count  }
+                                  .and change { AlgorithmAssignmentSpeCalculation.count }.by(-4)
+                                  .and change { AssignmentPeCalculation.count           }
+                                         .by(expected_assignment_pe_calculations.size - 1)
+                                  .and change { AssignmentPeCalculationExercise.count   }
+                                  .and change { AlgorithmAssignmentPeCalculation.count  }.by(-1)
 
           AssignmentSpeCalculation.all.each do |calc|
             index = [calc.assignment_uuid, calc.book_container_uuid, calc.history_type, calc.k_ago]
@@ -870,14 +885,16 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
         expected_num_pes = expected_assignment_pe_calculations
                              .map { |calc| calc[:exercise_uuids].size }
                              .reduce(0, :+)
-        expect { subject.process }.to  change { AssignmentSpeCalculation.count         }
-                                                .by(expected_assignment_spe_calculations.size)
-                                  .and change { AssignmentSpeCalculationExercise.count }
-                                                .by(expected_num_spes)
-                                  .and change { AssignmentPeCalculation.count          }
-                                                .by(expected_assignment_pe_calculations.size)
-                                  .and change { AssignmentPeCalculationExercise.count  }
-                                                .by(expected_num_pes)
+        expect { subject.process }.to  change     { AssignmentSpeCalculation.count          }
+                                         .by(expected_assignment_spe_calculations.size)
+                                  .and change     { AssignmentSpeCalculationExercise.count  }
+                                         .by(expected_num_spes)
+                                  .and not_change { AlgorithmAssignmentSpeCalculation.count }
+                                  .and change     { AssignmentPeCalculation.count           }
+                                         .by(expected_assignment_pe_calculations.size)
+                                  .and change     { AssignmentPeCalculationExercise.count   }
+                                         .by(expected_num_pes)
+                                  .and not_change { AlgorithmAssignmentPeCalculation.count  }
 
         AssignmentSpeCalculation.all.each do |calc|
           index = [calc.assignment_uuid, calc.book_container_uuid, calc.history_type, calc.k_ago]
@@ -901,60 +918,75 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
           reading_3_assigned_pe_pool = [@reading_pool_4_new, @reading_pool_5_new].sample
           reading_3_available_pe_uuids = reading_3_assigned_pe_pool.exercise_uuids -
                                          @reading_3.assigned_exercise_uuids
-          FactoryGirl.create :assignment_pe_calculation,
-                             student_uuid: @reading_3.student_uuid,
-                             ecosystem_uuid: @reading_3.ecosystem_uuid,
-                             book_container_uuid: reading_3_assigned_pe_pool.book_container_uuid,
-                             assignment_uuid: @reading_3.uuid,
-                             exercise_uuids: reading_3_available_pe_uuids,
-                             exercise_count: 1
+          calc = FactoryGirl.create(
+            :assignment_pe_calculation,
+            student_uuid: @reading_3.student_uuid,
+            ecosystem_uuid: @reading_3.ecosystem_uuid,
+            book_container_uuid: reading_3_assigned_pe_pool.book_container_uuid,
+            assignment_uuid: @reading_3.uuid,
+            exercise_uuids: reading_3_available_pe_uuids,
+            exercise_count: 1
+          )
+          FactoryGirl.create :algorithm_assignment_pe_calculation,
+                             assignment_pe_calculation_uuid: calc.uuid
 
           reading_3_assigned_instructor_spe_pool = @reading_pool_1_new
-          FactoryGirl.create :assignment_spe_calculation,
-                             student_uuid: @reading_3.student_uuid,
-                             ecosystem_uuid: @reading_3.ecosystem_uuid,
-                             book_container_uuid:
-                               reading_3_assigned_instructor_spe_pool.book_container_uuid,
-                             assignment_uuid: @reading_3.uuid,
-                             history_type: :instructor_driven,
-                             k_ago: 2,
-                             exercise_uuids: reading_3_assigned_instructor_spe_pool.exercise_uuids,
-                             exercise_count: 1
+          calc = FactoryGirl.create(
+            :assignment_spe_calculation,
+            student_uuid: @reading_3.student_uuid,
+            ecosystem_uuid: @reading_3.ecosystem_uuid,
+            book_container_uuid: reading_3_assigned_instructor_spe_pool.book_container_uuid,
+            assignment_uuid: @reading_3.uuid,
+            history_type: :instructor_driven,
+            k_ago: 2,
+            exercise_uuids: reading_3_assigned_instructor_spe_pool.exercise_uuids,
+            exercise_count: 1
+          )
+          FactoryGirl.create :algorithm_assignment_spe_calculation,
+                             assignment_spe_calculation_uuid: calc.uuid
 
           homework_3_assigned_instructor_spe_pool = @homework_pool_1_new
-          FactoryGirl.create :assignment_spe_calculation,
-                             student_uuid: @homework_3.student_uuid,
-                             ecosystem_uuid: @homework_3.ecosystem_uuid,
-                             book_container_uuid:
-                               homework_3_assigned_instructor_spe_pool.book_container_uuid,
-                             assignment_uuid: @homework_3.uuid,
-                             history_type: :instructor_driven,
-                             k_ago: 2,
-                             exercise_uuids: homework_3_assigned_instructor_spe_pool.exercise_uuids,
-                             exercise_count: 1
+          calc = FactoryGirl.create(
+            :assignment_spe_calculation,
+            student_uuid: @homework_3.student_uuid,
+            ecosystem_uuid: @homework_3.ecosystem_uuid,
+            book_container_uuid: homework_3_assigned_instructor_spe_pool.book_container_uuid,
+            assignment_uuid: @homework_3.uuid,
+            history_type: :instructor_driven,
+            k_ago: 2,
+            exercise_uuids: homework_3_assigned_instructor_spe_pool.exercise_uuids,
+            exercise_count: 1
+          )
+          FactoryGirl.create :algorithm_assignment_spe_calculation,
+                             assignment_spe_calculation_uuid: calc.uuid
 
           homework_1_assigned_student_spe_pool = @homework_pool_4_old
-          FactoryGirl.create :assignment_spe_calculation,
-                             student_uuid: @homework_1.student_uuid,
-                             ecosystem_uuid: @homework_1.ecosystem_uuid,
-                             book_container_uuid:
-                               homework_1_assigned_student_spe_pool.book_container_uuid,
-                             assignment_uuid: @homework_1.uuid,
-                             history_type: :student_driven,
-                             k_ago: 2,
-                             exercise_uuids: homework_1_assigned_student_spe_pool.exercise_uuids,
-                             exercise_count: 1
+          calc = FactoryGirl.create(
+            :assignment_spe_calculation,
+            student_uuid: @homework_1.student_uuid,
+            ecosystem_uuid: @homework_1.ecosystem_uuid,
+            book_container_uuid: homework_1_assigned_student_spe_pool.book_container_uuid,
+            assignment_uuid: @homework_1.uuid,
+            history_type: :student_driven,
+            k_ago: 2,
+            exercise_uuids: homework_1_assigned_student_spe_pool.exercise_uuids,
+            exercise_count: 1
+          )
+          FactoryGirl.create :algorithm_assignment_spe_calculation,
+                             assignment_spe_calculation_uuid: calc.uuid
         end
 
         after(:all)  { DatabaseCleaner.clean }
 
         it 'creates only the missing SPE and PE calculations with the correct pools' do
-        expect { subject.process }.to  change { AssignmentSpeCalculation.count         }
-                                                .by(expected_assignment_spe_calculations.size - 3)
-                                  .and change { AssignmentSpeCalculationExercise.count }
-                                  .and change { AssignmentPeCalculation.count          }
-                                                .by(expected_assignment_pe_calculations.size - 1)
-                                  .and change { AssignmentPeCalculationExercise.count  }
+          expect { subject.process }.to  change { AssignmentSpeCalculation.count          }
+                                           .by(expected_assignment_spe_calculations.size - 3)
+                                    .and change { AssignmentSpeCalculationExercise.count  }
+                                    .and change { AlgorithmAssignmentSpeCalculation.count }.by(-3)
+                                    .and change { AssignmentPeCalculation.count           }
+                                           .by(expected_assignment_pe_calculations.size - 1)
+                                    .and change { AlgorithmAssignmentPeCalculation.count  }.by(-1)
+                                    .and change { AssignmentPeCalculationExercise.count   }
 
           AssignmentSpeCalculation.all.each do |calc|
             index = [calc.assignment_uuid, calc.book_container_uuid, calc.history_type, calc.k_ago]

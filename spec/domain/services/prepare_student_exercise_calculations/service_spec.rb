@@ -5,8 +5,9 @@ RSpec.describe Services::PrepareStudentExerciseCalculations::Service, type: :ser
 
   context 'with no Students' do
     it 'does not create any PE calculations' do
-      expect { subject.process }.to  not_change { StudentPeCalculation.count         }
-                                .and not_change { StudentPeCalculationExercise.count }
+      expect { subject.process }.to  not_change { StudentPeCalculation.count          }
+                                .and not_change { StudentPeCalculationExercise.count  }
+                                .and not_change { AlgorithmStudentPeCalculation.count }
     end
   end
 
@@ -253,10 +254,11 @@ RSpec.describe Services::PrepareStudentExerciseCalculations::Service, type: :ser
     it 'creates the correct numbers of PE calculations with the correct exercise pools' do
       expected_num_calculations = [practice_pools.size, 5].min
       expected_num_pes = practice_pools.flat_map(&:exercise_uuids).size
-      expect { subject.process }.to  change { StudentPeCalculation.count         }
-                                              .by(expected_num_calculations)
-                                .and change { StudentPeCalculationExercise.count }
-                                              .by(expected_num_pes)
+      expect { subject.process }.to  change     { StudentPeCalculation.count          }
+                                       .by(expected_num_calculations)
+                                .and change     { StudentPeCalculationExercise.count  }
+                                       .by(expected_num_pes)
+                                .and not_change { AlgorithmStudentPeCalculation.count }
 
       student_pe_calculations = StudentPeCalculation.order(:created_at).last(5)
       book_container_uuids = student_pe_calculations.map(&:book_container_uuid)
@@ -279,12 +281,15 @@ RSpec.describe Services::PrepareStudentExerciseCalculations::Service, type: :ser
 
         @already_assigned_exercise_pools = [ @practice_pool_1_new, @practice_pool_2_new ]
         @already_assigned_exercise_pools.each do |exercise_pool|
-          FactoryGirl.create :student_pe_calculation,
-                             clue_algorithm_name: @clue_algorithm_name,
-                             book_container_uuid: exercise_pool.book_container_uuid,
-                             student_uuid: @student.uuid,
-                             exercise_uuids: exercise_pool.exercise_uuids,
-                             exercise_count: 1
+          calc = FactoryGirl.create :student_pe_calculation,
+                                    clue_algorithm_name: @clue_algorithm_name,
+                                    book_container_uuid: exercise_pool.book_container_uuid,
+                                    student_uuid: @student.uuid,
+                                    exercise_uuids: exercise_pool.exercise_uuids,
+                                    exercise_count: 1
+
+          FactoryGirl.create :algorithm_student_pe_calculation,
+                             student_pe_calculation_uuid: calc.uuid
         end
       end
 
@@ -295,10 +300,12 @@ RSpec.describe Services::PrepareStudentExerciseCalculations::Service, type: :ser
         expected_change_in_calculations = expected_num_calculations -
                                           @already_assigned_exercise_pools.size
         expected_num_pes = practice_pools.flat_map(&:exercise_uuids).size
-        expect { subject.process }.to  change { StudentPeCalculation.count         }
-                                                .by(expected_change_in_calculations)
-                                  .and change { StudentPeCalculationExercise.count }
-                                                .by(expected_num_pes)
+        expect { subject.process }.to  change { StudentPeCalculation.count          }
+                                         .by(expected_change_in_calculations)
+                                  .and change { StudentPeCalculationExercise.count  }
+                                         .by(expected_num_pes)
+                                  .and change { AlgorithmStudentPeCalculation.count }
+                                         .by(-@already_assigned_exercise_pools.size)
 
         student_pe_calculations = StudentPeCalculation.order(:created_at).last(5)
         book_container_uuids = student_pe_calculations.map(&:book_container_uuid)
