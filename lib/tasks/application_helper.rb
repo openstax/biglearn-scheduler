@@ -21,7 +21,7 @@ module Tasks
       fn.join '.'
     end
 
-    def get_daemon_options(sanitized_task_name, args_array)
+    def get_daemon_options(sanitized_task_name, args)
       logfilename = ENV['LOG_FILENAME'] || "#{sanitized_task_name}.log"
 
       {
@@ -33,31 +33,32 @@ module Tasks
         ontop: false,
         backtrace: true,
         monitor: false,
-        ARGV: args_array
+        ARGV: args.to_a
       }
     end
 
-    def define_worker_tasks(task_name, worker_task_prefix = :worker)
+    def run_daemon(task_name, args)
       task_name_string = task_name.to_s
       sanitized_task_name = sanitize_filename(task_name_string)
-      daemon_proc = ->(args) do
-        options = get_daemon_options(sanitized_task_name, args)
-        Daemons.run_proc(sanitized_task_name, options) do
-          log_file = File.join options[:log_dir], options[:logfilename]
-          logger = ActiveSupport::Logger.new log_file
-          logger.formatter = Rails.application.config.log_formatter
-          Rails.logger = ActiveSupport::TaggedLogging.new logger
-          Rails.logger.level = Rails.application.config.log_level
+      options = get_daemon_options(sanitized_task_name, args)
 
-          Worker.new(task_name_string).run
-        end
+      Daemons.run_proc(sanitized_task_name, options) do
+        log_file = File.join options[:log_dir], options[:logfilename]
+        logger = ActiveSupport::Logger.new log_file
+        logger.formatter = Rails.application.config.log_formatter
+        Rails.logger = ActiveSupport::TaggedLogging.new logger
+        Rails.logger.level = Rails.application.config.log_level
+
+        Worker.new(task_name_string).run
       end
+    end
 
-      task(worker_task_prefix => :environment) { |task, args| daemon_proc.call args.to_a }
+    def define_worker_tasks(task_name, worker_task_prefix = :worker)
+      task(worker_task_prefix => :environment) { |task, args| run_daemon task_name, args }
 
       DAEMON_COMMANDS.each do |command|
-        task("#{worker_task_prefix}:#{command}" => :environment) do |task, args|
-          daemon_proc.call [command.to_s] + args.to_a
+        task "#{worker_task_prefix}:#{command}" => :environment do |task, args|
+          run_daemon task_name, [command.to_s] + args.to_a
         end
       end
     end
