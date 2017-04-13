@@ -23,12 +23,11 @@ module Tasks
 
     def get_daemon_options(sanitized_task_name, args_array)
       logfilename = ENV['LOG_FILENAME'] || "#{sanitized_task_name}.log"
-      current_dir = Dir.pwd
 
       {
         dir_mode: :script,
-        dir: File.join(current_dir, ENV['PID_DIR'] || 'tmp'),
-        log_dir: File.join(current_dir, ENV['LOG_DIR'] || 'log'),
+        dir: File.expand_path(ENV['PID_DIR'] || 'tmp'),
+        log_dir: File.expand_path(ENV['LOG_DIR'] || 'log'),
         logfilename: logfilename,
         multiple: false,
         ontop: false,
@@ -48,6 +47,7 @@ module Tasks
           logger = ActiveSupport::Logger.new log_file
           logger.formatter = Rails.application.config.log_formatter
           Rails.logger = ActiveSupport::TaggedLogging.new logger
+          Rails.logger.level = Rails.application.config.log_level
 
           Worker.new(task_name_string).run
         end
