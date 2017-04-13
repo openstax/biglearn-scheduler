@@ -128,8 +128,8 @@ class Services::FetchEcosystemEvents::Service
           conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
           time = Time.now - start_time
 
-          "Received: #{ecosystem_events} event(s) in #{ecosystems.size} ecosystem(s)" +
-          " - Conflicts: #{conflicts} - Took: #{time} second(s)"
+          "Received: #{ecosystem_events} event(s) from #{ecosystems.size} course(s)" +
+          " with #{conflicts} conflict(s) in #{time} second(s)"
         end
       end
     end

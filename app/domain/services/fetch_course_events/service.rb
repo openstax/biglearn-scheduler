@@ -515,8 +515,8 @@ class Services::FetchCourseEvents::Service
           conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
           time = Time.now - start_time
 
-          "Received: #{course_events} event(s) in #{courses.size} course(s)" +
-          " - Conflicts: #{conflicts} - Took: #{time} second(s)"
+          "Received: #{course_events} event(s) from #{courses.size} course(s)" +
+          " with #{conflicts} conflict(s) in #{time} second(s)"
         end
       end
     end

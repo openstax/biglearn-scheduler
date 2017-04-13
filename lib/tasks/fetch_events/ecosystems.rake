@@ -1,3 +1,5 @@
 namespace :fetch_events do
-  task(ecosystems: :environment) { Services::FetchEcosystemEvents::Service.new.process }
+  task ecosystems: :environment do
+    Services::FetchEcosystemEvents::Service.new.process
+  end
 end

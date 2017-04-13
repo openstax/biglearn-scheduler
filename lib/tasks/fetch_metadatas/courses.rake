@@ -1,3 +1,5 @@
 namespace :fetch_metadatas do
-  task(courses: :environment) { Services::FetchCourseMetadatas::Service.new.process }
+  task courses: :environment do
+    Services::FetchCourseMetadatas::Service.new.process
+  end
 end

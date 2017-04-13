@@ -1,11 +1,14 @@
 class Worker
   def initialize(task_name_string)
     @task_name_string = task_name_string
+    @task = Rake::Task[@task_name_string]
   end
 
   def run_once
     log(:debug) { 'Executing task...' }
-    Rake::Task[@task_name_string].execute
+
+    @task.reenable
+    @task.invoke
   end
 
   def run(run_every = 1.second)

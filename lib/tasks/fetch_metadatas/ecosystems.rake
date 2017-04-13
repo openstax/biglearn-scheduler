@@ -1,3 +1,5 @@
 namespace :fetch_metadatas do
-  task(ecosystems: :environment) { Services::FetchEcosystemMetadatas::Service.new.process }
+  task ecosystems: :environment do
+    Services::FetchEcosystemMetadatas::Service.new.process
+  end
 end
