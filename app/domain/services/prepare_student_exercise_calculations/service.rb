@@ -6,7 +6,7 @@ class Services::PrepareStudentExerciseCalculations::Service
   def process
     start_time = Time.now
     Rails.logger.tagged 'PrepareStudentExerciseCalculations' do |logger|
-      logger.info { "Started at #{start_time}" }
+      logger.debug { "Started at #{start_time}" }
     end
 
     total_students = 0
@@ -266,7 +266,7 @@ class Services::PrepareStudentExerciseCalculations::Service
     end
 
     Rails.logger.tagged 'PrepareStudentExerciseCalculations' do |logger|
-      logger.info do
+      logger.debug do
         "#{total_students} student(s) updated in #{Time.now - start_time} second(s)"
       end
     end

@@ -11,7 +11,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service
   def process
     start_time = Time.now
     Rails.logger.tagged 'PrepareAssignmentExerciseCalculations' do |logger|
-      logger.info { "Started at #{start_time}" }
+      logger.debug { "Started at #{start_time}" }
     end
 
     aa = Assignment.arel_table
@@ -434,7 +434,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service
     end
 
     Rails.logger.tagged 'PrepareAssignmentExerciseCalculations' do |logger|
-      logger.info do
+      logger.debug do
         "#{total_assignments} assignment(s) processed in #{Time.now - start_time} second(s)"
       end
     end

@@ -9,7 +9,7 @@ class Services::UploadStudentPeCalculations::Service
   def process
     start_time = Time.now
     Rails.logger.tagged 'UploadAssignmentSpeCalculations' do |logger|
-      logger.info { "Started at #{start_time}" }
+      logger.debug { "Started at #{start_time}" }
     end
 
     # Do all the processing in batches to not exceed the API limit
@@ -194,7 +194,7 @@ class Services::UploadStudentPeCalculations::Service
     end
 
     Rails.logger.tagged 'UploadStudentPeCalculations' do |logger|
-      logger.info do
+      logger.debug do
         "#{total_calculations} calculation(s) uploaded in #{Time.now - start_time} second(s)"
       end
     end

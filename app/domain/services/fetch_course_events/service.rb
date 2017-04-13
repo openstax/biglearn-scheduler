@@ -17,7 +17,7 @@ class Services::FetchCourseEvents::Service
   def process
     start_time = Time.now
     Rails.logger.tagged 'FetchCourseEvents' do |logger|
-      logger.info { "Started at #{start_time}" }
+      logger.debug { "Started at #{start_time}" }
     end
 
     Course.transaction do
@@ -508,7 +508,7 @@ class Services::FetchCourseEvents::Service
         .delete_all
 
       Rails.logger.tagged 'FetchCourseEvents' do |logger|
-        logger.info do
+        logger.debug do
           course_events = course_event_responses.map do |response|
             response.fetch(:events).size
           end.reduce(0, :+)

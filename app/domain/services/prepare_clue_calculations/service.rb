@@ -4,7 +4,7 @@ class Services::PrepareClueCalculations::Service
   def process
     start_time = Time.now
     Rails.logger.tagged 'PrepareClueCalculations' do |logger|
-      logger.info { "Started at #{start_time}" }
+      logger.debug { "Started at #{start_time}" }
     end
 
     ee = EcosystemExercise.arel_table
@@ -326,7 +326,7 @@ class Services::PrepareClueCalculations::Service
     end
 
     Rails.logger.tagged 'PrepareClueCalculations' do |logger|
-      logger.info do
+      logger.debug do
         "#{total_responses} response(s) processed in #{Time.now - start_time} second(s)"
       end
     end

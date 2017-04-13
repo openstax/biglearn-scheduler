@@ -2,7 +2,7 @@ class Services::FetchCourseMetadatas::Service
   def process
     start_time = Time.now
     Rails.logger.tagged 'FetchCourseMetadatas' do |logger|
-      logger.info { "Started at #{start_time}" }
+      logger.debug { "Started at #{start_time}" }
     end
 
     courses = OpenStax::Biglearn::Api.fetch_course_metadatas
@@ -20,7 +20,7 @@ class Services::FetchCourseMetadatas::Service
     result = Course.import courses, validate: false,
                                     on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
     Rails.logger.tagged 'FetchCourseMetadatas' do |logger|
-      logger.info do
+      logger.debug do
         metadatas = courses.size
         conflicts = result.failed_instances.size
         successes = metadatas - conflicts

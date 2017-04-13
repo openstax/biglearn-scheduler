@@ -2,7 +2,7 @@ class Services::FetchEcosystemMetadatas::Service
   def process
     start_time = Time.now
     Rails.logger.tagged 'FetchEcosystemMetadatas' do |logger|
-      logger.info { "Started at #{start_time}" }
+      logger.debug { "Started at #{start_time}" }
     end
 
     ecosystems = OpenStax::Biglearn::Api.fetch_ecosystem_metadatas
@@ -14,7 +14,7 @@ class Services::FetchEcosystemMetadatas::Service
     result = Ecosystem.import ecosystems, validate: false,
                                           on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
     Rails.logger.tagged 'FetchEcosystemMetadatas' do |logger|
-      logger.info do
+      logger.debug do
         metadatas = ecosystems.size
         conflicts = result.failed_instances.size
         successes = metadatas - conflicts

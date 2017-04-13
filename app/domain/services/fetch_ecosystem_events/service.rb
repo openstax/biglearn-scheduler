@@ -4,7 +4,7 @@ class Services::FetchEcosystemEvents::Service
   def process
     start_time = Time.now
     Rails.logger.tagged 'FetchEcosystemEvents' do |logger|
-      logger.info { "Started at #{start_time}" }
+      logger.debug { "Started at #{start_time}" }
     end
 
     Ecosystem.transaction do
@@ -121,7 +121,7 @@ class Services::FetchEcosystemEvents::Service
       )
 
       Rails.logger.tagged 'FetchEcosystemEvents' do |logger|
-        logger.info do
+        logger.debug do
           ecosystem_events = ecosystem_event_responses.map do |response|
             response.fetch(:events).size
           end.reduce(0, :+)

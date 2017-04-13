@@ -44,10 +44,12 @@ module Tasks
 
       Daemons.run_proc(sanitized_task_name, options) do
         log_file = File.join options[:log_dir], options[:logfilename]
-        logger = ActiveSupport::Logger.new log_file
+        logger = ActiveSupport::TaggedLogging.new ActiveSupport::Logger.new(log_file)
         logger.formatter = Rails.application.config.log_formatter
-        Rails.logger = ActiveSupport::TaggedLogging.new logger
-        Rails.logger.level = Rails.application.config.log_level
+        logger.level = Rails.application.config.log_level
+        Rails.logger = logger
+        ActiveRecord::Base.logger = logger
+        ActionController::Base.logger = logger
 
         Worker.new(task_name_string).run
       end
