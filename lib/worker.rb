@@ -13,7 +13,7 @@ class Worker
 
   def run(run_every = 1.second)
     start_time = Time.now.freeze
-    log(:fatal) { "Started at #{start_time}" }
+    log(:info) { "Started at #{start_time}" }
 
     1.upto(Float::INFINITY).each do |iteration|
       run_once
