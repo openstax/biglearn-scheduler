@@ -47,7 +47,7 @@ class Services::FetchEcosystemEvents::Service
             content.fetch(:pools).each do |pool|
               pool_uuid = SecureRandom.uuid
               assignment_types = pool.fetch(:use_for_personalized_for_assignment_types)
-              exercise_uuids = pool.fetch(:exercise_uuids)
+              exercise_uuids = pool.fetch(:exercise_uuids, [])
 
               exercise_pools << ExercisePool.new(
                 uuid: pool_uuid,
