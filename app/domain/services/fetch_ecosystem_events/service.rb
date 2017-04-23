@@ -1,4 +1,5 @@
 class Services::FetchEcosystemEvents::Service
+  ECOSYSTEM_BATCH_SIZE = 10
   RELEVANT_EVENT_TYPES = [ :create_ecosystem ]
 
   def process
@@ -7,130 +8,141 @@ class Services::FetchEcosystemEvents::Service
       logger.debug { "Started at #{start_time}" }
     end
 
-    Ecosystem.transaction do
-      ecosystem_event_requests = []
-      # Since create_ecosystem is our only event here right now,
-      # we can ignore all ecosystems that already processed it (sequence_number > 0)
-      ecosystems_by_ecosystem_uuid = Ecosystem.where(sequence_number: 0).map do |ecosystem|
-        ecosystem_event_requests << { ecosystem: ecosystem, event_types: RELEVANT_EVENT_TYPES }
 
-        [ ecosystem.uuid, ecosystem ]
-      end.to_h
-      ecosystem_event_responses = \
-        OpenStax::Biglearn::Api.fetch_ecosystem_events(ecosystem_event_requests)
-                               .values
-                               .map(&:deep_symbolize_keys)
+    results = []
+    total_events = 0
+    total_ecosystems = 0
+    loop do
+      num_ecosystems = Ecosystem.transaction do
+        ecosystem_event_requests = []
+        # Since create_ecosystem is our only event here right now,
+        # we can ignore all ecosystems that already processed it (sequence_number > 0)
+        ecosystem_records = Ecosystem.where(sequence_number: 0).limit(ECOSYSTEM_BATCH_SIZE)
+        ecosystems_by_ecosystem_uuid = ecosystem_records.map do |ecosystem|
+          ecosystem_event_requests << { ecosystem: ecosystem, event_types: RELEVANT_EVENT_TYPES }
 
-      exercise_pools = []
-      ecosystem_exercises = []
-      exercises = []
-      ecosystems = ecosystem_event_responses.map do |ecosystem_event_response|
-        events = ecosystem_event_response.fetch :events
-        next if events.empty?
+          [ ecosystem.uuid, ecosystem ]
+        end.to_h
+        ecosystem_event_responses = \
+          OpenStax::Biglearn::Api.fetch_ecosystem_events(ecosystem_event_requests)
+                                 .values
+                                 .map(&:deep_symbolize_keys)
 
-        ecosystem_uuid = ecosystem_event_response.fetch :ecosystem_uuid
-        ecosystem = ecosystems_by_ecosystem_uuid.fetch ecosystem_uuid
+        exercise_pools = []
+        ecosystem_exercises = []
+        exercises = []
+        ecosystems = ecosystem_event_responses.map do |ecosystem_event_response|
+          events = ecosystem_event_response.fetch :events
+          num_events = events.size
+          next if num_events == 0
 
-        events_by_type = events.group_by{ |event| event.fetch(:event_type) }
+          total_events += num_events
 
-        # create_ecosystem event determines the ecosystem contents,
-        # including exercise pools and exercises
-        create_ecosystems = events_by_type['create_ecosystem'] || []
-        last_create_ecosystem = create_ecosystems.last
-        if last_create_ecosystem.present?
-          data = last_create_ecosystem.fetch(:event_data)
+          ecosystem_uuid = ecosystem_event_response.fetch :ecosystem_uuid
+          ecosystem = ecosystems_by_ecosystem_uuid.fetch ecosystem_uuid
 
-          book_container_uuids_by_exercise_uuids = Hash.new { |hash, key| hash[key] = [] }
-          data.fetch(:book).fetch(:contents).each do |content|
-            container_uuid = content.fetch(:container_uuid)
+          events_by_type = events.group_by{ |event| event.fetch(:event_type) }
 
-            content.fetch(:pools).each do |pool|
-              pool_uuid = SecureRandom.uuid
-              assignment_types = pool.fetch(:use_for_personalized_for_assignment_types)
-              exercise_uuids = pool.fetch(:exercise_uuids, [])
+          # create_ecosystem event determines the ecosystem contents,
+          # including exercise pools and exercises
+          create_ecosystems = events_by_type['create_ecosystem'] || []
+          last_create_ecosystem = create_ecosystems.last
+          if last_create_ecosystem.present?
+            data = last_create_ecosystem.fetch(:event_data)
 
-              exercise_pools << ExercisePool.new(
-                uuid: pool_uuid,
+            book_container_uuids_by_exercise_uuids = Hash.new { |hash, key| hash[key] = [] }
+            data.fetch(:book).fetch(:contents).each do |content|
+              container_uuid = content.fetch(:container_uuid)
+
+              content.fetch(:pools).each do |pool|
+                pool_uuid = SecureRandom.uuid
+                assignment_types = pool.fetch(:use_for_personalized_for_assignment_types)
+                exercise_uuids = pool.fetch(:exercise_uuids, [])
+
+                exercise_pools << ExercisePool.new(
+                  uuid: pool_uuid,
+                  ecosystem_uuid: ecosystem_uuid,
+                  book_container_uuid: container_uuid,
+                  use_for_clue: pool.fetch(:use_for_clue),
+                  use_for_personalized_for_assignment_types: assignment_types,
+                  exercise_uuids: exercise_uuids
+                )
+
+                exercise_uuids.each do |exercise_uuid|
+                  book_container_uuids_by_exercise_uuids[exercise_uuid] << container_uuid
+                end
+              end
+            end
+
+            data.fetch(:exercises).each do |exercise|
+              exercise_uuid = exercise.fetch(:exercise_uuid)
+              exercise_group_uuid = exercise.fetch(:group_uuid)
+              book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid]
+
+              ecosystem_exercises << EcosystemExercise.new(
+                uuid: SecureRandom.uuid,
                 ecosystem_uuid: ecosystem_uuid,
-                book_container_uuid: container_uuid,
-                use_for_clue: pool.fetch(:use_for_clue),
-                use_for_personalized_for_assignment_types: assignment_types,
-                exercise_uuids: exercise_uuids
+                exercise_group_uuid: exercise_group_uuid,
+                book_container_uuids: book_container_uuids
               )
 
-              exercise_uuids.each do |exercise_uuid|
-                book_container_uuids_by_exercise_uuids[exercise_uuid] << container_uuid
-              end
+              exercises << Exercise.new(
+                uuid: exercise_uuid,
+                group_uuid: exercise_group_uuid,
+                version: exercise.fetch(:version)
+              )
             end
           end
 
-          data.fetch(:exercises).each do |exercise|
-            exercise_uuid = exercise.fetch(:exercise_uuid)
-            exercise_group_uuid = exercise.fetch(:group_uuid)
-            book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid]
+          ecosystem.sequence_number = events.map{ |event| event.fetch(:sequence_number) }.max + 1
 
-            ecosystem_exercises << EcosystemExercise.new(
-              uuid: SecureRandom.uuid,
-              ecosystem_uuid: ecosystem_uuid,
-              exercise_group_uuid: exercise_group_uuid,
-              book_container_uuids: book_container_uuids
-            )
+          ecosystem
+        end.compact
 
-            exercises << Exercise.new(
-              uuid: exercise_uuid,
-              group_uuid: exercise_group_uuid,
-              version: exercise.fetch(:version)
-            )
-          end
-        end
+        results << Ecosystem.import(
+          ecosystems, validate: false, on_duplicate_key_update: {
+            conflict_target: [ :uuid ], columns: [ :sequence_number ]
+          }
+        )
 
-        ecosystem.sequence_number = events.map{ |event| event.fetch(:sequence_number) }.max + 1
+        results << ExercisePool.import(
+          exercise_pools, validate: false, on_duplicate_key_update: {
+            conflict_target: [ :uuid ],
+            columns: [
+              :ecosystem_uuid,
+              :book_container_uuid,
+              :use_for_clue,
+              :use_for_personalized_for_assignment_types
+            ]
+          }
+        )
 
-        ecosystem
-      end.compact
+        results << EcosystemExercise.import(
+          ecosystem_exercises, validate: false, on_duplicate_key_update: {
+            conflict_target: [ :uuid ],
+            columns: [ :ecosystem_uuid, :exercise_group_uuid, :book_container_uuids ]
+          }
+        )
 
-      results = []
+        results << Exercise.import(
+          exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+        )
 
-      results << Ecosystem.import(
-        ecosystems, validate: false, on_duplicate_key_update: {
-          conflict_target: [ :uuid ], columns: [ :sequence_number ]
-        }
-      )
+        ecosystem_records.size
+      end
 
-      results << ExercisePool.import(
-        exercise_pools, validate: false, on_duplicate_key_update: {
-          conflict_target: [ :uuid ],
-          columns: [
-            :ecosystem_uuid,
-            :book_container_uuid,
-            :use_for_clue,
-            :use_for_personalized_for_assignment_types
-          ]
-        }
-      )
+      # If we got less ecosystems than the batch size, then this is the last batch
+      total_ecosystems += num_ecosystems
+      break if num_ecosystems < ECOSYSTEM_BATCH_SIZE
+    end
 
-      results << EcosystemExercise.import(
-        ecosystem_exercises, validate: false, on_duplicate_key_update: {
-          conflict_target: [ :uuid ],
-          columns: [ :ecosystem_uuid, :exercise_group_uuid, :book_container_uuids ]
-        }
-      )
+    Rails.logger.tagged 'FetchEcosystemEvents' do |logger|
+      logger.debug do
+        conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
+        time = Time.now - start_time
 
-      results << Exercise.import(
-        exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
-      )
-
-      Rails.logger.tagged 'FetchEcosystemEvents' do |logger|
-        logger.debug do
-          ecosystem_events = ecosystem_event_responses.map do |response|
-            response.fetch(:events).size
-          end.reduce(0, :+)
-          conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-          time = Time.now - start_time
-
-          "Received: #{ecosystem_events} event(s) from #{ecosystems.size} course(s)" +
-          " with #{conflicts} conflict(s) in #{time} second(s)"
-        end
+        "Received #{total_events} event(s) from #{total_ecosystems} ecosystems(s)" +
+        " with #{conflicts} conflict(s) in #{time} second(s)"
       end
     end
   end
