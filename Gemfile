@@ -38,6 +38,9 @@ gem 'jbuilder', '~> 2.5'
 # Run unicorn when using the `rails server` or `rails s` command
 gem 'unicorn-rails'
 
+# Prevent server memory from growing until OOM
+gem 'unicorn-worker-killer'
+
 # We use this gem to talk to biglearn-api, even though it does not support OAuth
 # This allows us to easily start using it in the future if we decide to
 gem 'oauth2'
