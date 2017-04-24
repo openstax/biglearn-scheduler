@@ -19,7 +19,6 @@ class Services::FetchEcosystemEvents::Service
     ecosystem_ids.each_slice(ECOSYSTEM_BATCH_SIZE) do |ecosystem_ids|
       Ecosystem.transaction do
         ecosystem_event_requests = []
-
         ecosystems_by_ecosystem_uuid = Ecosystem.where(id: ecosystem_ids).map do |ecosystem|
           ecosystem_event_requests << { ecosystem: ecosystem, event_types: RELEVANT_EVENT_TYPES }
 

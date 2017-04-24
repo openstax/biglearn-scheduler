@@ -33,6 +33,7 @@ class Services::FetchCourseEvents::Service
 
           [ course.uuid, course ]
         end.to_h
+
         course_event_responses = OpenStax::Biglearn::Api.fetch_course_events(course_event_requests)
                                                         .values
                                                         .map(&:deep_symbolize_keys)
