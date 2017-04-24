@@ -92,7 +92,8 @@ RSpec.shared_examples 'a biglearn api client' do
         {
           ecosystem_uuid: dummy_ecosystem.uuid,
           events: [],
-          is_stopped_at_gap: false
+          is_gap: false,
+          is_end: true
         }
       ]
     ],
@@ -108,7 +109,8 @@ RSpec.shared_examples 'a biglearn api client' do
         {
           course_uuid: dummy_course.uuid,
           events: [],
-          is_stopped_at_gap: false
+          is_gap: false,
+          is_end: true
         }
       ]
     ],

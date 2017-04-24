@@ -34,7 +34,8 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
         request_uuid: SecureRandom.uuid,
         ecosystem_uuid: ecosystem.uuid,
         events: ecosystem_events,
-        is_stopped_at_gap: false
+        is_gap: false,
+        is_end: true
       }
     end
 

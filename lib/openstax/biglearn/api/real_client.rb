@@ -31,7 +31,7 @@ class OpenStax::Biglearn::Api::RealClient
       request.slice(:request_uuid, :event_types).merge(
         ecosystem_uuid: ecosystem.uuid,
         sequence_number_offset: ecosystem.sequence_number,
-        event_limit: request.fetch(:event_limit, 1000)
+        event_limit: request.fetch(:event_limit, 10)
       )
     end
 
@@ -48,7 +48,7 @@ class OpenStax::Biglearn::Api::RealClient
       request.slice(:request_uuid, :event_types).merge(
         course_uuid: course.uuid,
         sequence_number_offset: course.sequence_number,
-        event_limit: request.fetch(:event_limit, 1000)
+        event_limit: request.fetch(:event_limit, 100)
       )
     end
 
