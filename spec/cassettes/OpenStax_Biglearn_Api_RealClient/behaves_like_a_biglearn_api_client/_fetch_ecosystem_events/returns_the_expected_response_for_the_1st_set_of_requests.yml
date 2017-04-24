@@ -7,7 +7,7 @@ http_interactions:
       encoding: UTF-8
       string: '{"ecosystem_event_requests":[{"request_uuid":"<FETCH_ECOSYSTEM_EVENTS
         EXAMPLE 1 REQUEST 1 UUID>","event_types":<ECOSYSTEM EVENT TYPES>,"ecosystem_uuid":"<ECOSYSTEM
-        UUID>","sequence_number_offset":42,"event_limit":10}]}'
+        UUID>","sequence_number_offset":42,"max_num_events":10}]}'
     headers:
       User-Agent:
       - Faraday v0.11.0

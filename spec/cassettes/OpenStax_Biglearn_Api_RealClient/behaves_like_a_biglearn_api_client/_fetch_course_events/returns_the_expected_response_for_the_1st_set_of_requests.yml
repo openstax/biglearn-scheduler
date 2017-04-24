@@ -7,7 +7,7 @@ http_interactions:
       encoding: UTF-8
       string: '{"course_event_requests":[{"request_uuid":"<FETCH_COURSE_EVENTS EXAMPLE
         1 REQUEST 1 UUID>","event_types":<COURSE EVENT TYPES>,"course_uuid":"<COURSE
-        UUID>","sequence_number_offset":42,"event_limit":100}]}'
+        UUID>","sequence_number_offset":42,"max_num_events":100}]}'
     headers:
       User-Agent:
       - Faraday v0.11.0
