@@ -79,11 +79,13 @@ class Services::FetchCourseEvents::Service
               )
             end
 
-            ecosystem_preparations << EcosystemPreparation.new(
+            EcosystemPreparation.new(
               uuid: data.fetch(:preparation_uuid),
               course_uuid: data.fetch(:course_uuid),
               ecosystem_uuid: data.fetch(:ecosystem_uuid)
-            )
+            ).tap do |ecosystem_preparation|
+              ecosystem_preparations << ecosystem_preparation
+            end
           end
 
           # Update course ecosystem changes the course ecosystem and is used as a signal
