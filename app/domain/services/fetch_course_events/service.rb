@@ -293,22 +293,11 @@ class Services::FetchCourseEvents::Service
         )
 
         # Chain mappings
-        to_from_queries = []
-        from_to_queries = []
-        book_container_mappings.each do |book_container_mapping|
-          to_from_queries << BookContainerMapping
-            .where(to_ecosystem_uuid: book_container_mapping.from_ecosystem_uuid)
-            .where.not(from_ecosystem_uuid: book_container_mapping.to_ecosystem_uuid)
+        from_ecosystem_uuids = book_container_mappings.map(&:from_ecosystem_uuid)
+        to_ecosystem_uuids = book_container_mappings.map(&:to_ecosystem_uuid)
 
-          from_to_queries << BookContainerMapping
-            .where(from_ecosystem_uuid: book_container_mapping.to_ecosystem_uuid)
-            .where.not(to_ecosystem_uuid: book_container_mapping.from_ecosystem_uuid)
-        end
-
-        to_from_mappings = to_from_queries.empty? ?
-          BookContainerMapping.none : to_from_queries.reduce(:or)
-        from_to_mappings = from_to_queries.empty? ?
-          BookContainerMapping.none : from_to_queries.reduce(:or)
+        to_from_mappings = BookContainerMapping.where(to_ecosystem_uuid: from_ecosystem_uuids)
+        from_to_mappings = BookContainerMapping.where(from_ecosystem_uuid: to_ecosystem_uuids)
 
         grouped_to_from_mappings = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = [] }
