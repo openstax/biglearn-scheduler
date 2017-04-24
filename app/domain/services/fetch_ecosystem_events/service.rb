@@ -1,5 +1,5 @@
 class Services::FetchEcosystemEvents::Service
-  ECOSYSTEM_BATCH_SIZE = 10
+  ECOSYSTEM_BATCH_SIZE = 1
   RELEVANT_EVENT_TYPES = [ :create_ecosystem ]
 
   def process
@@ -8,21 +8,22 @@ class Services::FetchEcosystemEvents::Service
       logger.debug { "Started at #{start_time}" }
     end
 
+    # Since create_ecosystem is our only event here right now,
+    # we can ignore all ecosystems that already processed it (sequence_number > 0)
+    ecosystem_ids = Ecosystem.where(sequence_number: 0).ids
 
     results = []
     total_events = 0
-    total_ecosystems = 0
-    loop do
-      num_ecosystems = Ecosystem.transaction do
+    ecosystem_ids.each_slice(ECOSYSTEM_BATCH_SIZE) do |ecosystem_ids|
+      Ecosystem.transaction do
         ecosystem_event_requests = []
-        # Since create_ecosystem is our only event here right now,
-        # we can ignore all ecosystems that already processed it (sequence_number > 0)
-        ecosystem_records = Ecosystem.where(sequence_number: 0).limit(ECOSYSTEM_BATCH_SIZE)
-        ecosystems_by_ecosystem_uuid = ecosystem_records.map do |ecosystem|
+
+        ecosystems_by_ecosystem_uuid = Ecosystem.where(id: ecosystem_ids).map do |ecosystem|
           ecosystem_event_requests << { ecosystem: ecosystem, event_types: RELEVANT_EVENT_TYPES }
 
           [ ecosystem.uuid, ecosystem ]
         end.to_h
+
         ecosystem_event_responses = \
           OpenStax::Biglearn::Api.fetch_ecosystem_events(ecosystem_event_requests)
                                  .values
@@ -127,13 +128,7 @@ class Services::FetchEcosystemEvents::Service
         results << Exercise.import(
           exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
         )
-
-        ecosystem_records.size
       end
-
-      # If we got less ecosystems than the batch size, then this is the last batch
-      total_ecosystems += num_ecosystems
-      break if num_ecosystems < ECOSYSTEM_BATCH_SIZE
     end
 
     Rails.logger.tagged 'FetchEcosystemEvents' do |logger|
@@ -141,7 +136,7 @@ class Services::FetchEcosystemEvents::Service
         conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
         time = Time.now - start_time
 
-        "Received #{total_events} event(s) from #{total_ecosystems} ecosystems(s)" +
+        "Received #{total_events} event(s) from #{ecosystem_ids.size} ecosystems(s)" +
         " with #{conflicts} conflict(s) in #{time} second(s)"
       end
     end
