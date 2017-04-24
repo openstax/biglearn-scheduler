@@ -293,25 +293,22 @@ class Services::FetchCourseEvents::Service
         )
 
         # Chain mappings
-        bcm = BookContainerMapping.arel_table
         to_from_queries = []
         from_to_queries = []
         book_container_mappings.each do |book_container_mapping|
-          to_from_queries <<
-            bcm[:to_ecosystem_uuid].eq(book_container_mapping.from_ecosystem_uuid).and(
-              bcm[:from_ecosystem_uuid].not_eq(book_container_mapping.to_ecosystem_uuid)
-            )
+          to_from_queries << BookContainerMapping
+            .where(to_ecosystem_uuid: book_container_mapping.from_ecosystem_uuid)
+            .where.not(from_ecosystem_uuid: book_container_mapping.to_ecosystem_uuid)
 
-          from_to_queries <<
-            bcm[:from_ecosystem_uuid].eq(book_container_mapping.to_ecosystem_uuid).and(
-              bcm[:to_ecosystem_uuid].not_eq(book_container_mapping.from_ecosystem_uuid)
-            )
+          from_to_queries << BookContainerMapping
+            .where(from_ecosystem_uuid: book_container_mapping.to_ecosystem_uuid)
+            .where.not(to_ecosystem_uuid: book_container_mapping.from_ecosystem_uuid)
         end
 
         to_from_mappings = to_from_queries.empty? ?
-          BookContainerMapping.none : BookContainerMapping.where(to_from_queries.reduce(:or))
+          BookContainerMapping.none : to_from_queries.reduce(:or)
         from_to_mappings = from_to_queries.empty? ?
-          BookContainerMapping.none : BookContainerMapping.where(from_to_queries.reduce(:or))
+          BookContainerMapping.none : from_to_queries.reduce(:or)
 
         grouped_to_from_mappings = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = [] }
