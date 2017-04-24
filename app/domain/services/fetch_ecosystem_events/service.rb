@@ -1,5 +1,6 @@
 class Services::FetchEcosystemEvents::Service
   ECOSYSTEM_BATCH_SIZE = 1
+
   RELEVANT_EVENT_TYPES = [ :create_ecosystem ]
 
   def process
@@ -11,6 +12,7 @@ class Services::FetchEcosystemEvents::Service
     # Since create_ecosystem is our only event here right now,
     # we can ignore all ecosystems that already processed it (sequence_number > 0)
     ecosystem_ids = Ecosystem.where(sequence_number: 0).ids
+    total_ecosystems = ecosystem_ids.size
 
     results = []
     total_events = 0
@@ -136,7 +138,7 @@ class Services::FetchEcosystemEvents::Service
         conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
         time = Time.now - start_time
 
-        "Received #{total_events} event(s) from #{ecosystem_ids.size} ecosystems(s)" +
+        "Received #{total_events} event(s) from #{total_ecosystems} ecosystems(s)" +
         " with #{conflicts} conflict(s) in #{time} second(s)"
       end
     end
