@@ -217,9 +217,9 @@ class Services::FetchCourseEvents::Service
               due_at: due_at.nil? ? nil : DateTime.parse(due_at),
               assigned_book_container_uuids: data.fetch(:assigned_book_container_uuids),
               assigned_exercise_uuids: exercise_uuids,
-              goal_num_tutor_assigned_spes: data.fetch(:goal_num_tutor_assigned_spes),
+              goal_num_tutor_assigned_spes: data[:goal_num_tutor_assigned_spes],
               spes_are_assigned: data.fetch(:spes_are_assigned),
-              goal_num_tutor_assigned_pes: data.fetch(:goal_num_tutor_assigned_pes),
+              goal_num_tutor_assigned_pes: data[:goal_num_tutor_assigned_pes],
               pes_are_assigned: data.fetch(:pes_are_assigned)
             )
 
