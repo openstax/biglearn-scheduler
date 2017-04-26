@@ -12,9 +12,8 @@ RSpec.describe AssignmentSpeCalculation, type: :model do
   it { is_expected.to validate_presence_of :exercise_count  }
 
   it do
-    is_expected.to validate_uniqueness_of(:k_ago)
-                     .scoped_to(:assignment_uuid, :book_container_uuid, :history_type)
-                     .case_insensitive
+    is_expected.to validate_uniqueness_of(:is_spaced)
+                     .scoped_to(:assignment_uuid, :book_container_uuid, :history_type, :k_ago)
   end
 
   it do

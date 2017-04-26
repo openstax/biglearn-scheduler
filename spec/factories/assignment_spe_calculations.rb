@@ -8,6 +8,7 @@ FactoryGirl.define do
     history_type        { AssignmentSpeCalculation.history_types.keys.sample }
     k_ago               { rand(5) + 1 }
     book_container_uuid { SecureRandom.uuid }
+    is_spaced           { [true, false].sample }
     student_uuid        { SecureRandom.uuid }
     exercise_uuids      { num_exercise_uuids.times.map { SecureRandom.uuid } }
     exercise_count      { rand(num_exercise_uuids) + 1 }

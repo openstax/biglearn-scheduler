@@ -358,9 +358,30 @@ class Services::PrepareAssignmentExerciseCalculations::Service
         )
 
         # Record the AssignmentSpeCalculations
+        null_bc_assignment_spe_calculations, bc_assignment_spe_calculations =
+          assignment_spe_calculations.partition do |assignment_spe_calculation|
+          assignment_spe_calculation.book_container_uuid.nil?
+        end
         a_spe_calc_ids = AssignmentSpeCalculation.import(
-          assignment_spe_calculations, validate: false, on_duplicate_key_update: {
-            conflict_target: [ :assignment_uuid, :history_type, :k_ago, :book_container_uuid ],
+          bc_assignment_spe_calculations, validate: false, on_duplicate_key_update: {
+            conflict_target: [
+              :assignment_uuid,
+              :history_type,
+              :k_ago,
+              :book_container_uuid,
+              :is_spaced
+            ],
+            columns: [ :exercise_uuids, :exercise_count ]
+          }
+        ).ids + AssignmentSpeCalculation.import(
+          null_bc_assignment_spe_calculations, validate: false, on_duplicate_key_update: {
+            conflict_target: [
+              :assignment_uuid,
+              :history_type,
+              :k_ago,
+              :is_spaced
+            ],
+            index_predicate: 'book_container_uuid IS NULL',
             columns: [ :exercise_uuids, :exercise_count ]
           }
         ).ids
@@ -629,12 +650,14 @@ class Services::PrepareAssignmentExerciseCalculations::Service
               history_type: history_type,
               k_ago: k_ago,
               book_container_uuid: book_container_uuid,
+              is_spaced: true,
               exercise_uuids: candidate_spe_uuids,
               exercise_count: num_assigned_spes
             ) if num_assigned_spes > 0
 
             # We still create AssignmentSpeCalculation for the PEs chosen
             # so they end up in the right slots
+            # is_spaced: false denotes that they are actually PEs
             result << AssignmentSpeCalculation.new(
               uuid: SecureRandom.uuid,
               student_uuid: assignment.student_uuid,
@@ -643,6 +666,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service
               history_type: history_type,
               k_ago: k_ago,
               book_container_uuid: book_container_uuid,
+              is_spaced: false,
               exercise_uuids: candidate_pe_uuids,
               exercise_count: num_assigned_pes
             ) if num_assigned_pes > 0
@@ -668,6 +692,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service
                                        history_type: history_type,
                                        k_ago: k_ago,
                                        book_container_uuid: nil,
+                                       is_spaced: false,
                                        exercise_uuids: candidate_personalized_exercise_uuids,
                                        exercise_count: num_assigned_spes)
         ]

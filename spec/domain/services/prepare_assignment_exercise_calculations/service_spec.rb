@@ -676,6 +676,7 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
               assignment_uuid: @reading_3.uuid,
               history_type: history_type,
               k_ago: 2,
+              is_spaced: true,
               exercise_uuids: reading_3_assigned_spe_pool.exercise_uuids,
               exercise_count: 1
             )
@@ -693,6 +694,7 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
               assignment_uuid: @homework_3.uuid,
               history_type: history_type,
               k_ago: 2,
+              is_spaced: true,
               exercise_uuids: homework_3_assigned_spe_pool.exercise_uuids,
               exercise_count: 1
             )
@@ -939,6 +941,7 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
             assignment_uuid: @reading_3.uuid,
             history_type: :instructor_driven,
             k_ago: 2,
+            is_spaced: true,
             exercise_uuids: reading_3_assigned_instructor_spe_pool.exercise_uuids,
             exercise_count: 1
           )
@@ -954,6 +957,7 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
             assignment_uuid: @homework_3.uuid,
             history_type: :instructor_driven,
             k_ago: 2,
+            is_spaced: true,
             exercise_uuids: homework_3_assigned_instructor_spe_pool.exercise_uuids,
             exercise_count: 1
           )
@@ -969,6 +973,7 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
             assignment_uuid: @homework_1.uuid,
             history_type: :student_driven,
             k_ago: 2,
+            is_spaced: true,
             exercise_uuids: homework_1_assigned_student_spe_pool.exercise_uuids,
             exercise_count: 1
           )
