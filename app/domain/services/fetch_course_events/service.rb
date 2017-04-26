@@ -266,20 +266,6 @@ class Services::FetchCourseEvents::Service
 
         results = []
 
-        results << Course.import(
-          courses, validate: false, on_duplicate_key_update: {
-            conflict_target: [ :uuid ],
-            columns: [
-              :sequence_number,
-              :ecosystem_uuid,
-              :course_excluded_exercise_uuids,
-              :course_excluded_exercise_group_uuids,
-              :global_excluded_exercise_uuids,
-              :global_excluded_exercise_group_uuids
-            ]
-          }
-        )
-
         results << EcosystemPreparation.import(
           ecosystem_preparations, validate: false, on_duplicate_key_ignore: {
             conflict_target: [ :uuid ]
@@ -508,6 +494,21 @@ class Services::FetchCourseEvents::Service
         AlgorithmStudentPeCalculation
           .where(student_pe_calculation_uuid: affected_student_pe_calculation_uuids)
           .delete_all
+
+        # This is done last because the sequence_number update marks events as processed
+        results << Course.import(
+          courses, validate: false, on_duplicate_key_update: {
+            conflict_target: [ :uuid ],
+            columns: [
+              :sequence_number,
+              :ecosystem_uuid,
+              :course_excluded_exercise_uuids,
+              :course_excluded_exercise_group_uuids,
+              :global_excluded_exercise_uuids,
+              :global_excluded_exercise_group_uuids
+            ]
+          }
+        )
       end
     end
 

@@ -479,8 +479,8 @@ class Services::PrepareAssignmentExerciseCalculations::Service
       k_agos.map do |k_ago|
         # If not enough assignments for the k-ago, assign 1 per page in the current assignment
         # and use them as personalized exercises
-        spaced_assignment = history[assignment_sequence_number - k_ago] || assignment
-        num_book_containers = spaced_assignment.assigned_book_container_uuids.size
+        num_book_containers = ( history[assignment_sequence_number - k_ago]&.second ||
+                                assignment.assigned_book_container_uuids ).size
         next if num_book_containers == 0
 
         [k_ago, num_book_containers * DEFAULT_NUM_SPES_PER_K_AGO_BOOK_CONTAINER]

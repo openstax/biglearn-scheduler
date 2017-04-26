@@ -101,12 +101,6 @@ class Services::FetchEcosystemEvents::Service
           ecosystem
         end.compact
 
-        results << Ecosystem.import(
-          ecosystems, validate: false, on_duplicate_key_update: {
-            conflict_target: [ :uuid ], columns: [ :sequence_number ]
-          }
-        )
-
         results << ExercisePool.import(
           exercise_pools, validate: false, on_duplicate_key_update: {
             conflict_target: [ :uuid ],
@@ -128,6 +122,13 @@ class Services::FetchEcosystemEvents::Service
 
         results << Exercise.import(
           exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+        )
+
+        # This is done last because the sequence_number update marks events as processed
+        results << Ecosystem.import(
+          ecosystems, validate: false, on_duplicate_key_update: {
+            conflict_target: [ :uuid ], columns: [ :sequence_number ]
+          }
         )
       end
     end
