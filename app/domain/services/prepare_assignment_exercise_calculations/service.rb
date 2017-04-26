@@ -4,6 +4,10 @@ class Services::PrepareAssignmentExerciseCalculations::Service
   DEFAULT_NUM_PES_PER_BOOK_CONTAINER = 3
   DEFAULT_NUM_SPES_PER_K_AGO_BOOK_CONTAINER = 1
 
+  MIN_RANDOM_AGO = 1
+  MAX_RANDOM_AGO = 5
+  MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO = 5
+
   # NOTE: We don't support partial PE/SPE assignments yet, we do all of them in one go
   # If partial assignments are needed, we can look at AssignedExercise records
   # to figure out how many PEs and SPEs we have, but will potentially need to add more info
@@ -39,8 +43,15 @@ class Services::PrepareAssignmentExerciseCalculations::Service
           instructor_sequence_number_queries = instructor_k_agos.map do |k_ago|
             aa[:instructor_driven_sequence_number].eq(instructor_driven_sequence_number - k_ago)
           end
-          student_random_ago_sequence_number = rand(student_driven_sequence_number - 1) + 1 \
-            if student_driven_sequence_number > instructor_k_agos.max
+
+          # Exclude slots that would collide with random-ago from being considered for it
+          k_agos_without_random_ago = get_k_agos
+          allowed_random_agos = (MIN_RANDOM_AGO..MAX_RANDOM_AGO).to_a - k_agos_without_random_ago
+          chosen_random_ago = allowed_random_agos.sample
+
+          # Find and store the sequence number of the random-ago assignment
+          student_random_ago_sequence_number = student_driven_sequence_number - chosen_random_ago \
+            if student_driven_sequence_number >= MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO
           student_random_ago_sequence_number_by_assignment_uuid[assignment.uuid] =
             student_random_ago_sequence_number
           student_sequence_number_queries = get_k_agos(student_random_ago_sequence_number)
@@ -350,13 +361,6 @@ class Services::PrepareAssignmentExerciseCalculations::Service
           end
         end
 
-        Assignment.import(
-          assignments, validate: false, on_duplicate_key_update: {
-            conflict_target: [ :uuid ],
-            columns: [ :spes_are_assigned, :pes_are_assigned ]
-          }
-        )
-
         # Record the AssignmentSpeCalculations
         null_bc_assignment_spe_calculations, bc_assignment_spe_calculations =
           assignment_spe_calculations.partition do |assignment_spe_calculation|
@@ -443,6 +447,14 @@ class Services::PrepareAssignmentExerciseCalculations::Service
         AssignmentPeCalculationExercise.import(
           assignment_pe_calculation_exercises, validate: false, on_duplicate_key_ignore: {
             conflict_target: [ :assignment_pe_calculation_uuid, :exercise_uuid ]
+          }
+        )
+
+        # Record the fact that the calculations have been created
+        Assignment.import(
+          assignments, validate: false, on_duplicate_key_update: {
+            conflict_target: [ :uuid ],
+            columns: [ :spes_are_assigned, :pes_are_assigned ]
           }
         )
 
