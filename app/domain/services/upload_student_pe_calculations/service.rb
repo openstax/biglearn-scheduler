@@ -60,15 +60,19 @@ class Services::UploadStudentPeCalculations::Service
           # Keep only non-practice calculations for assignments that are not yet due
           open_non_practice_alg_spe_calcs = alg_assignment_spe_calcs.select do |alg_calc|
             assignment = assignments_by_uuid[alg_calc.assignment_uuid]
-            next if assignment.nil?
 
-            assignment.second != 'practice' && assignment.third > start_time
+            assignment.present? &&
+            assignment.second != 'practice' &&
+            assignment.third.present? &&
+            assignment.third > start_time
           end
           open_non_practice_alg_pe_calcs = alg_assignment_pe_calcs.select do |alg_calc|
             assignment = assignments_by_uuid[alg_calc.assignment_uuid]
-            next if assignment.nil?
 
-            assignment.second != 'practice' && assignment.third > start_time
+            assignment.present? &&
+            assignment.second != 'practice' &&
+            assignment.third.present? &&
+            assignment.third > start_time
           end
 
           # Find the calculations associated with the remaining algorithm calculations
