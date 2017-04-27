@@ -162,13 +162,17 @@ module OpenStax::Biglearn::Api
       return {} if requests.blank?
 
       requests_map = {}
-      [requests].flatten.map do |request|
-        requests_map[SecureRandom.uuid] = verify_and_slice_request(
+      [requests].flatten.each do |request|
+        uuid = request.fetch(uuid_key, SecureRandom.uuid)
+
+        requests_map[uuid] = verify_and_slice_request(
           method: method, request: request, keys: keys, optional_keys: optional_keys
         )
       end
 
-      requests_array = requests_map.map{ |uuid, request| request.merge uuid_key => uuid }
+      requests_array = requests_map.map do |uuid, request|
+        request.has_key?(uuid_key) ? request : request.merge(uuid_key => uuid)
+      end
 
       if perform_later
         raise NotImplementedError
