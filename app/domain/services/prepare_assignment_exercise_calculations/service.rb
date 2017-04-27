@@ -1,5 +1,5 @@
 class Services::PrepareAssignmentExerciseCalculations::Service
-  BATCH_SIZE = 1000
+  BATCH_SIZE = 100
 
   DEFAULT_NUM_PES_PER_BOOK_CONTAINER = 3
   DEFAULT_NUM_SPES_PER_K_AGO_BOOK_CONTAINER = 1
