@@ -13,7 +13,7 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
       maximum: 0.9,
       is_real: true,
       ecosystem_uuid: SecureRandom.uuid
-    }.stringify_keys
+    }
   end
 
   let(:given_calculation_uuid_2)       { SecureRandom.uuid }
@@ -23,7 +23,7 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
       most_likely: 0.5,
       maximum: 1,
       is_real: false
-    }.stringify_keys
+    }
   end
 
   let(:clue_data_by_calculation_uuid)  do
@@ -80,18 +80,18 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
           student_clue_calculation_uuid: given_calculation_uuid_1
         )
         expect(algorithm_student_clue_calculation.algorithm_name).to eq given_algorithm_name
-        expect(algorithm_student_clue_calculation.clue_data).to eq given_clue_data_1
+        expect(algorithm_student_clue_calculation.clue_data).to eq given_clue_data_1.stringify_keys
         expect(algorithm_student_clue_calculation.student_uuid).to(
           eq student_clue_calculation.student_uuid
         )
         expect(algorithm_student_clue_calculation.clue_value).to(
-          eq given_clue_data_1.fetch('most_likely')
+          eq given_clue_data_1.fetch(:most_likely)
         )
         algorithm_teacher_clue_calculation = AlgorithmTeacherClueCalculation.find_by(
           teacher_clue_calculation_uuid: given_calculation_uuid_2
         )
         expect(algorithm_teacher_clue_calculation.algorithm_name).to eq given_algorithm_name
-        expect(algorithm_teacher_clue_calculation.clue_data).to eq given_clue_data_2
+        expect(algorithm_teacher_clue_calculation.clue_data).to eq given_clue_data_2.stringify_keys
       end
     end
 
@@ -119,19 +119,19 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
           student_clue_calculation_uuid: given_calculation_uuid_1
         )
         expect(algorithm_student_clue_calculation.algorithm_name).to eq given_algorithm_name
-        expect(algorithm_student_clue_calculation.clue_data).to eq given_clue_data_1
+        expect(algorithm_student_clue_calculation.clue_data).to eq given_clue_data_1.stringify_keys
         # The student_uuid field cannot be updated after the record is created
         expect(algorithm_student_clue_calculation.student_uuid).not_to(
           eq student_clue_calculation.student_uuid
         )
         expect(algorithm_student_clue_calculation.clue_value).to(
-          eq given_clue_data_1.fetch('most_likely')
+          eq given_clue_data_1.fetch(:most_likely)
         )
         algorithm_teacher_clue_calculation = AlgorithmTeacherClueCalculation.find_by(
           teacher_clue_calculation_uuid: given_calculation_uuid_2
         )
         expect(algorithm_teacher_clue_calculation.algorithm_name).to eq given_algorithm_name
-        expect(algorithm_teacher_clue_calculation.clue_data).to eq given_clue_data_2
+        expect(algorithm_teacher_clue_calculation.clue_data).to eq given_clue_data_2.stringify_keys
       end
     end
   end

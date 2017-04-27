@@ -24,7 +24,7 @@ class Services::UpdateClueCalculations::Service
           student_uuid: student_clue_calculation.student_uuid,
           ecosystem_uuid: student_clue_calculation.ecosystem_uuid,
           book_container_uuid: student_clue_calculation.book_container_uuid,
-          clue_value: clue_data.fetch('most_likely')
+          clue_value: clue_data.fetch(:most_likely)
         )
 
         { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
