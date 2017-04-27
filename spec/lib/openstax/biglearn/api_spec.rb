@@ -96,6 +96,7 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
         -> {
           [
             {
+              algorithm_name: 'local_query',
               student_uuid: @student.uuid,
               book_container_uuid: @book_container_uuid,
               clue_data: @clue_data
@@ -109,6 +110,7 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
         -> {
           [
             {
+              algorithm_name: 'local_query',
               course_container_uuid: @course_container.uuid,
               book_container_uuid: @book_container_uuid,
               clue_data: @clue_data
@@ -122,6 +124,7 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
         -> {
           [
             {
+              algorithm_name: 'local_query',
               assignment_uuid: @assignment.uuid,
               exercise_uuids: @exercises.map(&:uuid)
             }
@@ -134,6 +137,7 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
         -> {
           [
             {
+              algorithm_name: 'local_query_student_driven',
               assignment_uuid: @assignment.uuid,
               exercise_uuids: @exercises.map(&:uuid)
             }
@@ -146,6 +150,7 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
         -> {
           [
             {
+              algorithm_name: 'local_query',
               student_uuid: @student.uuid,
               exercise_uuids: @exercises.map(&:uuid)
             }

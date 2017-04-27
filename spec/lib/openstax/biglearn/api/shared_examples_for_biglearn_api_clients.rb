@@ -118,10 +118,10 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_student_clues,
       [
         {
+          algorithm_name: 'local_query',
           student_uuid: dummy_student.uuid,
           book_container_uuid: dummy_book_container_uuid,
-          clue_data: dummy_clue_data,
-          algorithm_name: 'local_query'
+          clue_data: dummy_clue_data
         }
       ],
       [
@@ -132,10 +132,10 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_teacher_clues,
       [
         {
+          algorithm_name: 'local_query',
           course_container_uuid: dummy_course_container.uuid,
           book_container_uuid: dummy_book_container_uuid,
-          clue_data: dummy_clue_data,
-          algorithm_name: 'local_query'
+          clue_data: dummy_clue_data
         }
       ],
       [
@@ -146,9 +146,9 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_assignment_pes,
       [
         {
+          algorithm_name: 'local_query',
           assignment_uuid: dummy_assignment.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid),
-          algorithm_name: 'local_query'
+          exercise_uuids: dummy_exercises.map(&:uuid)
         }
       ],
       [
@@ -159,14 +159,14 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_assignment_spes,
       [
         {
+          algorithm_name: 'local_query_instructor_driven',
           assignment_uuid: dummy_assignment.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid),
-          algorithm_name: 'local_query_instructor_driven'
+          exercise_uuids: dummy_exercises.map(&:uuid)
         },
         {
+          algorithm_name: 'local_query_student_driven',
           assignment_uuid: dummy_assignment.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid),
-          algorithm_name: 'local_query_student_driven'
+          exercise_uuids: dummy_exercises.map(&:uuid)
         }
       ],
       [
@@ -178,9 +178,9 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_practice_worst_areas,
       [
         {
+          algorithm_name: 'local_query',
           student_uuid: dummy_student.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid),
-          algorithm_name: 'local_query'
+          exercise_uuids: dummy_exercises.map(&:uuid)
         }
       ],
       [
