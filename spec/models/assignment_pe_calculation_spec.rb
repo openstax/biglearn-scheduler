@@ -3,6 +3,9 @@ require 'rails_helper'
 RSpec.describe AssignmentPeCalculation, type: :model do
   subject { FactoryGirl.create :assignment_pe_calculation }
 
+  it { is_expected.to have_many :assignment_pe_calculation_exercises }
+  it { is_expected.to have_many :algorithm_assignment_pe_calculations }
+
   it { is_expected.to validate_presence_of :ecosystem_uuid      }
   it { is_expected.to validate_presence_of :assignment_uuid     }
   it { is_expected.to validate_presence_of :book_container_uuid }

@@ -3,7 +3,9 @@ require 'rails_helper'
 RSpec.describe AlgorithmEcosystemMatrixUpdate, type: :model do
   subject { FactoryGirl.create :algorithm_ecosystem_matrix_update }
 
-  it { is_expected.to validate_presence_of(:ecosystem_matrix_update_uuid) }
+  it { is_expected.to belong_to :ecosystem_matrix_update }
+
+  it { is_expected.to validate_presence_of(:ecosystem_matrix_update) }
   it { is_expected.to validate_presence_of(:algorithm_name) }
 
   it do

@@ -33,15 +33,15 @@ RSpec.describe Services::FetchExerciseCalculations::Service, type: :service do
     context "when the ExerciseCalculations have already been calculated" do
       before do
         FactoryGirl.create :algorithm_assignment_pe_calculation,
-                           assignment_pe_calculation_uuid: calculation_uuid_1,
+                           assignment_pe_calculation: assignment_pe_calculation,
                            algorithm_name: given_algorithm_name
 
         FactoryGirl.create :algorithm_assignment_spe_calculation,
-                           assignment_spe_calculation_uuid: calculation_uuid_2,
+                           assignment_spe_calculation: assignment_spe_calculation,
                            algorithm_name: given_algorithm_name
 
         FactoryGirl.create :algorithm_student_pe_calculation,
-                           student_pe_calculation_uuid: calculation_uuid_3,
+                           student_pe_calculation: student_pe_calculation,
                            algorithm_name: given_algorithm_name
       end
 

@@ -1,12 +1,18 @@
 class Services::UpdateExerciseCalculations::Service
   def process(exercise_calculation_updates:)
     relevant_calculation_uuids = exercise_calculation_updates.map { |calc| calc[:calculation_uuid] }
-    assignment_spe_calculations_by_uuid =
-      AssignmentSpeCalculation.where(uuid: relevant_calculation_uuids).index_by(&:uuid)
-    assignment_pe_calculations_by_uuid =
-      AssignmentPeCalculation.where(uuid: relevant_calculation_uuids).index_by(&:uuid)
-    student_pe_calculations_by_uuid =
-      StudentPeCalculation.where(uuid: relevant_calculation_uuids).index_by(&:uuid)
+    assignment_spe_calculations_by_uuid = AssignmentSpeCalculation
+                                            .where(uuid: relevant_calculation_uuids)
+                                            .select(:uuid)
+                                            .index_by(&:uuid)
+    assignment_pe_calculations_by_uuid = AssignmentPeCalculation
+                                           .where(uuid: relevant_calculation_uuids)
+                                           .select(:uuid)
+                                           .index_by(&:uuid)
+    student_pe_calculations_by_uuid = StudentPeCalculation
+                                        .where(uuid: relevant_calculation_uuids)
+                                        .select(:uuid)
+                                        .index_by(&:uuid)
 
     algorithm_assignment_spe_calculations = []
     algorithm_assignment_pe_calculations = []
@@ -21,12 +27,10 @@ class Services::UpdateExerciseCalculations::Service
       if assignment_spe_calculation.present?
         algorithm_assignment_spe_calculations << AlgorithmAssignmentSpeCalculation.new(
           uuid: SecureRandom.uuid,
-          assignment_spe_calculation_uuid: calculation_uuid,
+          assignment_spe_calculation: assignment_spe_calculation,
           algorithm_name: algorithm_name,
           exercise_uuids: exercise_uuids,
-          is_uploaded: false,
-          assignment_uuid: assignment_spe_calculation.assignment_uuid,
-          student_uuid: assignment_spe_calculation.student_uuid
+          is_uploaded: false
         )
 
         { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
@@ -36,12 +40,10 @@ class Services::UpdateExerciseCalculations::Service
         if assignment_pe_calculation.present?
           algorithm_assignment_pe_calculations << AlgorithmAssignmentPeCalculation.new(
             uuid: SecureRandom.uuid,
-            assignment_pe_calculation_uuid: calculation_uuid,
+            assignment_pe_calculation: assignment_pe_calculation,
             algorithm_name: algorithm_name,
             exercise_uuids: exercise_uuids,
-            is_uploaded: false,
-            assignment_uuid: assignment_pe_calculation.assignment_uuid,
-            student_uuid: assignment_pe_calculation.student_uuid
+            is_uploaded: false
           )
 
           { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
@@ -51,11 +53,10 @@ class Services::UpdateExerciseCalculations::Service
           if student_pe_calculation.present?
             algorithm_student_pe_calculations << AlgorithmStudentPeCalculation.new(
               uuid: SecureRandom.uuid,
-              student_pe_calculation_uuid: calculation_uuid,
+              student_pe_calculation: student_pe_calculation,
               algorithm_name: algorithm_name,
               exercise_uuids: exercise_uuids,
-              is_uploaded: false,
-              student_uuid: student_pe_calculation.student_uuid
+              is_uploaded: false
             )
 
             { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }

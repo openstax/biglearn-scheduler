@@ -28,11 +28,11 @@ RSpec.describe Services::FetchClueCalculations::Service, type: :service do
     context "when the ClueCalculations have already been calculated" do
       before do
         FactoryGirl.create :algorithm_student_clue_calculation,
-                           student_clue_calculation_uuid: calculation_uuid_1,
+                           student_clue_calculation: student_clue_calculation,
                            algorithm_name: given_algorithm_name
 
         FactoryGirl.create :algorithm_teacher_clue_calculation,
-                           teacher_clue_calculation_uuid: calculation_uuid_2,
+                           teacher_clue_calculation: teacher_clue_calculation,
                            algorithm_name: given_algorithm_name
       end
 

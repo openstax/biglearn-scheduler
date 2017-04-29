@@ -412,50 +412,64 @@ class Services::FetchCourseEvents::Service
         # Mark CLUes and ecosystem matrices for recalculation
         # for students in courses with updated ecosystems
         Response.where(student_uuid: affected_student_uuids)
-                .update_all(used_in_clue_calculations: false, used_in_ecosystem_matrix_updates: false)
+                .update_all(used_in_clue_calculations: false,
+                            used_in_ecosystem_matrix_updates: false)
 
         # Get updated assignments
         updated_assignment_uuids = assignments.map(&:uuid)
 
         # Updated assignments and students in courses with changed ecosystems need complete SPE/PE
         # recalculations, including re-running the scheduler code
+        AlgorithmAssignmentSpeCalculation
+          .joins(:assignment_spe_calculation)
+          .where(assignment_spe_calculations: { assignment_uuid: updated_assignment_uuids })
+          .delete_all
+        AlgorithmAssignmentPeCalculation
+          .joins(:assignment_pe_calculation)
+          .where(assignment_pe_calculations: { assignment_uuid: updated_assignment_uuids })
+          .delete_all
+        AlgorithmStudentPeCalculation
+          .joins(:student_pe_calculation)
+          .where(student_pe_calculations: { student_uuid: affected_student_uuids })
+          .delete_all
+
         AssignmentSpeCalculation.where(assignment_uuid: updated_assignment_uuids).delete_all
         AssignmentPeCalculation.where(assignment_uuid: updated_assignment_uuids).delete_all
         StudentPeCalculation.where(student_uuid: affected_student_uuids).delete_all
 
-        AlgorithmAssignmentSpeCalculation.where(assignment_uuid: updated_assignment_uuids).delete_all
-        AlgorithmAssignmentPeCalculation.where(assignment_uuid: updated_assignment_uuids).delete_all
-        AlgorithmStudentPeCalculation.where(student_uuid: affected_student_uuids).delete_all
-
         # Find affected assignments and PracticeWorstAreasExercises for students with updated
-        # assignments (with the same exercise_uuids) and mark their SPEs/PEs for partial recalculation
-        a_spe_c_e = AssignmentSpeCalculationExercise.arel_table
-        a_pe_c_e = AssignmentPeCalculationExercise.arel_table
-        s_pe_c_e = StudentPeCalculationExercise.arel_table
-        a_spe_c_e_queries = [ a_spe_c_e[:assignment_uuid].in(updated_assignment_uuids)]
-        a_pe_c_e_queries =  [ a_pe_c_e[:assignment_uuid].in(updated_assignment_uuids) ]
-        s_pe_c_e_queries =  [ s_pe_c_e[:student_uuid].in(affected_student_uuids)      ]
+        # assignments (with the same exercise_uuids) and mark their SPEs/PEs for recalculation
+        aspec = AssignmentSpeCalculation.arel_table
+        aspece = AssignmentSpeCalculationExercise.arel_table
+        apec = AssignmentPeCalculation.arel_table
+        apece = AssignmentPeCalculationExercise.arel_table
+        spec = StudentPeCalculation.arel_table
+        spece = StudentPeCalculationExercise.arel_table
+        aspece_queries = [ aspec[:assignment_uuid].in(updated_assignment_uuids) ]
+        apece_queries =  [ apec[:assignment_uuid].in(updated_assignment_uuids)  ]
+        spece_queries =  [ spec[:student_uuid].in(affected_student_uuids)       ]
         assignments.each do |assignment|
           assignment_uuid = assignment.uuid
           student_uuid = assignment.student_uuid
           assigned_exercise_uuids = assignment.assigned_exercise_uuids
 
-          a_spe_c_e_queries << a_spe_c_e[:student_uuid].eq(student_uuid).and(
-                                 a_spe_c_e[:exercise_uuid].in(assigned_exercise_uuids)
-                               )
+          aspece_queries << aspec[:student_uuid].eq(student_uuid).and(
+                              aspece[:exercise_uuid].in(assigned_exercise_uuids)
+                            )
 
-          a_pe_c_e_queries << a_pe_c_e[:student_uuid].eq(student_uuid).and(
-                                a_pe_c_e[:exercise_uuid].in(assigned_exercise_uuids)
-                              )
+          apece_queries << apec[:student_uuid].eq(student_uuid).and(
+                             apece[:exercise_uuid].in(assigned_exercise_uuids)
+                           )
 
-          s_pe_c_e_queries << s_pe_c_e[:student_uuid].eq(student_uuid).and(
-                                s_pe_c_e[:exercise_uuid].in(assigned_exercise_uuids)
-                              )
+          spece_queries << spec[:student_uuid].eq(student_uuid).and(
+                             spece[:exercise_uuid].in(assigned_exercise_uuids)
+                           )
         end
 
-        a_spe_c_e_query = a_spe_c_e_queries.reduce(:or)
+        aspece_query = aspece_queries.reduce(:or)
         affected_assignment_spe_calculation_uuids =
-          AssignmentSpeCalculationExercise.where(a_spe_c_e_query)
+          AssignmentSpeCalculationExercise.joins(:assignment_spe_calculation)
+                                          .where(aspece_query)
                                           .pluck(:assignment_spe_calculation_uuid)
         AssignmentSpeCalculation
           .where(uuid: affected_assignment_spe_calculation_uuids)
@@ -467,9 +481,10 @@ class Services::FetchCourseEvents::Service
           .where(assignment_spe_calculation_uuid: affected_assignment_spe_calculation_uuids)
           .delete_all
 
-        a_pe_c_e_query = a_pe_c_e_queries.reduce(:or)
+        apece_query = apece_queries.reduce(:or)
         affected_assignment_pe_calculation_uuids =
-          AssignmentPeCalculationExercise.where(a_pe_c_e_query)
+          AssignmentPeCalculationExercise.joins(:assignment_pe_calculation)
+                                         .where(apece_query)
                                          .pluck(:assignment_pe_calculation_uuid)
         AssignmentPeCalculation
           .where(uuid: affected_assignment_pe_calculation_uuids)
@@ -481,9 +496,10 @@ class Services::FetchCourseEvents::Service
           .where(assignment_pe_calculation_uuid: affected_assignment_pe_calculation_uuids)
           .delete_all
 
-        s_pe_c_e_query = s_pe_c_e_queries.reduce(:or)
+        spece_query = spece_queries.reduce(:or)
         affected_student_pe_calculation_uuids =
-          StudentPeCalculationExercise.where(s_pe_c_e_query)
+          StudentPeCalculationExercise.joins(:student_pe_calculation)
+                                      .where(spece_query)
                                       .pluck(:student_pe_calculation_uuid)
         StudentPeCalculation
           .where(uuid: affected_student_pe_calculation_uuids)

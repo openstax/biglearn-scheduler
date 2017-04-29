@@ -187,54 +187,44 @@ RSpec.describe Services::PrepareStudentExerciseCalculations::Service, type: :ser
       @clue_algorithm_name = 'sparfa'
 
       scc_1 = FactoryGirl.create :student_clue_calculation,
-                                 student_uuid: @student.uuid,
-                                 book_container_uuid: @practice_pool_1_new.book_container_uuid
+                                 ecosystem_uuid: @ecosystem_uuid_2,
+                                 book_container_uuid: @practice_pool_1_new.book_container_uuid,
+                                 student_uuid: @student.uuid
       FactoryGirl.create :algorithm_student_clue_calculation,
-                         student_clue_calculation_uuid: scc_1.uuid,
+                         student_clue_calculation: scc_1,
                          algorithm_name: @clue_algorithm_name,
-                         ecosystem_uuid: @ecosystem_uuid_2,
-                         book_container_uuid: @practice_pool_1_new.book_container_uuid,
-                         student_uuid: @student.uuid,
                          clue_value: 0.25
       scc_2 = FactoryGirl.create :student_clue_calculation,
-                                 student_uuid: @student.uuid,
-                                 book_container_uuid: @practice_pool_2_new.book_container_uuid
+                                 ecosystem_uuid: @ecosystem_uuid_2,
+                                 book_container_uuid: @practice_pool_2_new.book_container_uuid,
+                                 student_uuid: @student.uuid
       FactoryGirl.create :algorithm_student_clue_calculation,
-                         student_clue_calculation_uuid: scc_2.uuid,
+                         student_clue_calculation: scc_2,
                          algorithm_name: @clue_algorithm_name,
-                         ecosystem_uuid: @ecosystem_uuid_2,
-                         book_container_uuid: @practice_pool_2_new.book_container_uuid,
-                         student_uuid: @student.uuid,
                          clue_value: 0
       scc_3 = FactoryGirl.create :student_clue_calculation,
-                                 student_uuid: @student.uuid,
-                                 book_container_uuid: @practice_pool_3_new.book_container_uuid
+                                 ecosystem_uuid: @ecosystem_uuid_2,
+                                 book_container_uuid: @practice_pool_3_new.book_container_uuid,
+                                 student_uuid: @student.uuid
       FactoryGirl.create :algorithm_student_clue_calculation,
-                         student_clue_calculation_uuid: scc_3.uuid,
+                         student_clue_calculation: scc_3,
                          algorithm_name: @clue_algorithm_name,
-                         ecosystem_uuid: @ecosystem_uuid_2,
-                         book_container_uuid: @practice_pool_3_new.book_container_uuid,
-                         student_uuid: @student.uuid,
                          clue_value: 0.5
       scc_4 = FactoryGirl.create :student_clue_calculation,
-                                 student_uuid: @student.uuid,
-                                 book_container_uuid: @practice_pool_4_new.book_container_uuid
+                                 ecosystem_uuid: @ecosystem_uuid_2,
+                                 book_container_uuid: @practice_pool_4_new.book_container_uuid,
+                                 student_uuid: @student.uuid
       FactoryGirl.create :algorithm_student_clue_calculation,
-                         student_clue_calculation_uuid: scc_4.uuid,
+                         student_clue_calculation: scc_4,
                          algorithm_name: @clue_algorithm_name,
-                         ecosystem_uuid: @ecosystem_uuid_2,
-                         book_container_uuid: @practice_pool_4_new.book_container_uuid,
-                         student_uuid: @student.uuid,
                          clue_value: 0.75
       scc_5 = FactoryGirl.create :student_clue_calculation,
-                                 student_uuid: @student.uuid,
-                                 book_container_uuid: @practice_pool_5_new.book_container_uuid
+                                 ecosystem_uuid: @ecosystem_uuid_2,
+                                 book_container_uuid: @practice_pool_5_new.book_container_uuid,
+                                 student_uuid: @student.uuid
       FactoryGirl.create :algorithm_student_clue_calculation,
-                         student_clue_calculation_uuid: scc_5.uuid,
+                         student_clue_calculation: scc_5,
                          algorithm_name: @clue_algorithm_name,
-                         ecosystem_uuid: @ecosystem_uuid_2,
-                         book_container_uuid: @practice_pool_5_new.book_container_uuid,
-                         student_uuid: @student.uuid,
                          clue_value: 1
     end
 
@@ -288,8 +278,7 @@ RSpec.describe Services::PrepareStudentExerciseCalculations::Service, type: :ser
                                     exercise_uuids: exercise_pool.exercise_uuids,
                                     exercise_count: 1
 
-          FactoryGirl.create :algorithm_student_pe_calculation,
-                             student_pe_calculation_uuid: calc.uuid
+          FactoryGirl.create :algorithm_student_pe_calculation, student_pe_calculation: calc
         end
       end
 

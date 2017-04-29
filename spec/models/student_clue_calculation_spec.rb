@@ -3,6 +3,8 @@ require 'rails_helper'
 RSpec.describe StudentClueCalculation, type: :model do
   subject { FactoryGirl.create :student_clue_calculation }
 
+  it { is_expected.to have_many(:algorithm_student_clue_calculations) }
+
   it { is_expected.to validate_presence_of :ecosystem_uuid      }
   it { is_expected.to validate_presence_of :book_container_uuid }
   it { is_expected.to validate_presence_of :student_uuid        }

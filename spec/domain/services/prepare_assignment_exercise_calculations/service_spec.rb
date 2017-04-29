@@ -663,8 +663,8 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
             exercise_uuids: reading_3_available_pe_uuids,
             exercise_count: 1
           )
-          FactoryGirl.create :algorithm_assignment_pe_calculation,
-                             assignment_pe_calculation_uuid: calc.uuid
+
+          FactoryGirl.create :algorithm_assignment_pe_calculation, assignment_pe_calculation: calc
 
           reading_3_assigned_spe_pool = @reading_pool_1_new
           [ :instructor_driven, :student_driven ].each do |history_type|
@@ -680,8 +680,9 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
               exercise_uuids: reading_3_assigned_spe_pool.exercise_uuids,
               exercise_count: 1
             )
+
             FactoryGirl.create :algorithm_assignment_spe_calculation,
-                               assignment_spe_calculation_uuid: calc.uuid
+                               assignment_spe_calculation: calc
           end
 
           homework_3_assigned_spe_pool = @homework_pool_1_new
@@ -698,8 +699,9 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
               exercise_uuids: homework_3_assigned_spe_pool.exercise_uuids,
               exercise_count: 1
             )
+
             FactoryGirl.create :algorithm_assignment_spe_calculation,
-                               assignment_spe_calculation_uuid: calc.uuid
+                               assignment_spe_calculation: calc
           end
         end
 
@@ -929,8 +931,7 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
             exercise_uuids: reading_3_available_pe_uuids,
             exercise_count: 1
           )
-          FactoryGirl.create :algorithm_assignment_pe_calculation,
-                             assignment_pe_calculation_uuid: calc.uuid
+          FactoryGirl.create :algorithm_assignment_pe_calculation, assignment_pe_calculation: calc
 
           reading_3_assigned_instructor_spe_pool = @reading_pool_1_new
           calc = FactoryGirl.create(
@@ -945,8 +946,7 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
             exercise_uuids: reading_3_assigned_instructor_spe_pool.exercise_uuids,
             exercise_count: 1
           )
-          FactoryGirl.create :algorithm_assignment_spe_calculation,
-                             assignment_spe_calculation_uuid: calc.uuid
+          FactoryGirl.create :algorithm_assignment_spe_calculation, assignment_spe_calculation: calc
 
           homework_3_assigned_instructor_spe_pool = @homework_pool_1_new
           calc = FactoryGirl.create(
@@ -961,8 +961,7 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
             exercise_uuids: homework_3_assigned_instructor_spe_pool.exercise_uuids,
             exercise_count: 1
           )
-          FactoryGirl.create :algorithm_assignment_spe_calculation,
-                             assignment_spe_calculation_uuid: calc.uuid
+          FactoryGirl.create :algorithm_assignment_spe_calculation, assignment_spe_calculation: calc
 
           homework_1_assigned_student_spe_pool = @homework_pool_4_old
           calc = FactoryGirl.create(
@@ -977,8 +976,7 @@ RSpec.describe Services::PrepareAssignmentExerciseCalculations::Service, type: :
             exercise_uuids: homework_1_assigned_student_spe_pool.exercise_uuids,
             exercise_count: 1
           )
-          FactoryGirl.create :algorithm_assignment_spe_calculation,
-                             assignment_spe_calculation_uuid: calc.uuid
+          FactoryGirl.create :algorithm_assignment_spe_calculation, assignment_spe_calculation: calc
         end
 
         after(:all)  { DatabaseCleaner.clean }

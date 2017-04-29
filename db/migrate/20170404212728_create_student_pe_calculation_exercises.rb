@@ -4,7 +4,6 @@ class CreateStudentPeCalculationExercises < ActiveRecord::Migration[5.0]
       t.uuid :uuid,                        null: false, index: { unique: true }
       t.uuid :student_pe_calculation_uuid, null: false
       t.uuid :exercise_uuid,               null: false, index: true
-      t.uuid :student_uuid,                null: false
 
       t.timestamps                         null: false
     end
@@ -13,9 +12,5 @@ class CreateStudentPeCalculationExercises < ActiveRecord::Migration[5.0]
               [ :student_pe_calculation_uuid, :exercise_uuid ],
               unique: true,
               name: 'index_s_pe_calc_ex_on_alg_s_pe_calc_uuid_and_ex_uuid'
-
-    add_index :student_pe_calculation_exercises,
-              [ :student_uuid, :exercise_uuid ],
-              name: 'index_s_pe_calc_ex_on_s_uuid_and_ex_uuid'
   end
 end

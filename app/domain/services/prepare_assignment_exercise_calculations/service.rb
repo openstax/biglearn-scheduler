@@ -399,10 +399,8 @@ class Services::PrepareAssignmentExerciseCalculations::Service
           assignment_spe_calculation.exercise_uuids.map do |exercise_uuid|
             AssignmentSpeCalculationExercise.new(
               uuid: SecureRandom.uuid,
-              assignment_spe_calculation_uuid: assignment_spe_calculation.uuid,
-              exercise_uuid: exercise_uuid,
-              assignment_uuid: assignment_spe_calculation.assignment_uuid,
-              student_uuid: assignment_spe_calculation.student_uuid
+              assignment_spe_calculation: assignment_spe_calculation,
+              exercise_uuid: exercise_uuid
             )
           end
         end
@@ -433,10 +431,8 @@ class Services::PrepareAssignmentExerciseCalculations::Service
           assignment_pe_calculation.exercise_uuids.map do |exercise_uuid|
             AssignmentPeCalculationExercise.new(
               uuid: SecureRandom.uuid,
-              assignment_pe_calculation_uuid: assignment_pe_calculation.uuid,
-              exercise_uuid: exercise_uuid,
-              assignment_uuid: assignment_pe_calculation.assignment_uuid,
-              student_uuid: assignment_pe_calculation.student_uuid
+              assignment_pe_calculation: assignment_pe_calculation,
+              exercise_uuid: exercise_uuid
             )
           end
         end

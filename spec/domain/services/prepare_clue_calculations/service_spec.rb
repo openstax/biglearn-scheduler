@@ -185,16 +185,14 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
         calc_1 = FactoryGirl.create :student_clue_calculation,
                                     student_uuid: @student_1.uuid,
                                     book_container_uuid: @ep_1.book_container_uuid
-        FactoryGirl.create :algorithm_student_clue_calculation,
-                           student_clue_calculation_uuid: calc_1.uuid
+        FactoryGirl.create :algorithm_student_clue_calculation, student_clue_calculation: calc_1
 
         # Will be updated
         calc_2 = FactoryGirl.create :teacher_clue_calculation,
                                     book_container_uuid: @ep_2.book_container_uuid,
                                     course_container_uuid: @cc_1.uuid,
                                     student_uuids: [ @student_1.uuid, @student_2.uuid ]
-        FactoryGirl.create :algorithm_teacher_clue_calculation,
-                           teacher_clue_calculation_uuid: calc_2.uuid
+        FactoryGirl.create :algorithm_teacher_clue_calculation, teacher_clue_calculation: calc_2
 
         # Exclude @response_8 from the Student CLUe (but not the Teacher CLUe)
         assignment = FactoryGirl.create :assignment, student_uuid: @student_2.uuid,

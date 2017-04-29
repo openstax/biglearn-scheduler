@@ -55,10 +55,10 @@ RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service 
 
         @algorithm_ecosystem_matrix_update_1 =
           FactoryGirl.create :algorithm_ecosystem_matrix_update,
-                             ecosystem_matrix_update_uuid: @ecosystem_matrix_update_1.uuid
+                             ecosystem_matrix_update: @ecosystem_matrix_update_1
         @algorithm_ecosystem_matrix_update_2 =
           FactoryGirl.create :algorithm_ecosystem_matrix_update,
-                             ecosystem_matrix_update_uuid: @ecosystem_matrix_update_2.uuid
+                             ecosystem_matrix_update: @ecosystem_matrix_update_2
       end
 
       after(:all)  { DatabaseCleaner.clean }

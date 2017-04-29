@@ -1,4 +1,13 @@
 class AssignmentPeCalculation < ApplicationRecord
+  has_many :assignment_pe_calculation_exercises, primary_key: :uuid,
+                                                 foreign_key: :assignment_pe_calculation_uuid,
+                                                 dependent: :destroy,
+                                                 inverse_of: :assignment_pe_calculation
+  has_many :algorithm_assignment_pe_calculations, primary_key: :uuid,
+                                                  foreign_key: :assignment_pe_calculation_uuid,
+                                                  dependent: :destroy,
+                                                  inverse_of: :assignment_pe_calculation
+
   validates :ecosystem_uuid,      presence: true
   validates :assignment_uuid,     presence: true
   validates :book_container_uuid, presence: true, uniqueness: { scope: :assignment_uuid }

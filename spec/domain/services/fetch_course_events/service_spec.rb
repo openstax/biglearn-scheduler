@@ -479,17 +479,13 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       let!(:other_assignment_spe_calculation_exercises) do
         assigned_exercises.map do |assigned_exercise|
           FactoryGirl.create :assignment_spe_calculation_exercise,
-                             assignment_spe_calculation_uuid: other_assignment_spe_calculation.uuid,
-                             assignment_uuid: other_assignment.uuid,
-                             student_uuid: student_uuid,
+                             assignment_spe_calculation: other_assignment_spe_calculation,
                              exercise_uuid: assigned_exercise.fetch(:exercise_uuid)
         end
       end
       let!(:other_assignment_algorithm_spe_calculation) do
         FactoryGirl.create :algorithm_assignment_spe_calculation,
-                           assignment_spe_calculation_uuid: other_assignment_spe_calculation.uuid,
-                           assignment_uuid: other_assignment.uuid,
-                           student_uuid: student_uuid,
+                           assignment_spe_calculation: other_assignment_spe_calculation,
                            exercise_uuids: assigned_exercises.map { |ex| ex.fetch(:exercise_uuid) }
       end
 
@@ -502,17 +498,13 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       let!(:other_assignment_pe_calculation_exercises) do
         assigned_exercises.map do |assigned_exercise|
           FactoryGirl.create :assignment_pe_calculation_exercise,
-                             assignment_pe_calculation_uuid: other_assignment_pe_calculation.uuid,
-                             assignment_uuid: other_assignment.uuid,
-                             student_uuid: student_uuid,
+                             assignment_pe_calculation: other_assignment_pe_calculation,
                              exercise_uuid: assigned_exercise.fetch(:exercise_uuid)
         end
       end
       let!(:other_assignment_algorithm_pe_calculation) do
         FactoryGirl.create :algorithm_assignment_pe_calculation,
-                           assignment_pe_calculation_uuid: other_assignment_pe_calculation.uuid,
-                           assignment_uuid: other_assignment.uuid,
-                           student_uuid: student_uuid,
+                           assignment_pe_calculation: other_assignment_pe_calculation,
                            exercise_uuids: assigned_exercises.map { |ex| ex.fetch(:exercise_uuid) }
       end
 

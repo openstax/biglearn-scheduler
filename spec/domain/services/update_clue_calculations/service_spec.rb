@@ -81,9 +81,6 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
         )
         expect(algorithm_student_clue_calculation.algorithm_name).to eq given_algorithm_name
         expect(algorithm_student_clue_calculation.clue_data).to eq given_clue_data_1.stringify_keys
-        expect(algorithm_student_clue_calculation.student_uuid).to(
-          eq student_clue_calculation.student_uuid
-        )
         expect(algorithm_student_clue_calculation.clue_value).to(
           eq given_clue_data_1.fetch(:most_likely)
         )
@@ -99,11 +96,11 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
             ' AlgorithmTeacherClueCalculation calculation_uuids and algorithm_name are given' do
       before do
         FactoryGirl.create :algorithm_student_clue_calculation,
-                           student_clue_calculation_uuid: given_calculation_uuid_1,
+                           student_clue_calculation: student_clue_calculation,
                            algorithm_name: given_algorithm_name
 
         FactoryGirl.create :algorithm_teacher_clue_calculation,
-                           teacher_clue_calculation_uuid: given_calculation_uuid_2,
+                           teacher_clue_calculation: teacher_clue_calculation,
                            algorithm_name: given_algorithm_name
       end
 
@@ -121,9 +118,6 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
         expect(algorithm_student_clue_calculation.algorithm_name).to eq given_algorithm_name
         expect(algorithm_student_clue_calculation.clue_data).to eq given_clue_data_1.stringify_keys
         # The student_uuid field cannot be updated after the record is created
-        expect(algorithm_student_clue_calculation.student_uuid).not_to(
-          eq student_clue_calculation.student_uuid
-        )
         expect(algorithm_student_clue_calculation.clue_value).to(
           eq given_clue_data_1.fetch(:most_likely)
         )

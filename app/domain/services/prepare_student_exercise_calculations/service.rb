@@ -21,9 +21,9 @@ class Services::PrepareStudentExerciseCalculations::Service
           hash[key] = Hash.new { |hash, key| hash[key] = [] }
         end
         AlgorithmStudentClueCalculation
-          .with_partitioned_rank
-          .where("partitioned_rank <= #{MAX_NUM_WORST_CLUES}")
+          .with_student_clue_calculation_attributes_and_partitioned_rank
           .where(student_uuid: student_uuids)
+          .where("partitioned_rank <= #{MAX_NUM_WORST_CLUES}")
           .order(:partitioned_rank)
           .each do |algorithm_student_clue_calculation|
           student_uuid = algorithm_student_clue_calculation.student_uuid
@@ -37,7 +37,7 @@ class Services::PrepareStudentExerciseCalculations::Service
         relevant_book_container_uuids = worst_clues_by_student_uuid_and_algorithm_name
           .values.flat_map do |worst_clues_by_algorithm_name|
           worst_clues_by_algorithm_name.values.flat_map do |worst_clues|
-            worst_clues.map { |clue| clue.book_container_uuid }
+            worst_clues.map(&:book_container_uuid)
           end
         end
         exercise_uuids_by_book_container_uuids = Hash.new { |hash, key| hash[key] = [] }
@@ -239,9 +239,8 @@ class Services::PrepareStudentExerciseCalculations::Service
           student_pe_calculation.exercise_uuids.map do |exercise_uuid|
             StudentPeCalculationExercise.new(
               uuid: SecureRandom.uuid,
-              student_pe_calculation_uuid: student_pe_calculation.uuid,
-              exercise_uuid: exercise_uuid,
-              student_uuid: student_pe_calculation.student_uuid
+              student_pe_calculation: student_pe_calculation,
+              exercise_uuid: exercise_uuid
             )
           end
         end

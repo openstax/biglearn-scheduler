@@ -4,8 +4,6 @@ class CreateAlgorithmAssignmentSpeCalculations < ActiveRecord::Migration[5.0]
       t.uuid    :uuid,                            null: false, index: { unique: true }
       t.uuid    :assignment_spe_calculation_uuid, null: false
       t.citext  :algorithm_name,                  null: false
-      t.uuid    :assignment_uuid,                 null: false
-      t.uuid    :student_uuid,                    null: false
       t.uuid    :exercise_uuids,                  null: false, array: true
       t.boolean :is_uploaded,                     null: false, index: true
 

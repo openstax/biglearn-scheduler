@@ -1,6 +1,15 @@
 class AssignmentSpeCalculation < ApplicationRecord
   enum history_type: [ :instructor_driven, :student_driven ]
 
+  has_many :assignment_spe_calculation_exercises, primary_key: :uuid,
+                                                  foreign_key: :assignment_spe_calculation_uuid,
+                                                  dependent: :destroy,
+                                                  inverse_of: :assignment_spe_calculation
+  has_many :algorithm_assignment_spe_calculations, primary_key: :uuid,
+                                                   foreign_key: :assignment_spe_calculation_uuid,
+                                                   dependent: :destroy,
+                                                   inverse_of: :assignment_spe_calculation
+
   validates :ecosystem_uuid, presence: true
   validates :assignment_uuid, presence: true
   validates :history_type, presence: true

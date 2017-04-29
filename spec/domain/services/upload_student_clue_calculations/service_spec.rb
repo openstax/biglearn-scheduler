@@ -6,12 +6,12 @@ RSpec.describe Services::UploadStudentClueCalculations::Service, type: :service 
   before(:all) do
     @tcc_1 = FactoryGirl.create :teacher_clue_calculation
     @atcc_1 = FactoryGirl.create :algorithm_teacher_clue_calculation,
-                                 teacher_clue_calculation_uuid: @tcc_1.uuid,
+                                 teacher_clue_calculation: @tcc_1,
                                  is_uploaded: false
 
     @tcc_2 = FactoryGirl.create :teacher_clue_calculation
     @atcc_2 = FactoryGirl.create :algorithm_teacher_clue_calculation,
-                                 teacher_clue_calculation_uuid: @tcc_2.uuid,
+                                 teacher_clue_calculation: @tcc_2,
                                  is_uploaded: true
 
     @atcc_3 = FactoryGirl.create :algorithm_teacher_clue_calculation,
@@ -39,19 +39,13 @@ RSpec.describe Services::UploadStudentClueCalculations::Service, type: :service 
 
       @scc_1 = FactoryGirl.create :student_clue_calculation
       @ascc_1 = FactoryGirl.create :algorithm_student_clue_calculation,
-                                   student_clue_calculation_uuid: @scc_1.uuid,
+                                   student_clue_calculation: @scc_1,
                                    is_uploaded: false
 
       @scc_2 = FactoryGirl.create :student_clue_calculation
       @ascc_2 = FactoryGirl.create :algorithm_student_clue_calculation,
-                                   student_clue_calculation_uuid: @scc_2.uuid,
+                                   student_clue_calculation: @scc_2,
                                    is_uploaded: true
-
-      @ascc_3 = FactoryGirl.create :algorithm_student_clue_calculation,
-                                   is_uploaded: false
-
-      @ascc_4 = FactoryGirl.create :algorithm_student_clue_calculation,
-                                   is_uploaded: false
     end
 
     after(:all)  { DatabaseCleaner.clean }
@@ -72,6 +66,8 @@ RSpec.describe Services::UploadStudentClueCalculations::Service, type: :service 
                                 .and not_change { TeacherClueCalculation.count          }
                                 .and not_change { AlgorithmStudentClueCalculation.count }
                                 .and not_change { AlgorithmTeacherClueCalculation.count }
+
+      expect(AlgorithmStudentClueCalculation.where(is_uploaded: false).count).to eq 0
     end
   end
 end
