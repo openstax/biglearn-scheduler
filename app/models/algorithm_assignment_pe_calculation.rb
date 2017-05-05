@@ -3,7 +3,7 @@ class AlgorithmAssignmentPeCalculation < ApplicationRecord
                                          foreign_key: :assignment_pe_calculation_uuid,
                                          inverse_of: :algorithm_assignment_pe_calculations
 
-  scope :with_assignment_pe_calculation_attributes, -> do
+  scope :with_assignment_pe_calculation_attributes, ->(wheres = nil) do
     from(
       <<-SQL.strip_heredoc
         (
@@ -15,8 +15,9 @@ class AlgorithmAssignmentPeCalculation < ApplicationRecord
             assignment_pe_calculations.exercise_count
           FROM algorithm_assignment_pe_calculations
             INNER JOIN assignment_pe_calculations
-            ON assignment_pe_calculations.uuid =
-              algorithm_assignment_pe_calculations.assignment_pe_calculation_uuid
+              ON assignment_pe_calculations.uuid =
+                algorithm_assignment_pe_calculations.assignment_pe_calculation_uuid
+          #{"WHERE #{wheres.respond_to?(:to_sql) ? wheres.to_sql : wheres}" unless wheres.nil?}
         ) AS algorithm_assignment_pe_calculations
       SQL
     )

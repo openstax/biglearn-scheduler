@@ -7,14 +7,18 @@ class Services::UploadAssignmentSpeCalculations::Service
       logger.debug { "Started at #{start_time}" }
     end
 
+    aaspec = AlgorithmAssignmentSpeCalculation.arel_table
+    aspec = AssignmentSpeCalculation.arel_table
+    aapec = AlgorithmAssignmentPeCalculation.arel_table
+    apec = AssignmentPeCalculation.arel_table
+
     # Do all the processing in batches to not exceed the API limit
     total_calculations = 0
     loop do
       num_calculations = AlgorithmAssignmentSpeCalculation.transaction do
         # is_uploaded tracks the status of each calculation
         algorithm_calculations = AlgorithmAssignmentSpeCalculation
-          .with_assignment_spe_calculation_attributes
-          .where(is_uploaded: false)
+          .with_assignment_spe_calculation_attributes(aaspec[:is_uploaded].eq(false))
           .take(BATCH_SIZE)
 
         algorithm_calculations.size.tap do |num_algorithm_calculations|
@@ -36,32 +40,27 @@ class Services::UploadAssignmentSpeCalculations::Service
             practice_assignment_uuids.include? calc.assignment_uuid
           end
 
-          aaspec = AlgorithmAssignmentSpeCalculation.arel_table
-
           if practice_algorithm_calculations.any?
             # Find assignment calculations for the same algorithms and students
-            aapec = AlgorithmAssignmentPeCalculation.arel_table
             aaspec_queries = []
             aapec_queries = []
             practice_algorithm_calculations.each do |calc|
               aaspec_queries << aaspec[:algorithm_name].eq(calc.algorithm_name).and(
-                                  aaspec[:history_type].eq(calc.history_type).and(
-                                    aaspec[:student_uuid].eq(calc.student_uuid)
+                                  aspec[:history_type].eq(calc.history_type).and(
+                                    aspec[:student_uuid].eq(calc.student_uuid)
                                   )
                                 )
 
               aapec_queries << aapec[:algorithm_name].eq(calc.algorithm_name).and(
-                                 aapec[:student_uuid].eq(calc.student_uuid)
+                                 apec[:student_uuid].eq(calc.student_uuid)
                                )
             end
             aaspec_query = aaspec_queries.reduce(:or)
             aapec_query = aapec_queries.reduce(:or)
             aaspe_calcs = AlgorithmAssignmentSpeCalculation
-                            .with_assignment_spe_calculation_attributes
-                            .where(aaspec_query)
+                            .with_assignment_spe_calculation_attributes(aaspec_query)
             aape_calcs = AlgorithmAssignmentPeCalculation
-                           .with_assignment_pe_calculation_attributes
-                           .where(aapec_query)
+                           .with_assignment_pe_calculation_attributes(aapec_query)
 
             # Find assignments associated with these algorithm calculations
             aa_calcs = aaspe_calcs + aape_calcs
@@ -102,8 +101,8 @@ class Services::UploadAssignmentSpeCalculations::Service
           # before sending
           aaspec_query = algorithm_calculations.map do |calc|
             aaspec[:algorithm_name].eq(calc.algorithm_name).and(
-              aaspec[:assignment_uuid].eq(calc.assignment_uuid).and(
-                aaspec[:history_type].eq(calc.history_type)
+              aspec[:assignment_uuid].eq(calc.assignment_uuid).and(
+                aspec[:history_type].eq(calc.history_type)
               )
             )
           end.compact.reduce(:or)
@@ -111,8 +110,7 @@ class Services::UploadAssignmentSpeCalculations::Service
             hash[key] = Hash.new { |hash, key| hash[key] = Hash.new { |hash, key| hash[key] = [] } }
           end
           rel_aaspe_calcs = AlgorithmAssignmentSpeCalculation
-                             .with_assignment_spe_calculation_attributes
-                             .where(aaspec_query)
+                             .with_assignment_spe_calculation_attributes(aaspec_query)
           rel_aaspe_calcs.each do |calc|
             assignment_uuid = calc.assignment_uuid
             algorithm_name = calc.algorithm_name

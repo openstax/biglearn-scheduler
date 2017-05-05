@@ -4,7 +4,28 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
                                         inverse_of: :algorithm_student_clue_calculations
 
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
-  scope :with_student_clue_calculation_attributes_and_partitioned_rank, -> do
+  scope :with_student_clue_calculation_attributes_and_partitioned_rank,
+        ->(student_uuids: nil, algorithm_names: nil) do
+    wheres = []
+    unless student_uuids.nil?
+      wheres << if student_uuids.empty?
+        'FALSE'
+      else
+        "student_clue_calculations.student_uuid IN (#{
+          student_uuids.map { |uuid| "'#{uuid}'" }.join(', ')
+        })"
+      end
+    end
+    unless algorithm_names.nil?
+      wheres << if algorithm_names.empty?
+        'FALSE'
+      else
+        "algorithm_student_clue_calculations.algorithm_name IN (#{
+          algorithm_names.map { |name| "'#{name}'" }.join(', ')
+        })"
+      end
+    end
+
     from(
       <<-SQL.strip_heredoc
         (
@@ -20,8 +41,9 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
             ) AS partitioned_rank
           FROM algorithm_student_clue_calculations
             INNER JOIN student_clue_calculations
-            ON student_clue_calculations.uuid =
-              algorithm_student_clue_calculations.student_clue_calculation_uuid
+              ON student_clue_calculations.uuid =
+                algorithm_student_clue_calculations.student_clue_calculation_uuid
+          #{"WHERE #{wheres.join(' AND ')}" unless wheres.empty?}
         ) AS algorithm_student_clue_calculations
       SQL
     )

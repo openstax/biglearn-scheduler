@@ -1,6 +1,27 @@
 class Assignment < ApplicationRecord
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
-  scope :with_instructor_and_student_driven_sequence_numbers, -> do
+  scope :with_instructor_and_student_driven_sequence_numbers,
+        ->(student_uuids: nil, assignment_types: nil) do
+    wheres = []
+    unless student_uuids.nil?
+      wheres << if student_uuids.empty?
+        'FALSE'
+      else
+        "assignments.student_uuid IN (#{
+          student_uuids.map { |uuid| "'#{uuid}'" }.join(', ')
+        })"
+      end
+    end
+    unless assignment_types.nil?
+      wheres << if assignment_types.empty?
+        'FALSE'
+      else
+        "assignments.assignment_type IN (#{
+          assignment_types.map { |type| "'#{type}'" }.join(', ')
+        })"
+      end
+    end
+
     from(
       <<-SQL.strip_heredoc
         (
@@ -14,17 +35,18 @@ class Assignment < ApplicationRecord
               ORDER BY assignment_core_steps_completion.core_steps_completed_at ASC
             ) AS student_driven_sequence_number
           FROM assignments
-          LEFT OUTER JOIN (
-            SELECT assigned_exercises.assignment_uuid,
-              MAX(responses.responded_at) AS core_steps_completed_at
-            FROM assigned_exercises
-            LEFT OUTER JOIN responses
-              ON responses.uuid = assigned_exercises.uuid
-            WHERE assigned_exercises.is_spe = FALSE
-            GROUP BY assigned_exercises.assignment_uuid
-            HAVING COUNT(assigned_exercises.*) = COUNT(DISTINCT responses.trial_uuid)
-          ) AS assignment_core_steps_completion
-            ON assignment_core_steps_completion.assignment_uuid = assignments.uuid
+            LEFT OUTER JOIN (
+              SELECT assigned_exercises.assignment_uuid,
+                MAX(responses.responded_at) AS core_steps_completed_at
+              FROM assigned_exercises
+              LEFT OUTER JOIN responses
+                ON responses.uuid = assigned_exercises.uuid
+              WHERE assigned_exercises.is_spe = FALSE
+              GROUP BY assigned_exercises.assignment_uuid
+              HAVING COUNT(assigned_exercises.*) = COUNT(DISTINCT responses.trial_uuid)
+            ) AS assignment_core_steps_completion
+              ON assignment_core_steps_completion.assignment_uuid = assignments.uuid
+          #{"WHERE #{wheres.join(' AND ')}" unless wheres.empty?}
         ) AS assignments
       SQL
     )

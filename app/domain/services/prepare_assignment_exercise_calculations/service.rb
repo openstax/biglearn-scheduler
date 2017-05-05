@@ -30,9 +30,16 @@ class Services::PrepareAssignmentExerciseCalculations::Service
     total_assignments = 0
     loop do
       num_assignments = Assignment.transaction do
-        assignments = Assignment.with_instructor_and_student_driven_sequence_numbers
-                                .where(query)
-                                .take(BATCH_SIZE)
+        assignment_attributes = Assignment.where(query)
+                                          .limit(BATCH_SIZE)
+                                          .pluck(:student_uuid, :assignment_type)
+        student_uuids = assignment_attributes.map(&:first)
+        assignment_types = assignment_attributes.map(&:second)
+        assignments = Assignment
+          .with_instructor_and_student_driven_sequence_numbers(student_uuids: student_uuids,
+                                                               assignment_types: assignment_types)
+          .where(query)
+          .take(BATCH_SIZE)
 
         # Build assignment histories so we can find SPE book_container_uuids
         student_random_ago_by_assignment_uuid = {}
@@ -72,23 +79,24 @@ class Services::PrepareAssignmentExerciseCalculations::Service
         student_histories = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = {} }
         end
-        Assignment.with_instructor_and_student_driven_sequence_numbers
-                  .where(history_queries)
-                  .pluck(
-                    :student_uuid,
-                    :assignment_type,
-                    :instructor_driven_sequence_number,
-                    :student_driven_sequence_number,
-                    :ecosystem_uuid,
-                    :assigned_book_container_uuids
-                  ).each do |
-                    student_uuid,
-                    assignment_type,
-                    instructor_driven_sequence_number,
-                    student_driven_sequence_number,
-                    ecosystem_uuid,
-                    assigned_book_container_uuids
-                  |
+        Assignment.with_instructor_and_student_driven_sequence_numbers(
+          student_uuids: student_uuids, assignment_types: assignment_types
+        ).where(history_queries)
+        .pluck(
+          :student_uuid,
+          :assignment_type,
+          :instructor_driven_sequence_number,
+          :student_driven_sequence_number,
+          :ecosystem_uuid,
+          :assigned_book_container_uuids
+        ).each do |
+          student_uuid,
+          assignment_type,
+          instructor_driven_sequence_number,
+          student_driven_sequence_number,
+          ecosystem_uuid,
+          assigned_book_container_uuids
+        |
           instructor_histories[student_uuid][assignment_type][instructor_driven_sequence_number] = \
             [ecosystem_uuid, assigned_book_container_uuids]
           student_histories[student_uuid][assignment_type][student_driven_sequence_number] = \
