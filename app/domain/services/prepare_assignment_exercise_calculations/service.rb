@@ -19,33 +19,46 @@ class Services::PrepareAssignmentExerciseCalculations::Service
     end
 
     aa = Assignment.arel_table
-    query = aa[:spes_are_assigned].eq(false).and(
-              aa[:goal_num_tutor_assigned_spes].eq(nil).or(aa[:goal_num_tutor_assigned_spes].gt(0))
-            ).or(
-              aa[:pes_are_assigned].eq(false).and(
-                aa[:goal_num_tutor_assigned_pes].eq(nil).or(aa[:goal_num_tutor_assigned_pes].gt(0))
-              )
-            )
+    spe_query = aa[:spes_are_assigned].eq(false).and(
+      aa[:goal_num_tutor_assigned_spes].eq(nil).or(aa[:goal_num_tutor_assigned_spes].gt(0))
+    )
+    pe_query = aa[:pes_are_assigned].eq(false).and(
+      aa[:goal_num_tutor_assigned_pes].eq(nil).or(aa[:goal_num_tutor_assigned_pes].gt(0))
+    )
+    query = spe_query.or pe_query
 
     total_assignments = 0
     loop do
       num_assignments = Assignment.transaction do
-        assignment_attributes = Assignment.where(query)
-                                          .limit(BATCH_SIZE)
-                                          .pluck(:student_uuid, :assignment_type)
-        student_uuids = assignment_attributes.map(&:first)
-        assignment_types = assignment_attributes.map(&:second)
-        assignments = Assignment
-          .with_instructor_and_student_driven_sequence_numbers(student_uuids: student_uuids,
-                                                               assignment_types: assignment_types)
-          .where(query)
+        assignments = Assignment.where(query).take(BATCH_SIZE)
+
+        spe_assignments = assignments.select do |assignment|
+          !assignment.spes_are_assigned && (
+            assignment.goal_num_tutor_assigned_spes.nil? ||
+            assignment.goal_num_tutor_assigned_spes > 0
+          )
+        end
+        pe_assignments = assignments.select do |assignment|
+          !assignment.pes_are_assigned && (
+            assignment.goal_num_tutor_assigned_pes.nil? ||
+            assignment.goal_num_tutor_assigned_pes > 0
+          )
+        end
+
+        spe_student_uuids = spe_assignments.map(&:student_uuid)
+        spe_assignment_types = spe_assignments.map(&:assignment_type)
+        spe_assignments_with_sequence_numbers =
+          Assignment.with_instructor_and_student_driven_sequence_numbers(
+              student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
+          )
+          .where(spe_query)
           .take(BATCH_SIZE)
 
         # Build assignment histories so we can find SPE book_container_uuids
         student_random_ago_by_assignment_uuid = {}
-        history_queries = assignments.map do |assignment|
-          instructor_driven_sequence_number = assignment.instructor_driven_sequence_number
-          student_driven_sequence_number = assignment.student_driven_sequence_number
+        history_queries = spe_assignments_with_sequence_numbers.map do |spe_assignment|
+          instructor_driven_sequence_number = spe_assignment.instructor_driven_sequence_number
+          student_driven_sequence_number = spe_assignment.student_driven_sequence_number
           instructor_k_agos = get_k_agos
           instructor_sequence_number_queries = instructor_k_agos.map do |k_ago|
             aa[:instructor_driven_sequence_number].eq(instructor_driven_sequence_number - k_ago)
@@ -60,7 +73,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service
               ((1..student_max_random_ago).to_a - k_agos_without_random_ago).sample
           end
 
-          student_random_ago_by_assignment_uuid[assignment.uuid] = student_random_ago
+          student_random_ago_by_assignment_uuid[spe_assignment.uuid] = student_random_ago
           student_sequence_number_queries = get_k_agos(student_random_ago).map do |k_ago|
             aa[:student_driven_sequence_number].eq(student_driven_sequence_number - k_ago)
           end
@@ -69,8 +82,8 @@ class Services::PrepareAssignmentExerciseCalculations::Service
             instructor_sequence_number_queries + student_sequence_number_queries
           ).reduce(:or)
 
-          aa[:student_uuid].eq(assignment.student_uuid).and(
-            aa[:assignment_type].eq(assignment.assignment_type).and(sequence_number_query)
+          aa[:student_uuid].eq(spe_assignment.student_uuid).and(
+            aa[:assignment_type].eq(spe_assignment.assignment_type).and(sequence_number_query)
           ) unless sequence_number_query.nil?
         end.compact.reduce(:or)
         instructor_histories = Hash.new do |hash, key|
@@ -80,7 +93,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service
           hash[key] = Hash.new { |hash, key| hash[key] = {} }
         end
         Assignment.with_instructor_and_student_driven_sequence_numbers(
-          student_uuids: student_uuids, assignment_types: assignment_types
+          student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
         ).where(history_queries)
         .pluck(
           :student_uuid,
@@ -105,21 +118,21 @@ class Services::PrepareAssignmentExerciseCalculations::Service
 
         # Create a mapping of spaced practice book containers to each assignment's ecosystem
         bcm = BookContainerMapping.arel_table
-        mapping_queries = assignments.map do |assignment|
-          student_uuid = assignment.student_uuid
-          assignment_type = assignment.assignment_type
+        mapping_queries = spe_assignments_with_sequence_numbers.map do |spe_assignment|
+          student_uuid = spe_assignment.student_uuid
+          assignment_type = spe_assignment.assignment_type
           instructor_history = instructor_histories[student_uuid][assignment_type]
           student_history = student_histories[student_uuid][assignment_type]
 
-          instructor_driven_sequence_number = assignment.instructor_driven_sequence_number
-          student_driven_sequence_number = assignment.student_driven_sequence_number
-          to_ecosystem_uuid = assignment.ecosystem_uuid
+          instructor_driven_sequence_number = spe_assignment.instructor_driven_sequence_number
+          student_driven_sequence_number = spe_assignment.student_driven_sequence_number
+          to_ecosystem_uuid = spe_assignment.ecosystem_uuid
 
           instructor_spaced_assignments = get_k_agos.map do |k_ago|
             instructor_spaced_sequence_number = instructor_driven_sequence_number - k_ago
             instructor_history[instructor_spaced_sequence_number]
           end.compact
-          student_random_ago = student_random_ago_by_assignment_uuid[assignment.uuid]
+          student_random_ago = student_random_ago_by_assignment_uuid[spe_assignment.uuid]
           student_spaced_assignments = get_k_agos(student_random_ago).map do |k_ago|
             student_spaced_sequence_number = student_driven_sequence_number - k_ago
             student_history[student_spaced_sequence_number]
@@ -150,19 +163,19 @@ class Services::PrepareAssignmentExerciseCalculations::Service
           ecosystems_map[to_ecosystem_uuid][from_book_container_uuid] = to_book_container_uuid
         end unless mapping_queries.nil?
 
-        # Map all spaced book_container_uuids to the current ecosystem for each assignment
+        # Map all spaced book_container_uuids to the current ecosystem for each spaced assignment
         instructor_book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
         student_book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
-        assignments.each do |assignment|
-          assignment_uuid = assignment.uuid
-          student_uuid = assignment.student_uuid
-          assignment_type = assignment.assignment_type
+        spe_assignments_with_sequence_numbers.each do |spe_assignment|
+          assignment_uuid = spe_assignment.uuid
+          student_uuid = spe_assignment.student_uuid
+          assignment_type = spe_assignment.assignment_type
           instructor_history = instructor_histories[student_uuid][assignment_type]
           student_history = student_histories[student_uuid][assignment_type]
 
-          instructor_driven_sequence_number = assignment.instructor_driven_sequence_number
-          student_driven_sequence_number = assignment.student_driven_sequence_number
-          to_ecosystem_uuid = assignment.ecosystem_uuid
+          instructor_driven_sequence_number = spe_assignment.instructor_driven_sequence_number
+          student_driven_sequence_number = spe_assignment.student_driven_sequence_number
+          to_ecosystem_uuid = spe_assignment.ecosystem_uuid
 
           get_k_agos.each do |k_ago|
             instructor_spaced_sequence_number = instructor_driven_sequence_number - k_ago
@@ -309,10 +322,10 @@ class Services::PrepareAssignmentExerciseCalculations::Service
             @exercise_group_uuid_by_uuid.values_at(*assigned_and_not_due_exercise_uuids).unique
         end
 
-        # Create SPE and PE calculations to be sent to the algorithms
-        assignment_pe_calculations = []
+        # Spaced Practice
         assignment_spe_calculations = []
-        assignments.group_by(&:course_uuid).each do |course_uuid, assignments|
+        spe_assignments_with_sequence_numbers.group_by(&:course_uuid)
+                                             .each do |course_uuid, assignments|
           course_excluded_uuids = excluded_uuids_by_course_uuid[course_uuid]
 
           assignments.each do |assignment|
@@ -329,15 +342,6 @@ class Services::PrepareAssignmentExerciseCalculations::Service
 
             instructor_history = instructor_histories[student_uuid][assignment_type]
             student_history = student_histories[student_uuid][assignment_type]
-
-            # Personalized
-            assignment_pe_calculations.concat new_pe_calculations(
-              assignment: assignment, course_excluded_uuids: course_excluded_uuids
-            )
-
-            assignment.pes_are_assigned = true
-
-            # Spaced Practice
 
             # Instructor-driven
             assignment_spe_calculations.concat new_spe_calculations(
@@ -417,6 +421,20 @@ class Services::PrepareAssignmentExerciseCalculations::Service
             conflict_target: [ :assignment_spe_calculation_uuid, :exercise_uuid ]
           }
         )
+
+        # Personalized
+        assignment_pe_calculations = []
+        pe_assignments.group_by(&:course_uuid).each do |course_uuid, assignments|
+          course_excluded_uuids = excluded_uuids_by_course_uuid[course_uuid]
+
+          assignments.each do |assignment|
+            assignment_pe_calculations.concat new_pe_calculations(
+              assignment: assignment, course_excluded_uuids: course_excluded_uuids
+            )
+
+            assignment.pes_are_assigned = true
+          end
+        end
 
         # Record the AssignmentPeCalculations
         a_pe_calc_ids = AssignmentPeCalculation.import(
