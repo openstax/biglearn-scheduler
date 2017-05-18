@@ -210,7 +210,6 @@ ActiveRecord::Schema.define(version: 20170404212728) do
   create_table "course_containers", force: :cascade do |t|
     t.uuid     "uuid",          null: false
     t.uuid     "course_uuid",   null: false
-    t.boolean  "is_archived",   null: false
     t.uuid     "student_uuids", null: false, array: true
     t.datetime "created_at",    null: false
     t.datetime "updated_at",    null: false

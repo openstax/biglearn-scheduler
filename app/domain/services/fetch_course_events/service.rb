@@ -138,6 +138,8 @@ class Services::FetchCourseEvents::Service
 
                 # pes_are_assigned starts as true because there is no point in trying to assign PEs
                 # until we have some CLUes, at which point it will be set to false
+                # pes_are_assigned is NOT part of ON CONFLICT DO UPDATE so after the first time
+                # it will be controlled only by the other background tasks
                 students << Student.new(
                   uuid: student_uuid,
                   course_uuid: course_uuid,
@@ -152,8 +154,7 @@ class Services::FetchCourseEvents::Service
                 course_containers << CourseContainer.new(
                   uuid: container_uuid,
                   course_uuid: course_uuid,
-                  student_uuids: student_uuids_by_container_uuid[container_uuid],
-                  is_archived: course_container.fetch(:is_archived)
+                  student_uuids: student_uuids_by_container_uuid[container_uuid]
                 )
               end
             end
@@ -363,7 +364,7 @@ class Services::FetchCourseEvents::Service
 
           results << CourseContainer.import(
             course_containers, validate: false, on_duplicate_key_update: {
-              conflict_target: [ :uuid ], columns: [ :course_uuid, :is_archived, :student_uuids ]
+              conflict_target: [ :uuid ], columns: [ :course_uuid, :student_uuids ]
             }
           )
 

@@ -224,20 +224,12 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
 
     context 'update_roster events' do
       let(:event_type)                     { 'update_roster' }
-      let(:num_active_course_containers)   { 2 }
-      let(:num_archived_course_containers) { 2 }
+      let(:num_course_containers)          { 3 }
       let(:course_containers)              do
-        num_active_course_containers.times.map do
+        num_course_containers.times.map do
           {
             container_uuid: SecureRandom.uuid,
-            parent_container_uuid: course.uuid,
-            is_archived: false
-          }
-        end + num_archived_course_containers.times.map do
-          {
-            container_uuid: SecureRandom.uuid,
-            parent_container_uuid: course.uuid,
-            is_archived: true
+            parent_container_uuid: course.uuid
           }
         end
       end
@@ -263,13 +255,13 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       end
 
       it 'creates or updates CourseContainers and Students for the Course' do
-        num_containers = num_active_course_containers + num_archived_course_containers
-        num_students = num_containers * num_students_per_container
+        num_students = num_course_containers * num_students_per_container
 
         expect { subject.process }.to  not_change { Course.count }
                                   .and not_change { EcosystemPreparation.count }
                                   .and not_change { BookContainerMapping.count }
-                                  .and change     { CourseContainer.count }.by(num_containers)
+                                  .and change     { CourseContainer.count }
+                                                    .by(num_course_containers)
                                   .and change     { Student.count }.by(num_students)
                                   .and not_change { Assignment.count }
                                   .and not_change { AssignedExercise.count }
