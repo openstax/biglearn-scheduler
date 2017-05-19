@@ -49,10 +49,12 @@ class Services::PrepareAssignmentExerciseCalculations::Service
         spe_assignment_types = spe_assignments.map(&:assignment_type)
         spe_assignments_with_sequence_numbers =
           Assignment.with_instructor_and_student_driven_sequence_numbers(
-              student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
+            student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
           )
           .where(spe_query)
           .take(BATCH_SIZE)
+
+        assignments = (spe_assignments_with_sequence_numbers + pe_assignments).uniq
 
         # Build assignment histories so we can find SPE book_container_uuids
         student_random_ago_by_assignment_uuid = {}
