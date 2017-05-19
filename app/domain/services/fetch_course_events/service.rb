@@ -281,7 +281,11 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
           results << BookContainerMapping.import(
             book_container_mappings, validate: false, on_duplicate_key_ignore: {
-              conflict_target: [ :from_book_container_uuid, :from_ecosystem_uuid, :to_ecosystem_uuid ]
+              conflict_target: [
+                :from_book_container_uuid,
+                :from_ecosystem_uuid,
+                :to_ecosystem_uuid
+              ]
             }
           )
 

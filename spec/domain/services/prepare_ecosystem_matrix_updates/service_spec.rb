@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service do
   subject { described_class.new }
 
-  context 'with no Ecosystems or Responses' do
+  context 'with no Ecosystems, EcosystemExercises or Responses' do
     it 'does not request any ecosystem matrix updates' do
       expect { subject.process }.to  not_change { Response.count                       }
                                 .and not_change { EcosystemMatrixUpdate.count          }
@@ -11,22 +11,30 @@ RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service 
     end
   end
 
-  context 'with existing Ecosystems and Responses' do
+  context 'with existing Ecosystems, EcosystemExercises and Responses' do
     before(:all) do
       DatabaseCleaner.start
 
       @ecosystem_1 = FactoryGirl.create :ecosystem
       @ecosystem_2 = FactoryGirl.create :ecosystem
 
+      @ecosystem_exercise_1 = FactoryGirl.create :ecosystem_exercise,
+                                                 ecosystem_uuid: @ecosystem_1.uuid
+      @ecosystem_exercise_2 = FactoryGirl.create :ecosystem_exercise,
+                                                 ecosystem_uuid: @ecosystem_2.uuid
+
       @response_1 = FactoryGirl.create :response,
-                                       ecosystem_uuid: @ecosystem_1.uuid,
+                                       ecosystem_uuid: @ecosystem_exercise_1.ecosystem_uuid,
+                                       exercise_uuid: @ecosystem_exercise_1.exercise_uuid,
                                        used_in_ecosystem_matrix_updates: false
       @response_2 = FactoryGirl.create :response,
-                                       ecosystem_uuid: @ecosystem_1.uuid,
+                                       ecosystem_uuid: @ecosystem_exercise_1.ecosystem_uuid,
+                                       exercise_uuid: @ecosystem_exercise_1.exercise_uuid,
                                        used_in_ecosystem_matrix_updates: false
 
       @response_3 = FactoryGirl.create :response,
-                                       ecosystem_uuid: @ecosystem_2.uuid,
+                                       ecosystem_uuid: @ecosystem_exercise_2.ecosystem_uuid,
+                                       exercise_uuid: @ecosystem_exercise_2.exercise_uuid,
                                        used_in_ecosystem_matrix_updates: true
 
       @unprocessed_responses = [ @response_1, @response_2 ]

@@ -353,7 +353,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service < Services::Appli
         assigned_and_not_due_exercise_uuids_by_student_uuid
           .each do |student_uuid, assigned_and_not_due_exercise_uuids|
           @assigned_and_not_due_exercise_group_uuids_by_student_uuid[student_uuid] =
-            @exercise_group_uuid_by_uuid.values_at(*assigned_and_not_due_exercise_uuids).unique
+            @exercise_group_uuid_by_uuid.values_at(*assigned_and_not_due_exercise_uuids).uniq
         end
 
         # Spaced Practice
