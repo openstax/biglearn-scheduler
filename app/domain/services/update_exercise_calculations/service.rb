@@ -1,4 +1,4 @@
-class Services::UpdateExerciseCalculations::Service
+class Services::UpdateExerciseCalculations::Service < Services::ApplicationService
   def process(exercise_calculation_updates:)
     relevant_calculation_uuids = exercise_calculation_updates.map { |calc| calc[:calculation_uuid] }
     assignment_spe_calculations_by_uuid = AssignmentSpeCalculation

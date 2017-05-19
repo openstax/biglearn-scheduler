@@ -1,33 +1,19 @@
 class EcosystemMatricesController < JsonApiController
 
   def fetch_ecosystem_matrix_updates
-    with_json_apis(input_schema:  _fetch_ecosystem_matrix_updates_request_payload_schema,
-                   output_schema: _fetch_ecosystem_matrix_updates_response_payload_schema) do
-      algorithm_name = json_parsed_request_payload.fetch(:algorithm_name)
-
-      service = Services::FetchEcosystemMatrixUpdates::Service.new
-      result = service.process(algorithm_name: algorithm_name)
-
-      response_payload = { ecosystem_matrix_updates: result.fetch(:ecosystem_matrix_updates) }
-
-      render json: response_payload.to_json, status: 200
-    end
+    respond_with_json_apis_and_service(
+      input_schema: _fetch_ecosystem_matrix_updates_request_payload_schema,
+      output_schema: _fetch_ecosystem_matrix_updates_response_payload_schema,
+      service:Services::FetchEcosystemMatrixUpdates::Service
+    )
   end
 
   def ecosystem_matrices_updated
-    with_json_apis(input_schema:  _ecosystem_matrices_updated_request_payload_schema,
-                   output_schema: _ecosystem_matrices_updated_response_payload_schema) do
-      ecosystem_matrices_updated = json_parsed_request_payload.fetch(:ecosystem_matrices_updated)
-
-      service = Services::EcosystemMatricesUpdated::Service.new
-      result = service.process(ecosystem_matrices_updated: ecosystem_matrices_updated)
-
-      response_payload = {
-        ecosystem_matrix_updated_responses: result.fetch(:ecosystem_matrix_updated_responses)
-      }
-
-      render json: response_payload.to_json, status: 200
-    end
+    respond_with_json_apis_and_service(
+      input_schema: _ecosystem_matrices_updated_request_payload_schema,
+      output_schema: _ecosystem_matrices_updated_response_payload_schema,
+      service:Services::EcosystemMatricesUpdated::Service
+    )
   end
 
   protected

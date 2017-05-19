@@ -1,4 +1,4 @@
-class Services::FetchEcosystemEvents::Service
+class Services::FetchEcosystemEvents::Service < Services::ApplicationService
   ECOSYSTEM_BATCH_SIZE = 1
 
   RELEVANT_EVENT_TYPES = [ :create_ecosystem ]

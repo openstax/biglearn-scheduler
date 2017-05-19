@@ -1,4 +1,4 @@
-class Services::FetchEcosystemMatrixUpdates::Service
+class Services::FetchEcosystemMatrixUpdates::Service < Services::ApplicationService
   def process(algorithm_name:)
     emu = EcosystemMatrixUpdate.arel_table
     aemu = AlgorithmEcosystemMatrixUpdate.arel_table

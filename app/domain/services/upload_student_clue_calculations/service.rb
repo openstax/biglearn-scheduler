@@ -1,4 +1,4 @@
-class Services::UploadStudentClueCalculations::Service
+class Services::UploadStudentClueCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 1000
 
   def process

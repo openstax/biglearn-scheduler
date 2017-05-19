@@ -1,4 +1,4 @@
-class Services::EcosystemMatricesUpdated::Service
+class Services::EcosystemMatricesUpdated::Service < Services::ApplicationService
   def process(ecosystem_matrices_updated:)
     relevant_update_uuids = ecosystem_matrices_updated.map { |update| update[:calculation_uuid] }
     ecosystem_matrix_update_uuids =

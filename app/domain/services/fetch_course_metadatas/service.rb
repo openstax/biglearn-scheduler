@@ -1,4 +1,4 @@
-class Services::FetchCourseMetadatas::Service
+class Services::FetchCourseMetadatas::Service < Services::ApplicationService
   def process
     start_time = Time.now
     Rails.logger.tagged 'FetchCourseMetadatas' do |logger|

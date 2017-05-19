@@ -1,4 +1,4 @@
-class Services::FetchClueCalculations::Service
+class Services::FetchClueCalculations::Service < Services::ApplicationService
   def process(algorithm_name:)
     scc = StudentClueCalculation.arel_table
     ascc = AlgorithmStudentClueCalculation.arel_table

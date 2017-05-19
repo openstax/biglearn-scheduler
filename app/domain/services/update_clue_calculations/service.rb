@@ -1,4 +1,4 @@
-class Services::UpdateClueCalculations::Service
+class Services::UpdateClueCalculations::Service < Services::ApplicationService
   def process(clue_calculation_updates:)
     relevant_calculation_uuids = clue_calculation_updates.map { |calc| calc[:calculation_uuid] }
     student_clue_calculations_by_uuid = StudentClueCalculation

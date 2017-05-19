@@ -1,4 +1,4 @@
-class Services::PrepareClueCalculations::Service
+class Services::PrepareClueCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 1000
 
   def process

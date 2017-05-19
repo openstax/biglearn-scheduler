@@ -1,4 +1,4 @@
-class Services::FetchExerciseCalculations::Service
+class Services::FetchExerciseCalculations::Service < Services::ApplicationService
   def process(algorithm_name:)
     apec = AssignmentPeCalculation.arel_table
     aapec = AlgorithmAssignmentPeCalculation.arel_table

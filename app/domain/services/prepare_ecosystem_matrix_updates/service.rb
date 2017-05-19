@@ -1,4 +1,4 @@
-class Services::PrepareEcosystemMatrixUpdates::Service
+class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationService
   UPDATE_THRESHOLD = 0.1
   ECOSYSTEM_QUERY = "new_response_count > #{UPDATE_THRESHOLD} * response_count"
   BATCH_SIZE = 1000

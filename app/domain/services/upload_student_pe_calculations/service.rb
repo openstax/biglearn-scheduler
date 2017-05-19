@@ -1,4 +1,4 @@
-class Services::UploadStudentPeCalculations::Service
+class Services::UploadStudentPeCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 1000
 
   # TODO: In the future we could allow Tutor to pick any combination of algorithms

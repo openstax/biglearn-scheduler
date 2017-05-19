@@ -1,4 +1,4 @@
-class Services::PrepareStudentExerciseCalculations::Service
+class Services::PrepareStudentExerciseCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 1000
 
   MAX_NUM_WORST_CLUES = 5

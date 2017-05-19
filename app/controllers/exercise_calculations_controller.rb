@@ -3,34 +3,19 @@
 class ExerciseCalculationsController < JsonApiController
 
   def fetch_exercise_calculations
-    with_json_apis(input_schema:  _fetch_exercise_calculations_request_payload_schema,
-                   output_schema: _fetch_exercise_calculations_response_payload_schema) do
-      algorithm_name = json_parsed_request_payload.fetch(:algorithm_name)
-
-      service = Services::FetchExerciseCalculations::Service.new
-      result = service.process(algorithm_name: algorithm_name)
-
-      response_payload = { exercise_calculations: result.fetch(:exercise_calculations) }
-
-      render json: response_payload.to_json, status: 200
-    end
+    respond_with_json_apis_and_service(
+      input_schema: _fetch_exercise_calculations_request_payload_schema,
+      output_schema: _fetch_exercise_calculations_response_payload_schema,
+      service:Services::FetchExerciseCalculations::Service
+    )
   end
 
   def update_exercise_calculations
-    with_json_apis(input_schema:  _update_exercise_calculations_request_payload_schema,
-                   output_schema: _update_exercise_calculations_response_payload_schema) do
-      exercise_calculation_updates =
-        json_parsed_request_payload.fetch(:exercise_calculation_updates)
-
-      service = Services::UpdateExerciseCalculations::Service.new
-      result = service.process(exercise_calculation_updates: exercise_calculation_updates)
-
-      response_payload = {
-        exercise_calculation_update_responses: result.fetch(:exercise_calculation_update_responses)
-      }
-
-      render json: response_payload.to_json, status: 200
-    end
+    respond_with_json_apis_and_service(
+      input_schema: _update_exercise_calculations_request_payload_schema,
+      output_schema: _update_exercise_calculations_response_payload_schema,
+      service:Services::UpdateExerciseCalculations::Service
+    )
   end
 
   protected

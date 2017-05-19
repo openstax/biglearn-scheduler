@@ -1,4 +1,4 @@
-class Services::PrepareAssignmentExerciseCalculations::Service
+class Services::PrepareAssignmentExerciseCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 100
 
   DEFAULT_NUM_PES_PER_BOOK_CONTAINER = 3

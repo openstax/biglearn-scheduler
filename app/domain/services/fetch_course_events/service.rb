@@ -1,4 +1,4 @@
-class Services::FetchCourseEvents::Service
+class Services::FetchCourseEvents::Service < Services::ApplicationService
   COURSE_BATCH_SIZE = 100
 
   # create_course is already included in the metadata

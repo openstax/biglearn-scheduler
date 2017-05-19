@@ -1,33 +1,19 @@
 class ClueCalculationsController < JsonApiController
 
   def fetch_clue_calculations
-    with_json_apis(input_schema:  _fetch_clue_calculations_request_payload_schema,
-                   output_schema: _fetch_clue_calculations_response_payload_schema) do
-      algorithm_name = json_parsed_request_payload.fetch(:algorithm_name)
-
-      service = Services::FetchClueCalculations::Service.new
-      result = service.process(algorithm_name: algorithm_name)
-
-      response_payload = { clue_calculations: result.fetch(:clue_calculations) }
-
-      render json: response_payload.to_json, status: 200
-    end
+    respond_with_json_apis_and_service(
+      input_schema: _fetch_clue_calculations_request_payload_schema,
+      output_schema: _fetch_clue_calculations_response_payload_schema,
+      service:Services::FetchClueCalculations::Service
+    )
   end
 
   def update_clue_calculations
-    with_json_apis(input_schema:  _update_clue_calculations_request_payload_schema,
-                   output_schema: _update_clue_calculations_response_payload_schema) do
-      clue_calculation_updates = json_parsed_request_payload.fetch(:clue_calculation_updates)
-
-      service = Services::UpdateClueCalculations::Service.new
-      result = service.process(clue_calculation_updates: clue_calculation_updates)
-
-      response_payload = {
-        clue_calculation_update_responses: result.fetch(:clue_calculation_update_responses)
-      }
-
-      render json: response_payload.to_json, status: 200
-    end
+    respond_with_json_apis_and_service(
+      input_schema: _update_clue_calculations_request_payload_schema,
+      output_schema: _update_clue_calculations_response_payload_schema,
+      service:Services::UpdateClueCalculations::Service
+    )
   end
 
   protected
