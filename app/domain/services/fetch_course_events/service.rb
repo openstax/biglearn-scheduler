@@ -32,7 +32,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       course_ids.each_slice(COURSE_BATCH_SIZE) do |course_ids|
         Course.transaction do
           course_event_requests = []
-          courses_by_course_uuid = Course.where(id: course_ids).map do |course|
+          courses_by_course_uuid = Course.where(id: course_ids).lock.map do |course|
             course_event_requests << { course: course, event_types: RELEVANT_EVENT_TYPES }
 
             [ course.uuid, course ]
@@ -416,7 +416,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           unless course_uuids_with_changed_ecosystems.empty?
             # Mark students in courses with updated ecosystems as needing PE recalculation
             course_uuids_sql = course_uuids_with_changed_ecosystems.map { |uuid| "'#{uuid}'" }
-                                                                   .join(',')
+                                                                   .join(', ')
 
             changed_ecosystem_student_uuids = Student.connection.execute(
               <<-SQL.strip_heredoc

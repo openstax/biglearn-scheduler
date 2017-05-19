@@ -11,7 +11,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
     # Since create_ecosystem is our only event here right now,
     # we can ignore all ecosystems that already processed it (sequence_number > 0)
-    ecosystem_ids_to_query = Ecosystem.where(sequence_number: 0).ids
+    ecosystem_ids_to_query = Ecosystem.where(sequence_number: 0).lock.ids
     total_ecosystems = ecosystem_ids_to_query.size
 
     results = []

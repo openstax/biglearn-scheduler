@@ -5,17 +5,18 @@ class Ecosystem < ApplicationRecord
     from(
       <<-SQL.strip_heredoc
         (
-          SELECT ecosystems.*,
-            COUNT(*) AS response_count,
-            COUNT(*) FILTER (
-              WHERE responses.used_in_ecosystem_matrix_updates = false
-            ) AS new_response_count
-          FROM ecosystems
-            LEFT OUTER JOIN responses
-              ON responses.ecosystem_uuid = ecosystems.uuid
-          #{"WHERE ecosystems.id IN (#{ids.map { |id| "'#{id}'" }.join(', ')})}" unless ids.nil?}
-          GROUP BY ecosystems.id
-        ) AS ecosystems
+          SELECT "ecosystems".*,
+            COUNT("responses"."id") AS "response_count",
+            COUNT("responses"."id") FILTER (
+              WHERE "responses"."used_in_ecosystem_matrix_updates" = FALSE
+            ) AS "new_response_count"
+          FROM "ecosystems"
+            LEFT OUTER JOIN "responses"
+              ON "responses"."ecosystem_uuid" = "ecosystems"."uuid"
+          #{"WHERE \"ecosystems\".\"id\" IN (#{ids.map { |id| "'#{id}'" }.join(', ')})}" \
+            unless ids.nil?}
+          GROUP BY "ecosystems"."id"
+        ) AS "ecosystems"
       SQL
     )
   end

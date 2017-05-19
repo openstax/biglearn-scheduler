@@ -13,6 +13,7 @@ class Services::UploadTeacherClueCalculations::Service < Services::ApplicationSe
       num_calculations = AlgorithmTeacherClueCalculation.transaction do
         # is_uploaded tracks the status of each calculation
         algorithm_calculations = AlgorithmTeacherClueCalculation.where(is_uploaded: false)
+                                                                .lock
                                                                 .take(BATCH_SIZE)
 
         algorithm_calculations.size.tap do |num_calculations|

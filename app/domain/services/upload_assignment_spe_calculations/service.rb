@@ -19,6 +19,7 @@ class Services::UploadAssignmentSpeCalculations::Service < Services::Application
         # is_uploaded tracks the status of each calculation
         algorithm_calculations = AlgorithmAssignmentSpeCalculation
           .with_assignment_spe_calculation_attributes(aaspec[:is_uploaded].eq(false))
+          .lock
           .take(BATCH_SIZE)
 
         algorithm_calculations.size.tap do |num_algorithm_calculations|

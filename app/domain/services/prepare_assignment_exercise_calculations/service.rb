@@ -30,7 +30,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service < Services::Appli
     total_assignments = 0
     loop do
       num_assignments = Assignment.transaction do
-        assignments = Assignment.where(query).take(BATCH_SIZE)
+        assignments = Assignment.where(query).lock.take(BATCH_SIZE)
 
         spe_assignments = assignments.select do |assignment|
           !assignment.spes_are_assigned && (

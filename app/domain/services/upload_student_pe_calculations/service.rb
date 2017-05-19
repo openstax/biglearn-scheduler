@@ -26,6 +26,7 @@ class Services::UploadStudentPeCalculations::Service < Services::ApplicationServ
         # is_uploaded tracks the status of each calculation
         algorithm_calculations = AlgorithmStudentPeCalculation
           .with_student_pe_calculation_attributes(astpec[:is_uploaded].eq(false))
+          .lock
           .take(BATCH_SIZE)
 
         algorithm_calculations.size.tap do |num_algorithm_calculations|

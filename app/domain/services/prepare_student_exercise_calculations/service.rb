@@ -13,7 +13,7 @@ class Services::PrepareStudentExerciseCalculations::Service < Services::Applicat
     loop do
       num_students = Student.transaction do
         # Process only students whose worst clue clue_values or book_container_uuids changed
-        students = Student.where(pes_are_assigned: false).take(BATCH_SIZE)
+        students = Student.where(pes_are_assigned: false).lock.take(BATCH_SIZE)
         student_uuids = students.map(&:uuid)
 
         # Delete existing StudentPeCalculations, StudentPeCalculationExercises and

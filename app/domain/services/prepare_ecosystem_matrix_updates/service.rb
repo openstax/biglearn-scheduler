@@ -15,9 +15,13 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
       num_ecosystems = Ecosystem.transaction do
         # Get Ecosystems whose number of Responses that have not yet been used
         # in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
-        ecosystem_uuids = Ecosystem.with_response_counts
-                                   .where(ECOSYSTEM_QUERY)
-                                   .limit(BATCH_SIZE)
+        # We need a subquery to lock the rows because Postgres
+        # does not support FOR UPDATE and GROUP BY in the same query
+        subquery = Ecosystem.with_response_counts
+                            .where(ECOSYSTEM_QUERY)
+                            .limit(BATCH_SIZE)
+        ecosystem_uuids = Ecosystem.where(id: subquery)
+                                   .lock
                                    .pluck(:uuid)
 
         ecosystem_matrix_updates = ecosystem_uuids.map do |ecosystem_uuid|
