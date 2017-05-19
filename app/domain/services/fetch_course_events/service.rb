@@ -271,7 +271,6 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           end.compact
 
           # Update all the records in as few queries as possible
-
           results = []
 
           results << EcosystemPreparation.import(
@@ -413,49 +412,39 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           )
 
           # Event side-effects
-          # Get students in courses with updated ecosystems
-          affected_student_uuids = Student.where(course_uuid: course_uuids_with_changed_ecosystems)
-                                          .pluck(:uuid)
 
-          # Mark CLUes and ecosystem matrices for recalculation
-          # for students in courses with updated ecosystems
-          Response.where(student_uuid: affected_student_uuids)
-                  .update_all(used_in_clue_calculations: false,
-                              used_in_ecosystem_matrix_updates: false)
+          unless course_uuids_with_changed_ecosystems.empty?
+            # Mark students in courses with updated ecosystems as needing PE recalculation
+            course_uuids_sql = course_uuids_with_changed_ecosystems.map { |uuid| "'#{uuid}'" }
+                                                                   .join(',')
 
-          # Get updated assignments
-          updated_assignment_uuids = assignments.map(&:uuid)
+            changed_ecosystem_student_uuids = Student.connection.execute(
+              <<-SQL.strip_heredoc
+                UPDATE "students"
+                SET "pes_are_assigned" = FALSE
+                WHERE "students"."course_uuid" IN (#{course_uuids_sql})
+                RETURNING "uuid"
+              SQL
+            ).map { |result| result['uuid'] }
 
-          # Updated assignments and students in courses with changed ecosystems need complete SPE/PE
-          # recalculations, including re-running the scheduler code
-          AlgorithmAssignmentSpeCalculation
-            .joins(:assignment_spe_calculation)
-            .where(assignment_spe_calculations: { assignment_uuid: updated_assignment_uuids })
-            .delete_all
-          AlgorithmAssignmentPeCalculation
-            .joins(:assignment_pe_calculation)
-            .where(assignment_pe_calculations: { assignment_uuid: updated_assignment_uuids })
-            .delete_all
-          AlgorithmStudentPeCalculation
-            .joins(:student_pe_calculation)
-            .where(student_pe_calculations: { student_uuid: affected_student_uuids })
-            .delete_all
+            # Mark CLUes and ecosystem matrices for recalculation
+            # for students in courses with updated ecosystems
+            Response.where(student_uuid: changed_ecosystem_student_uuids).update_all(
+              used_in_clue_calculations: false, used_in_ecosystem_matrix_updates: false
+            )
+          end
 
-          AssignmentSpeCalculation.where(assignment_uuid: updated_assignment_uuids).delete_all
-          AssignmentPeCalculation.where(assignment_uuid: updated_assignment_uuids).delete_all
-          StudentPeCalculation.where(student_uuid: affected_student_uuids).delete_all
-
-          # Find affected assignments and PracticeWorstAreasExercises for students with updated
-          # assignments (with the same exercise_uuids) and mark their SPEs/PEs for recalculation
+          # Find conflicting SPEs and PEs for students with updated assignments
+          # (with the same exercise_uuids) and mark them for recalculation
           aspec = AssignmentSpeCalculation.arel_table
           aspece = AssignmentSpeCalculationExercise.arel_table
           apec = AssignmentPeCalculation.arel_table
           apece = AssignmentPeCalculationExercise.arel_table
           spec = StudentPeCalculation.arel_table
           spece = StudentPeCalculationExercise.arel_table
-          aspece_queries = [ aspec[:assignment_uuid].in(updated_assignment_uuids) ]
-          apece_queries =  [ apec[:assignment_uuid].in(updated_assignment_uuids)  ]
-          spece_queries =  [ spec[:student_uuid].in(affected_student_uuids)       ]
+          aspece_queries = []
+          apece_queries =  []
+          spece_queries =  []
           assignments.each do |assignment|
             assignment_uuid = assignment.uuid
             student_uuid = assignment.student_uuid
@@ -475,49 +464,36 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           end
 
           aspece_query = aspece_queries.reduce(:or)
-          affected_assignment_spe_calculation_uuids =
-            AssignmentSpeCalculationExercise.joins(:assignment_spe_calculation)
-                                            .where(aspece_query)
-                                            .pluck(:assignment_spe_calculation_uuid)
-          AssignmentSpeCalculation
-            .where(uuid: affected_assignment_spe_calculation_uuids)
-            .delete_all
-          AssignmentSpeCalculationExercise
-            .where(assignment_spe_calculation_uuid: affected_assignment_spe_calculation_uuids)
-            .delete_all
-          AlgorithmAssignmentSpeCalculation
-            .where(assignment_spe_calculation_uuid: affected_assignment_spe_calculation_uuids)
-            .delete_all
+          unless aspece_query.nil?
+            conflicting_spe_assignment_uuids =
+              AssignmentSpeCalculationExercise.joins(:assignment_spe_calculation)
+                                              .where(aspece_query)
+                                              .pluck(:assignment_uuid)
+
+            Assignment.where(uuid: conflicting_spe_assignment_uuids)
+                      .update_all(spes_are_assigned: false)
+          end
 
           apece_query = apece_queries.reduce(:or)
-          affected_assignment_pe_calculation_uuids =
-            AssignmentPeCalculationExercise.joins(:assignment_pe_calculation)
-                                           .where(apece_query)
-                                           .pluck(:assignment_pe_calculation_uuid)
-          AssignmentPeCalculation
-            .where(uuid: affected_assignment_pe_calculation_uuids)
-            .delete_all
-          AssignmentPeCalculationExercise
-            .where(assignment_pe_calculation_uuid: affected_assignment_pe_calculation_uuids)
-            .delete_all
-          AlgorithmAssignmentPeCalculation
-            .where(assignment_pe_calculation_uuid: affected_assignment_pe_calculation_uuids)
-            .delete_all
+          unless apece_query.nil?
+            conflicting_pe_assignment_uuids =
+              AssignmentPeCalculationExercise.joins(:assignment_pe_calculation)
+                                             .where(apece_query)
+                                             .pluck(:assignment_uuid)
+
+            Assignment.where(uuid: conflicting_pe_assignment_uuids)
+                      .update_all(pes_are_assigned: false)
+          end
 
           spece_query = spece_queries.reduce(:or)
-          affected_student_pe_calculation_uuids =
-            StudentPeCalculationExercise.joins(:student_pe_calculation)
-                                        .where(spece_query)
-                                        .pluck(:student_pe_calculation_uuid)
-          StudentPeCalculation
-            .where(uuid: affected_student_pe_calculation_uuids)
-            .delete_all
-          StudentPeCalculationExercise
-            .where(student_pe_calculation_uuid: affected_student_pe_calculation_uuids)
-            .delete_all
-          AlgorithmStudentPeCalculation
-            .where(student_pe_calculation_uuid: affected_student_pe_calculation_uuids)
-            .delete_all
+          unless spece_query.nil?
+            conflicting_student_uuids =
+              StudentPeCalculation.joins(:student_pe_calculation_exercises)
+                                  .where(spece_query)
+                                  .pluck(:student_uuid)
+
+            Student.where(uuid: conflicting_student_uuids).update_all(pes_are_assigned: false)
+          end
 
           # This is done last because the sequence_number update marks events as processed
           results << Course.import(

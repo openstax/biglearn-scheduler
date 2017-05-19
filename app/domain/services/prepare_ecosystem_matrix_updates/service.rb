@@ -28,6 +28,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         end
 
         # Record any new ecosystem matrix updates
+        # Since we use ON CONFLICT DO NOTHING, not all ids would be returned by this method
         EcosystemMatrixUpdate.import(
           ecosystem_matrix_updates, validate: false, on_duplicate_key_ignore: {
             conflict_target: [ :ecosystem_uuid ]
@@ -36,13 +37,12 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
 
         # Delete existing AlgorithmEcosystemMatrixUpdate for affected EcosystemMatrixUpdates,
         # since they need to be recalculated
-        ecosystem_matrix_update_uuids = EcosystemMatrixUpdate.where(ecosystem_uuid: ecosystem_uuids)
-                                                             .pluck(:uuid)
         AlgorithmEcosystemMatrixUpdate
-          .where(ecosystem_matrix_update_uuid: ecosystem_matrix_update_uuids)
+          .joins(:ecosystem_matrix_update)
+          .where(ecosystem_matrix_updates: { ecosystem_uuid: ecosystem_uuids })
           .delete_all
 
-        # Record the fact that the Ecosystem matrices are up-to-date with the latest Responses
+        # Record the fact that the EcosystemMatrixUpdates are up-to-date with the latest Responses
         Response.where(ecosystem_uuid: ecosystem_uuids)
                 .update_all(used_in_ecosystem_matrix_updates: true)
 

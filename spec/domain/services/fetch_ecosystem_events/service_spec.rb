@@ -12,7 +12,7 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
     end
   end
 
-  context 'with an exiting ecosystem and ecosystem events' do
+  context 'with an existing ecosystem and ecosystem events' do
     let!(:ecosystem)                { FactoryGirl.create :ecosystem, sequence_number: 0 }
 
     let(:sequence_number)           { 0 }

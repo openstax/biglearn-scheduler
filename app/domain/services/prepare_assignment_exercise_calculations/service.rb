@@ -54,6 +54,38 @@ class Services::PrepareAssignmentExerciseCalculations::Service < Services::Appli
           .where(spe_query)
           .take(BATCH_SIZE)
 
+        # Delete existing AssignmentSpeCalculations, AssignmentSpeCalculationExercises and
+        # AlgorithmAssignmentSpeCalculations for affected Assignments,
+        # since they need to be recalculated
+        spe_assignment_uuids = spe_assignments_with_sequence_numbers.map(&:uuid)
+        assignment_spe_calculation_uuids = AssignmentSpeCalculation
+          .where(assignment_uuid: spe_assignment_uuids)
+          .pluck(:uuid)
+
+        AlgorithmAssignmentSpeCalculation
+          .where(assignment_spe_calculation_uuid: assignment_spe_calculation_uuids)
+          .delete_all
+        AssignmentSpeCalculationExercise
+          .where(assignment_spe_calculation_uuid: assignment_spe_calculation_uuids)
+          .delete_all
+        AssignmentSpeCalculation.where(uuid: assignment_spe_calculation_uuids).delete_all
+
+        # Delete existing AssignmentPeCalculations, AssignmentPeCalculationExercises and
+        # AlgorithmAssignmentPeCalculations for affected Assignments,
+        # since they need to be recalculated
+        pe_assignment_uuids = pe_assignments.map(&:uuid)
+        assignment_pe_calculation_uuids = AssignmentPeCalculation
+          .where(assignment_uuid: pe_assignment_uuids)
+          .pluck(:uuid)
+
+        AlgorithmAssignmentPeCalculation
+          .where(assignment_pe_calculation_uuid: assignment_pe_calculation_uuids)
+          .delete_all
+        AssignmentPeCalculationExercise
+          .where(assignment_pe_calculation_uuid: assignment_pe_calculation_uuids)
+          .delete_all
+        AssignmentPeCalculation.where(uuid: assignment_pe_calculation_uuids).delete_all
+
         assignments = (spe_assignments_with_sequence_numbers + pe_assignments).uniq
 
         # Build assignment histories so we can find SPE book_container_uuids
@@ -376,7 +408,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service < Services::Appli
           assignment_spe_calculations.partition do |assignment_spe_calculation|
           assignment_spe_calculation.book_container_uuid.nil?
         end
-        a_spe_calc_ids = AssignmentSpeCalculation.import(
+        AssignmentSpeCalculation.import(
           bc_assignment_spe_calculations, validate: false, on_duplicate_key_update: {
             conflict_target: [
               :assignment_uuid,
@@ -387,7 +419,8 @@ class Services::PrepareAssignmentExerciseCalculations::Service < Services::Appli
             ],
             columns: [ :exercise_uuids, :exercise_count ]
           }
-        ).ids + AssignmentSpeCalculation.import(
+        )
+        AssignmentSpeCalculation.import(
           null_bc_assignment_spe_calculations, validate: false, on_duplicate_key_update: {
             conflict_target: [
               :assignment_uuid,
@@ -398,15 +431,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service < Services::Appli
             index_predicate: 'book_container_uuid IS NULL',
             columns: [ :exercise_uuids, :exercise_count ]
           }
-        ).ids
-
-        # Delete existing AlgorithmAssignmentSpeCalculations for affected AssignmentSpeCalculations,
-        # since they need to be recalculated
-        assignment_spe_calculation_uuids = AssignmentSpeCalculation.where(id: a_spe_calc_ids)
-                                                                   .pluck(:uuid)
-        AlgorithmAssignmentSpeCalculation
-          .where(assignment_spe_calculation_uuid: assignment_spe_calculation_uuids)
-          .delete_all
+        )
 
         assignment_spe_calculation_exercises = assignment_spe_calculations
                                                  .flat_map do |assignment_spe_calculation|
@@ -439,20 +464,12 @@ class Services::PrepareAssignmentExerciseCalculations::Service < Services::Appli
         end
 
         # Record the AssignmentPeCalculations
-        a_pe_calc_ids = AssignmentPeCalculation.import(
+        AssignmentPeCalculation.import(
           assignment_pe_calculations, validate: false, on_duplicate_key_update: {
             conflict_target: [ :assignment_uuid, :book_container_uuid ],
             columns: [ :exercise_uuids, :exercise_count ]
           }
-        ).ids
-
-        # Delete existing AlgorithmAssignmentPeCalculations for affected AssignmentPeCalculations,
-        # since they need to be recalculated
-        assignment_pe_calculation_uuids = AssignmentPeCalculation.where(id: a_pe_calc_ids)
-                                                                 .pluck(:uuid)
-        AlgorithmAssignmentPeCalculation
-          .where(assignment_pe_calculation_uuid: assignment_pe_calculation_uuids)
-          .delete_all
+        )
 
         assignment_pe_calculation_exercises = assignment_pe_calculations
                                                 .flat_map do |assignment_pe_calculation|

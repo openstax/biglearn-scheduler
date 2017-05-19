@@ -9,7 +9,7 @@ RSpec.describe Services::FetchCourseMetadatas::Service, type: :service do
     end
   end
 
-  context 'with some exiting courses and course metadatas' do
+  context 'with some existing courses and course metadatas' do
     let!(:course_1)                 { FactoryGirl.create :course }
     let!(:course_2)                 { FactoryGirl.create :course }
 

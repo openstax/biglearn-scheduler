@@ -16,6 +16,18 @@ class Services::PrepareStudentExerciseCalculations::Service < Services::Applicat
         students = Student.where(pes_are_assigned: false).take(BATCH_SIZE)
         student_uuids = students.map(&:uuid)
 
+        # Delete existing StudentPeCalculations, StudentPeCalculationExercises and
+        # AlgorithmStudentPeCalculations for affected Students, since they need to be recalculated
+        student_pe_calculation_uuids = StudentPeCalculation.where(student_uuid: student_uuids)
+                                                           .pluck(:uuid)
+        AlgorithmStudentPeCalculation
+          .where(student_pe_calculation_uuid: student_pe_calculation_uuids)
+          .delete_all
+        StudentPeCalculationExercise
+          .where(student_pe_calculation_uuid: student_pe_calculation_uuids)
+          .delete_all
+        StudentPeCalculation.where(uuid: student_pe_calculation_uuids).delete_all
+
         # Get the worst clues for each student
         worst_clues_by_student_uuid_and_algorithm_name = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = [] }
@@ -220,20 +232,12 @@ class Services::PrepareStudentExerciseCalculations::Service < Services::Applicat
         end
 
         # Record the StudentPeCalculations
-        s_pe_calc_ids = StudentPeCalculation.import(
+        StudentPeCalculation.import(
           student_pe_calculations, validate: false, on_duplicate_key_update: {
             conflict_target: [ :student_uuid, :book_container_uuid, :clue_algorithm_name ],
             columns: [ :exercise_uuids, :exercise_count ]
           }
-        ).ids
-
-        # Delete existing AlgorithmStudentPeCalculations for affected StudentPeCalculations,
-        # since they need to be recalculated
-        student_pe_calculation_uuids = StudentPeCalculation.where(id: s_pe_calc_ids)
-                                                           .pluck(:uuid)
-        AlgorithmStudentPeCalculation
-          .where(student_pe_calculation_uuid: student_pe_calculation_uuids)
-          .delete_all
+        )
 
         student_pe_calculation_exercises = student_pe_calculations
                                              .flat_map do |student_pe_calculation|

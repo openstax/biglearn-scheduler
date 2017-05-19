@@ -288,7 +288,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             conflict_target: [ :student_uuid, :book_container_uuid ],
             columns: [ :exercise_uuids, :responses ]
           }
-        )
+        ).ids
 
         # Delete existing AlgorithmStudentClueCalculations for affected StudentClueCalculations,
         # since they need to be recalculated

@@ -9,7 +9,7 @@ RSpec.describe Services::FetchEcosystemMetadatas::Service, type: :service do
     end
   end
 
-  context 'with some exiting ecosystems and ecosystem metadatas' do
+  context 'with some existing ecosystems and ecosystem metadatas' do
     let!(:ecosystem_1)                 { FactoryGirl.create :ecosystem }
     let!(:ecosystem_2)                 { FactoryGirl.create :ecosystem }
 
