@@ -233,12 +233,14 @@ ActiveRecord::Schema.define(version: 20170404212728) do
   create_table "ecosystem_exercises", force: :cascade do |t|
     t.uuid     "uuid",                 null: false
     t.uuid     "ecosystem_uuid",       null: false
+    t.uuid     "exercise_uuid",        null: false
     t.uuid     "exercise_group_uuid",  null: false
     t.uuid     "book_container_uuids", null: false, array: true
     t.datetime "created_at",           null: false
     t.datetime "updated_at",           null: false
     t.index ["ecosystem_uuid"], name: "index_ecosystem_exercises_on_ecosystem_uuid", using: :btree
     t.index ["exercise_group_uuid", "ecosystem_uuid"], name: "index_eco_exercises_on_exercise_group_uuid_and_eco_uuid", unique: true, using: :btree
+    t.index ["exercise_uuid", "ecosystem_uuid"], name: "index_eco_exercises_on_exercise_uuid_and_eco_uuid", unique: true, using: :btree
     t.index ["uuid"], name: "index_ecosystem_exercises_on_uuid", unique: true, using: :btree
   end
 

@@ -92,6 +92,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
                 ecosystem_exercises << EcosystemExercise.new(
                   uuid: SecureRandom.uuid,
                   ecosystem_uuid: ecosystem_uuid,
+                  exercise_uuid: exercise_uuid,
                   exercise_group_uuid: exercise_group_uuid,
                   book_container_uuids: book_container_uuids
                 )
@@ -110,21 +111,14 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
           end.compact
 
           results << ExercisePool.import(
-            exercise_pools, validate: false, on_duplicate_key_update: {
-              conflict_target: [ :uuid ],
-              columns: [
-                :ecosystem_uuid,
-                :book_container_uuid,
-                :use_for_clue,
-                :use_for_personalized_for_assignment_types
-              ]
+            exercise_pools, validate: false, on_duplicate_key_ignore: {
+              conflict_target: [ :uuid ]
             }
           )
 
           results << EcosystemExercise.import(
-            ecosystem_exercises, validate: false, on_duplicate_key_update: {
-              conflict_target: [ :uuid ],
-              columns: [ :ecosystem_uuid, :exercise_group_uuid, :book_container_uuids ]
+            ecosystem_exercises, validate: false, on_duplicate_key_ignore: {
+              conflict_target: [ :uuid ]
             }
           )
 
@@ -132,7 +126,6 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
             exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
           )
 
-          # This is done last because the sequence_number update marks events as processed
           results << Ecosystem.import(
             ecosystems, validate: false, on_duplicate_key_update: {
               conflict_target: [ :uuid ], columns: [ :sequence_number ]

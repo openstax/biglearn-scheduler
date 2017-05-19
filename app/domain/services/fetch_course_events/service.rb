@@ -495,7 +495,6 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             Student.where(uuid: conflicting_student_uuids).update_all(pes_are_assigned: false)
           end
 
-          # This is done last because the sequence_number update marks events as processed
           results << Course.import(
             courses, validate: false, on_duplicate_key_update: {
               conflict_target: [ :uuid ],
