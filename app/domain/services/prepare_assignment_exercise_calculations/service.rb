@@ -417,7 +417,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service < Services::Appli
               :book_container_uuid,
               :is_spaced
             ],
-            columns: [ :exercise_uuids, :exercise_count ]
+            columns: [ :uuid, :exercise_uuids, :exercise_count ]
           }
         )
         AssignmentSpeCalculation.import(
@@ -429,7 +429,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service < Services::Appli
               :is_spaced
             ],
             index_predicate: 'book_container_uuid IS NULL',
-            columns: [ :exercise_uuids, :exercise_count ]
+            columns: [ :uuid, :exercise_uuids, :exercise_count ]
           }
         )
 
@@ -467,7 +467,7 @@ class Services::PrepareAssignmentExerciseCalculations::Service < Services::Appli
         AssignmentPeCalculation.import(
           assignment_pe_calculations, validate: false, on_duplicate_key_update: {
             conflict_target: [ :assignment_uuid, :book_container_uuid ],
-            columns: [ :exercise_uuids, :exercise_count ]
+            columns: [ :uuid, :exercise_uuids, :exercise_count ]
           }
         )
 

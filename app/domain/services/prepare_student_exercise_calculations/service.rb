@@ -235,7 +235,7 @@ class Services::PrepareStudentExerciseCalculations::Service < Services::Applicat
         StudentPeCalculation.import(
           student_pe_calculations, validate: false, on_duplicate_key_update: {
             conflict_target: [ :student_uuid, :book_container_uuid, :clue_algorithm_name ],
-            columns: [ :exercise_uuids, :exercise_count ]
+            columns: [ :uuid, :exercise_uuids, :exercise_count ]
           }
         )
 
@@ -291,7 +291,7 @@ class Services::PrepareStudentExerciseCalculations::Service < Services::Applicat
     when 4
       [2, 1, 1, 1]
     else
-      # 5 is the max
+      # 5 is the current maximum
       [1, 1, 1, 1, 1]
     end
   end

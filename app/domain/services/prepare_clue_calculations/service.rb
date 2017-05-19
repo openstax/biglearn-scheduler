@@ -146,6 +146,39 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           rsp[:student_uuid].in(student_uuids).and rsp[:exercise_uuid].in(exercise_uuids)
         end.compact.reduce(:or)
 
+        # Delete existing AlgorithmStudentClueCalculations for affected StudentClueCalculations,
+        # since they need to be recalculated
+        unless student_clues_to_update.empty?
+          scc = StudentClueCalculation.arel_table
+          scc_queries = student_clues_to_update.map do |book_container_uuid, student_uuids|
+            scc[:book_container_uuid].eq(book_container_uuid).and(
+              scc[:student_uuid].in(student_uuids)
+            )
+          end
+          scc_query = scc_queries.reduce(:or)
+          student_clue_calculation_uuids = StudentClueCalculation.where(scc_query).pluck(:uuid)
+          AlgorithmStudentClueCalculation
+            .where(student_clue_calculation_uuid: student_clue_calculation_uuids)
+            .delete_all
+        end
+
+        # Delete existing AlgorithmTeacherClueCalculations for affected TeacherClueCalculations,
+        # since they need to be recalculated
+        unless teacher_clues_to_update.empty?
+          tcc = TeacherClueCalculation.arel_table
+          tcc_queries = teacher_clues_to_update.map do |book_container_uuid,
+                                                        course_container_uuids|
+            tcc[:book_container_uuid].eq(book_container_uuid).and(
+              tcc[:course_container_uuid].in(course_container_uuids)
+            )
+          end
+          tcc_query = tcc_queries.reduce(:or)
+          teacher_clue_calculation_uuids = TeacherClueCalculation.where(tcc_query).pluck(:uuid)
+          AlgorithmTeacherClueCalculation
+            .where(teacher_clue_calculation_uuid: teacher_clue_calculation_uuids)
+            .delete_all
+        end
+
         # Map student_uuids and exercise_group_uuids to correctness information
         # Take only the latest answer for each exercise_group_uuid
         # Mark responses found here as used in CLUe calculations
@@ -283,36 +316,20 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         end.compact
 
         # Record the StudentClueCalculations
-        student_clue_calc_ids = StudentClueCalculation.import(
+        StudentClueCalculation.import(
           student_clue_calculations, validate: false, on_duplicate_key_update: {
             conflict_target: [ :student_uuid, :book_container_uuid ],
-            columns: [ :exercise_uuids, :responses ]
+            columns: [ :uuid, :exercise_uuids, :responses ]
           }
-        ).ids
-
-        # Delete existing AlgorithmStudentClueCalculations for affected StudentClueCalculations,
-        # since they need to be recalculated
-        student_clue_calculation_uuids = StudentClueCalculation.where(id: student_clue_calc_ids)
-                                                               .pluck(:uuid)
-        AlgorithmStudentClueCalculation
-          .where(student_clue_calculation_uuid: student_clue_calculation_uuids)
-          .delete_all
+        )
 
         # Record the TeacherClueCalculations
-        teacher_clue_calc_ids = TeacherClueCalculation.import(
+        TeacherClueCalculation.import(
           teacher_clue_calculations, validate: false, on_duplicate_key_update: {
             conflict_target: [ :course_container_uuid, :book_container_uuid ],
-            columns: [ :student_uuids, :exercise_uuids, :responses ]
+            columns: [ :uuid, :student_uuids, :exercise_uuids, :responses ]
           }
-        ).ids
-
-        # Delete existing AlgorithmTeacherClueCalculations for affected TeacherClueCalculations,
-        # since they need to be recalculated
-        teacher_clue_calculation_uuids = TeacherClueCalculation.where(id: teacher_clue_calc_ids)
-                                                               .pluck(:uuid)
-        AlgorithmTeacherClueCalculation
-          .where(teacher_clue_calculation_uuid: teacher_clue_calculation_uuids)
-          .delete_all
+        )
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
         Response.where(uuid: used_response_uuids).update_all(used_in_clue_calculations: true)
