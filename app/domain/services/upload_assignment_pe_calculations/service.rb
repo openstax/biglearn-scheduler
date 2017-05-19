@@ -132,7 +132,10 @@ class Services::UploadAssignmentPeCalculations::Service
 
               exercise_uuids = rel_aape_calcs.flat_map do |calc|
                 allowed_exercise_uuids = calc.exercise_uuids - excluded_exercise_uuids
-                allowed_exercise_uuids.first(calc.exercise_count)
+                allowed_exercise_uuids.first(calc.exercise_count).tap do |chosen_exercises|
+                  # Avoid repeats (shouldn't happen, but this code is here to guarantee that)
+                  excluded_exercise_uuids += chosen_exercises
+                end
               end
 
               {

@@ -107,7 +107,9 @@ class Services::UploadAssignmentSpeCalculations::Service
             )
           end.compact.reduce(:or)
           rel_aaspe_calcs_by_assignment_uuid_alg_name_and_history_type = Hash.new do |hash, key|
-            hash[key] = Hash.new { |hash, key| hash[key] = Hash.new { |hash, key| hash[key] = [] } }
+            hash[key] = Hash.new do |hash, key|
+              hash[key] = Hash.new { |hash, key| hash[key] = [] }
+            end
           end
           rel_aaspe_calcs = AlgorithmAssignmentSpeCalculation
                              .with_assignment_spe_calculation_attributes(aaspec_query)
@@ -159,7 +161,10 @@ class Services::UploadAssignmentSpeCalculations::Service
 
                 exercise_uuids = rel_aaspe_calcs.flat_map do |calc|
                   allowed_exercise_uuids = calc.exercise_uuids - excluded_exercise_uuids
-                  allowed_exercise_uuids.first(calc.exercise_count)
+                  allowed_exercise_uuids.first(calc.exercise_count).tap do |chosen_exercises|
+                    # Avoid repeats (could happen due to multiple k-ago slots not existing)
+                    excluded_exercise_uuids += chosen_exercises
+                  end
                 end
 
                 # TODO: Eventually we want to use algorithm_uuids instead of algorithm_names

@@ -121,7 +121,11 @@ class Services::UploadStudentPeCalculations::Service
 
                 exercise_uuids = rel_aspe_calcs.flat_map do |calc|
                   allowed_exercise_uuids = calc.exercise_uuids - excluded_exercise_uuids
-                  allowed_exercise_uuids.first(calc.exercise_count)
+                  allowed_exercise_uuids.first(calc.exercise_count).tap do |chosen_exercises|
+                    # Avoid repeats
+                    # (could happen if one of the worst areas book_containers contains another)
+                    excluded_exercise_uuids += chosen_exercises
+                  end
                 end
 
                 {
