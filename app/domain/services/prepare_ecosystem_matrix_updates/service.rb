@@ -1,6 +1,6 @@
 class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationService
   UPDATE_THRESHOLD = 0.1
-  ECOSYSTEM_QUERY = "new_response_count > #{UPDATE_THRESHOLD} * response_count"
+  RESPONSE_COUNT_QUERY = "new_response_count > #{UPDATE_THRESHOLD} * response_count"
   BATCH_SIZE = 1000
 
   def process
@@ -13,16 +13,16 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
     total_ecosystems = 0
     loop do
       num_ecosystems = Ecosystem.transaction do
-        # Get Ecosystems with EcosystemExercises whose number of Responses
-        # that have not yet been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
-        ecosystem_uuids = EcosystemExercise.with_response_counts
-                                           .where(ECOSYSTEM_QUERY)
-                                           .limit(BATCH_SIZE)
-                                           .distinct
-                                           .pluck(:ecosystem_uuid)
-        ecosystem_uuids = Ecosystem.where(uuid: ecosystem_uuids)
-                                   .lock
-                                   .pluck(:uuid)
+        # Get Ecosystems with Exercises whose number of Responses that have not yet
+        # been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
+        # The subquery is needed because FOR UPDATE
+        # cannot be used in the same query as GROUP BY or DISTINCT
+        subquery = Exercise.select('"ecosystem_exercises"."ecosystem_uuid"')
+                           .with_response_counts(select: '"exercises"."uuid"')
+                           .joins(:ecosystem_exercises)
+                           .where(RESPONSE_COUNT_QUERY)
+                           .limit(BATCH_SIZE)
+        ecosystem_uuids = Ecosystem.where(uuid: subquery).lock.pluck(:uuid)
 
         # Delete existing AlgorithmEcosystemMatrixUpdate for affected Ecosystems,
         # since they need to be recalculated

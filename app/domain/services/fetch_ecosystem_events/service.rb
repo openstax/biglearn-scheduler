@@ -89,18 +89,18 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
                 exercise_group_uuid = exercise.fetch(:group_uuid)
                 book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid]
 
+                exercises << Exercise.new(
+                  uuid: exercise_uuid,
+                  group_uuid: exercise_group_uuid,
+                  version: exercise.fetch(:version)
+                )
+
                 ecosystem_exercises << EcosystemExercise.new(
                   uuid: SecureRandom.uuid,
                   ecosystem_uuid: ecosystem_uuid,
                   exercise_uuid: exercise_uuid,
                   exercise_group_uuid: exercise_group_uuid,
                   book_container_uuids: book_container_uuids
-                )
-
-                exercises << Exercise.new(
-                  uuid: exercise_uuid,
-                  group_uuid: exercise_group_uuid,
-                  version: exercise.fetch(:version)
                 )
               end
             end
@@ -110,10 +110,8 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
             ecosystem
           end.compact
 
-          results << ExercisePool.import(
-            exercise_pools, validate: false, on_duplicate_key_ignore: {
-              conflict_target: [ :uuid ]
-            }
+          results << Exercise.import(
+            exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
           )
 
           results << EcosystemExercise.import(
@@ -122,8 +120,10 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
             }
           )
 
-          results << Exercise.import(
-            exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+          results << ExercisePool.import(
+            exercise_pools, validate: false, on_duplicate_key_ignore: {
+              conflict_target: [ :uuid ]
+            }
           )
 
           results << Ecosystem.import(
