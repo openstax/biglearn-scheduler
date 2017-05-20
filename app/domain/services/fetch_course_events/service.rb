@@ -38,9 +38,10 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             [ course.uuid, course ]
           end.to_h
 
-          course_event_responses = OpenStax::Biglearn::Api.fetch_course_events(course_event_requests)
-                                                          .values
-                                                          .map(&:deep_symbolize_keys)
+          course_event_responses =
+            OpenStax::Biglearn::Api.fetch_course_events(course_event_requests)
+                                   .values
+                                   .map(&:deep_symbolize_keys)
 
           ecosystem_preparations = []
           course_uuids_with_changed_ecosystems = []
@@ -438,6 +439,25 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             )
           end
 
+          # Reverse the grouping to be by exercise_uuid instead of student_uuid
+          # hoping that the number of different exercise_uuids << the number of student_uuids
+          # to try to improve performance when assignments are created for large classes
+          student_uuids_by_assigned_exercise_uuid = Hash.new { |hash, key| hash[key] = [] }
+          assignments.each do |assignment|
+            student_uuid = assignment.student_uuid
+
+            assignment.assigned_exercise_uuids.each do |assigned_exercise_uuid|
+              student_uuids_by_assigned_exercise_uuid[assigned_exercise_uuid] << student_uuid
+            end
+          end
+
+          # Now group by student_uuids so exercises assigned to exactly
+          # the same students (usually the core exercises) can become 1 statement
+          assigned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
+          student_uuids_by_assigned_exercise_uuid.each do |assigned_exercise_uuid, student_uuids|
+            assigned_exercise_uuids_by_student_uuids[student_uuids] << assigned_exercise_uuid
+          end
+
           # Find conflicting SPEs and PEs for students with updated assignments
           # (with the same exercise_uuids) and mark them for recalculation
           aspec = AssignmentSpeCalculation.arel_table
@@ -449,20 +469,16 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           aspece_queries = []
           apece_queries =  []
           spece_queries =  []
-          assignments.each do |assignment|
-            assignment_uuid = assignment.uuid
-            student_uuid = assignment.student_uuid
-            assigned_exercise_uuids = assignment.assigned_exercise_uuids
-
-            aspece_queries << aspec[:student_uuid].eq(student_uuid).and(
+          assigned_exercise_uuids_by_student_uuids.each do |student_uuids, assigned_exercise_uuids|
+            aspece_queries << aspec[:student_uuid].in(student_uuids).and(
                                 aspece[:exercise_uuid].in(assigned_exercise_uuids)
                               )
 
-            apece_queries << apec[:student_uuid].eq(student_uuid).and(
+            apece_queries << apec[:student_uuid].in(student_uuids).and(
                                apece[:exercise_uuid].in(assigned_exercise_uuids)
                              )
 
-            spece_queries << spec[:student_uuid].eq(student_uuid).and(
+            spece_queries << spec[:student_uuid].in(student_uuids).and(
                                spece[:exercise_uuid].in(assigned_exercise_uuids)
                              )
           end
@@ -472,6 +488,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             conflicting_spe_assignment_uuids =
               AssignmentSpeCalculationExercise.joins(:assignment_spe_calculation)
                                               .where(aspece_query)
+                                              .distinct
                                               .pluck(:assignment_uuid)
 
             Assignment.where(uuid: conflicting_spe_assignment_uuids)
@@ -483,6 +500,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             conflicting_pe_assignment_uuids =
               AssignmentPeCalculationExercise.joins(:assignment_pe_calculation)
                                              .where(apece_query)
+                                             .distinct
                                              .pluck(:assignment_uuid)
 
             Assignment.where(uuid: conflicting_pe_assignment_uuids)
@@ -494,6 +512,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             conflicting_student_uuids =
               StudentPeCalculation.joins(:student_pe_calculation_exercises)
                                   .where(spece_query)
+                                  .distinct
                                   .pluck(:student_uuid)
 
             Student.where(uuid: conflicting_student_uuids).update_all(pes_are_assigned: false)
