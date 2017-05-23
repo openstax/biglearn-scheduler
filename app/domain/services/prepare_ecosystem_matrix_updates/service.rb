@@ -1,6 +1,5 @@
 class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationService
   UPDATE_THRESHOLD = 0.1
-  RESPONSE_COUNT_QUERY = "new_response_count > #{UPDATE_THRESHOLD} * response_count"
   BATCH_SIZE = 1000
 
   def process
@@ -17,20 +16,11 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         # been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
         # The subquery is needed because FOR UPDATE
         # cannot be used in the same query as GROUP BY or DISTINCT
-        subquery = Exercise.select('"ecosystem_exercises"."ecosystem_uuid"')
-                           .with_response_counts(select: '"exercises"."uuid"')
-                           .joins(:ecosystem_exercises)
-                           .where(RESPONSE_COUNT_QUERY)
-                           .limit(BATCH_SIZE)
+        subquery = Exercise
+          .with_new_response_ratio_above_threshold(threshold: UPDATE_THRESHOLD, limit: BATCH_SIZE)
+          .joins(:ecosystem_exercises)
+          .select('"ecosystem_exercises"."ecosystem_uuid"')
         ecosystem_uuids = Ecosystem.where(uuid: subquery).lock.pluck(:uuid)
-
-        # Delete existing AlgorithmEcosystemMatrixUpdate for affected Ecosystems,
-        # since they need to be recalculated
-        ecosystem_matrix_update_uuids = EcosystemMatrixUpdate.where(ecosystem_uuid: ecosystem_uuids)
-                                                             .pluck(:uuid)
-        AlgorithmEcosystemMatrixUpdate
-          .where(ecosystem_matrix_update_uuid: ecosystem_matrix_update_uuids)
-          .delete_all
 
         ecosystem_matrix_updates = ecosystem_uuids.map do |ecosystem_uuid|
           EcosystemMatrixUpdate.new(
@@ -46,6 +36,10 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
             columns: [ :uuid ]
           }
         )
+
+        # Cleanup AlgorithmEcosystemMatrixUpdates that no longer have
+        # an associated EcosystemMatrixUpdate record
+        AlgorithmEcosystemMatrixUpdate.unassociated.delete_all
 
         # Record the fact that the EcosystemMatrixUpdates are up-to-date with the latest Responses
         Response.where(ecosystem_uuid: ecosystem_uuids)

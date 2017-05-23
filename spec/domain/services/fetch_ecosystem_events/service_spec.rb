@@ -136,6 +136,7 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
                                   .and change { EcosystemExercise.count }.by(num_exercises)
                                   .and change { ecosystem.reload.sequence_number }
                                                 .from(0).to(sequence_number + 1)
+                                  .and change { ecosystem.reload.exercise_uuids }
       end
     end
   end

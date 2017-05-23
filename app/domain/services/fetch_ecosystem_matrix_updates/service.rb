@@ -1,4 +1,6 @@
 class Services::FetchEcosystemMatrixUpdates::Service < Services::ApplicationService
+  BATCH_SIZE = 1000
+
   def process(algorithm_name:)
     emu = EcosystemMatrixUpdate.arel_table
     aemu = AlgorithmEcosystemMatrixUpdate.arel_table
@@ -9,7 +11,7 @@ class Services::FetchEcosystemMatrixUpdates::Service < Services::ApplicationServ
     ecosystem_matrix_updates = EcosystemMatrixUpdate
                                  .joins(emu_join)
                                  .where(algorithm_ecosystem_matrix_updates: {id: nil})
-                                 .limit(1000)
+                                 .limit(BATCH_SIZE)
 
     ecosystem_matrix_update_responses = ecosystem_matrix_updates.map do |ecosystem_matrix_update|
       {

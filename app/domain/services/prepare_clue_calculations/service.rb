@@ -8,6 +8,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
     end
 
     ee = EcosystemExercise.arel_table
+    ex = Exercise.arel_table
     rsp = Response.arel_table
 
     # Do all the processing in batches to avoid OOM problems
@@ -44,9 +45,9 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
         # Map the exercise_uuids to exercise_group_uuids
         exercise_uuids = responses.map(&:exercise_uuid)
-        exercise_group_uuid_by_exercise_uuid = Exercise.where(uuid: exercise_uuids)
-                                                       .pluck(:uuid, :group_uuid)
-                                                       .to_h
+        group_uuid_by_exercise_uuid = Exercise.where(uuid: exercise_uuids)
+                                              .pluck(:uuid, :group_uuid)
+                                              .to_h
 
         # Build a query to obtain the book_container_uuids for the new Responses
         # Mark the responses as used in CLUe calculations
@@ -58,21 +59,23 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           ecosystem_uuid = ecosystem_uuid_by_course_uuid[course_uuid]
 
           exercise_uuid = response.exercise_uuid
-          exercise_group_uuid = exercise_group_uuid_by_exercise_uuid[exercise_uuid]
+          group_uuid = group_uuid_by_exercise_uuid[exercise_uuid]
 
           used_response_uuids << response.uuid
 
           ee[:ecosystem_uuid].eq(ecosystem_uuid).and(
-            ee[:exercise_group_uuid].eq(exercise_group_uuid)
+            ex[:group_uuid].eq(group_uuid)
           )
         end.compact.reduce(:or)
 
         # Map the ecosystem_uuids and exercise_group_uuids to book_container_uuids
         book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
-        EcosystemExercise.where(ee_queries)
-                         .pluck(:ecosystem_uuid, :exercise_group_uuid, :book_container_uuids)
-                         .each do |ecosystem_uuid, exercise_group_uuid, book_container_uuids|
-          book_container_uuids_map[ecosystem_uuid][exercise_group_uuid] = book_container_uuids
+        EcosystemExercise
+          .with_group_uuids
+          .where(ee_queries)
+          .pluck(:ecosystem_uuid, :group_uuid, :book_container_uuids)
+          .each do |ecosystem_uuid, group_uuid, book_container_uuids|
+          book_container_uuids_map[ecosystem_uuid][group_uuid] = book_container_uuids
         end unless ee_queries.nil?
 
         # Map the book_container_uuids to ecosystem_uuids and back to exercise_uuids
@@ -146,39 +149,6 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           rsp[:student_uuid].in(student_uuids).and rsp[:exercise_uuid].in(exercise_uuids)
         end.compact.reduce(:or)
 
-        # Delete existing AlgorithmStudentClueCalculations for affected StudentClueCalculations,
-        # since they need to be recalculated
-        unless student_clues_to_update.empty?
-          scc = StudentClueCalculation.arel_table
-          scc_queries = student_clues_to_update.map do |book_container_uuid, student_uuids|
-            scc[:book_container_uuid].eq(book_container_uuid).and(
-              scc[:student_uuid].in(student_uuids)
-            )
-          end
-          scc_query = scc_queries.reduce(:or)
-          student_clue_calculation_uuids = StudentClueCalculation.where(scc_query).pluck(:uuid)
-          AlgorithmStudentClueCalculation
-            .where(student_clue_calculation_uuid: student_clue_calculation_uuids)
-            .delete_all
-        end
-
-        # Delete existing AlgorithmTeacherClueCalculations for affected TeacherClueCalculations,
-        # since they need to be recalculated
-        unless teacher_clues_to_update.empty?
-          tcc = TeacherClueCalculation.arel_table
-          tcc_queries = teacher_clues_to_update.map do |book_container_uuid,
-                                                        course_container_uuids|
-            tcc[:book_container_uuid].eq(book_container_uuid).and(
-              tcc[:course_container_uuid].in(course_container_uuids)
-            )
-          end
-          tcc_query = tcc_queries.reduce(:or)
-          teacher_clue_calculation_uuids = TeacherClueCalculation.where(tcc_query).pluck(:uuid)
-          AlgorithmTeacherClueCalculation
-            .where(teacher_clue_calculation_uuid: teacher_clue_calculation_uuids)
-            .delete_all
-        end
-
         # Map student_uuids and exercise_group_uuids to correctness information
         # Take only the latest answer for each exercise_group_uuid
         # Mark responses found here as used in CLUe calculations
@@ -204,14 +174,14 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           end
 
           assignment_uuid = assignment_uuid_by_trial_uuid[trial_uuid]
-          response = {
+          response_hash = {
             response_uuid: response_uuid,
             trial_uuid: trial_uuid,
             is_correct: is_correct
           }
-          student_responses_map[student_uuid][exercise_group_uuid] << response \
+          student_responses_map[student_uuid][exercise_group_uuid] << response_hash \
             unless ongoing_assignment_uuids.include?(assignment_uuid)
-          teacher_responses_map[student_uuid][exercise_group_uuid] << response
+          teacher_responses_map[student_uuid][exercise_group_uuid] << response_hash
 
           course_uuid = course_uuid_by_student_uuid[student_uuid]
           used_response_uuids << response_uuid
@@ -298,10 +268,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             next if student_uuids.empty?
 
             responses_maps = teacher_responses_map.values_at(*student_uuids).compact
-            responses = responses_maps.map do |responses_map|
+            response_hashes = responses_maps.map do |responses_map|
               responses_map.values_at(*exercise_group_uuids)
             end.flatten.compact
-            next if responses.empty?
+            next if response_hashes.empty?
 
             TeacherClueCalculation.new(
               uuid: SecureRandom.uuid,
@@ -310,7 +280,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               course_container_uuid: course_container_uuid,
               student_uuids: student_uuids,
               exercise_uuids: exercise_uuids,
-              responses: responses
+              responses: response_hashes
             )
           end
         end.compact
@@ -323,6 +293,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           }
         )
 
+        # Cleanup AlgorithmStudentClueCalculations that no longer have
+        # an associated StudentClueCalculation record
+        AlgorithmStudentClueCalculation.unassociated.delete_all
+
         # Record the TeacherClueCalculations
         TeacherClueCalculation.import(
           teacher_clue_calculations, validate: false, on_duplicate_key_update: {
@@ -330,6 +304,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             columns: [ :uuid, :student_uuids, :exercise_uuids, :responses ]
           }
         )
+
+        # Cleanup AlgorithmTeacherClueCalculations that no longer have
+        # an associated TeacherClueCalculation record
+        AlgorithmTeacherClueCalculation.unassociated.delete_all
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
         Response.where(uuid: used_response_uuids).update_all(used_in_clue_calculations: true)

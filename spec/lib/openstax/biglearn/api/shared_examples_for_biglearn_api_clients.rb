@@ -159,12 +159,12 @@ RSpec.shared_examples 'a biglearn api client' do
       :update_assignment_spes,
       [
         {
-          algorithm_name: 'local_query_instructor_driven',
+          algorithm_name: 'instructor_driven_local_query',
           assignment_uuid: dummy_assignment.uuid,
           exercise_uuids: dummy_exercises.map(&:uuid)
         },
         {
-          algorithm_name: 'local_query_student_driven',
+          algorithm_name: 'student_driven_local_query',
           assignment_uuid: dummy_assignment.uuid,
           exercise_uuids: dummy_exercises.map(&:uuid)
         }

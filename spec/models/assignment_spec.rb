@@ -3,6 +3,10 @@ require 'rails_helper'
 RSpec.describe Assignment, type: :model do
   subject { FactoryGirl.create :assignment }
 
+  it { is_expected.to have_many(:assigned_exercises).dependent(:destroy) }
+  it { is_expected.to have_many(:assignment_pes).dependent(:destroy) }
+  it { is_expected.to have_many(:assignment_spes).dependent(:destroy) }
+
   it { is_expected.to validate_presence_of :course_uuid }
   it { is_expected.to validate_presence_of :ecosystem_uuid }
   it { is_expected.to validate_presence_of :student_uuid }

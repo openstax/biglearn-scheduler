@@ -6,7 +6,5 @@ RSpec.describe EcosystemExercise, type: :model do
   it { is_expected.to belong_to(:exercise) }
 
   it { is_expected.to validate_presence_of :ecosystem_uuid }
-  it { is_expected.to validate_presence_of :exercise }
-  it { is_expected.to validate_presence_of :exercise_group_uuid }
   it { is_expected.to validate_presence_of :book_container_uuids }
 end

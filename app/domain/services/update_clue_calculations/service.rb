@@ -12,7 +12,6 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
 
     algorithm_student_clue_calculations = []
     algorithm_teacher_clue_calculations = []
-    student_uuids_with_updated_clues = []
     clue_calculation_update_responses = clue_calculation_updates.map do |clue_calculation_update|
       calculation_uuid = clue_calculation_update.fetch(:calculation_uuid)
       algorithm_name = clue_calculation_update.fetch(:algorithm_name)
@@ -20,8 +19,6 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
 
       student_clue_calculation = student_clue_calculations_by_uuid[calculation_uuid]
       if student_clue_calculation.present?
-        student_uuids_with_updated_clues << student_clue_calculation.student_uuid
-
         algorithm_student_clue_calculations << AlgorithmStudentClueCalculation.new(
           uuid: SecureRandom.uuid,
           student_clue_calculation: student_clue_calculation,
@@ -53,18 +50,39 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
     AlgorithmStudentClueCalculation.import(
       algorithm_student_clue_calculations, validate: false, on_duplicate_key_update: {
         conflict_target: [ :student_clue_calculation_uuid, :algorithm_name ],
-        columns: [ :clue_data, :clue_value ]
+        columns: [ :uuid, :clue_data, :clue_value, :is_uploaded ]
       }
     )
 
     AlgorithmTeacherClueCalculation.import(
       algorithm_teacher_clue_calculations, validate: false, on_duplicate_key_update: {
         conflict_target: [ :teacher_clue_calculation_uuid, :algorithm_name ],
-        columns: [ :clue_data ]
+        columns: [ :uuid, :clue_data, :is_uploaded ]
       }
     )
 
-    Student.where(uuid: student_uuids_with_updated_clues).update_all(pes_are_assigned: false)
+    # Mark any affected StudentPes (practice_worst_areas) for recalculation
+    aec = AlgorithmExerciseCalculation.arel_table
+    ec = ExerciseCalculation.arel_table
+    aec_queries = algorithm_student_clue_calculations.map do |algorithm_student_clue_calculation|
+      clue_algorithm_name = algorithm_student_clue_calculation.algorithm_name
+      exercise_algorithm_name = StudentPe::CLUE_TO_EXERCISE_ALGORITHM_NAME[clue_algorithm_name]
+      student_clue_calculation = algorithm_student_clue_calculation.student_clue_calculation
+      student_uuid = student_clue_calculation.student_uuid
+
+      aec[:algorithm_name].eq(exercise_algorithm_name).and ec[:student_uuid].eq(student_uuid)
+    end
+    aec_query = aec_queries.reduce(:or)
+    unless aec_query.nil?
+      affected_algorithm_exercise_calculation_uuids = AlgorithmExerciseCalculation
+        .joins(:exercise_calculation)
+        .where(aec_query)
+        .pluck(:uuid)
+
+      StudentPe.where(
+        algorithm_exercise_calculation_uuids: affected_algorithm_exercise_calculation_uuids
+      ).delete_all
+    end
 
     { clue_calculation_update_responses: clue_calculation_update_responses }
   end

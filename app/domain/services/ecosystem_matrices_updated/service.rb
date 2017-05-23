@@ -23,8 +23,9 @@ class Services::EcosystemMatricesUpdated::Service < Services::ApplicationService
     end
 
     AlgorithmEcosystemMatrixUpdate.import(
-      algorithm_ecosystem_matrix_updates, validate: false, on_duplicate_key_ignore: {
-        conflict_target: [ :ecosystem_matrix_update_uuid, :algorithm_name ]
+      algorithm_ecosystem_matrix_updates, validate: false, on_duplicate_key_update: {
+        conflict_target: [ :ecosystem_matrix_update_uuid, :algorithm_name ],
+        columns: [ :uuid ]
       }
     )
 
