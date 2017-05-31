@@ -84,24 +84,23 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
                 end
               end
 
-              data.fetch(:exercises).each do |exercise|
-                exercise_uuid = exercise.fetch(:exercise_uuid)
-                exercise_group_uuid = exercise.fetch(:group_uuid)
-                book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid]
+              ecosystem.exercise_uuids = data.fetch(:exercises).map do |exercise|
+                exercise.fetch(:exercise_uuid).tap do |exercise_uuid|
+                  book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid]
 
-                exercises << Exercise.new(
-                  uuid: exercise_uuid,
-                  group_uuid: exercise_group_uuid,
-                  version: exercise.fetch(:version)
-                )
+                  exercises << Exercise.new(
+                    uuid: exercise_uuid,
+                    group_uuid: exercise.fetch(:group_uuid),
+                    version: exercise.fetch(:version)
+                  )
 
-                ecosystem_exercises << EcosystemExercise.new(
-                  uuid: SecureRandom.uuid,
-                  ecosystem_uuid: ecosystem_uuid,
-                  exercise_uuid: exercise_uuid,
-                  exercise_group_uuid: exercise_group_uuid,
-                  book_container_uuids: book_container_uuids
-                )
+                  ecosystem_exercises << EcosystemExercise.new(
+                    uuid: SecureRandom.uuid,
+                    ecosystem_uuid: ecosystem_uuid,
+                    exercise_uuid: exercise_uuid,
+                    book_container_uuids: book_container_uuids
+                  )
+                end
               end
             end
 
@@ -128,7 +127,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
           results << Ecosystem.import(
             ecosystems, validate: false, on_duplicate_key_update: {
-              conflict_target: [ :uuid ], columns: [ :sequence_number ]
+              conflict_target: [ :uuid ], columns: [ :sequence_number, :exercise_uuids ]
             }
           )
         end

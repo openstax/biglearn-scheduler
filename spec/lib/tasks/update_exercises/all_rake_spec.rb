@@ -3,14 +3,25 @@ require 'rake_helper'
 RSpec.describe 'update_exercises:all', type: :task do
   include_context 'rake'
 
-  it 'calls update_exercises:assignments and update_exercises:practice_worst_areas' do
-    task_1 = Rake::Task.define_task :'update_exercises:assignments'
-    expect(task_1).to receive(:reenable)
-    expect(task_1).to receive(:invoke)
+  it 'includes the environment as prerequisite' do
+    expect(subject.prerequisites).to eq ['environment']
+  end
 
-    task_2 = Rake::Task.define_task :'update_exercises:practice_worst_areas'
-    expect(task_2).to receive(:reenable)
-    expect(task_2).to receive(:invoke)
+  it 'calls the appropriate services' do
+    service_class_1 = Services::PrepareExerciseCalculations::Service
+    service_spy_1 = instance_spy(service_class_1)
+    expect(service_class_1).to receive(:new).and_return(service_spy_1)
+    expect(service_spy_1).to receive(:process)
+
+    service_class_2 = Services::UploadAssignmentExercises::Service
+    service_spy_2 = instance_spy(service_class_2)
+    expect(service_class_2).to receive(:new).and_return(service_spy_2)
+    expect(service_spy_2).to receive(:process)
+
+    service_class_3 = Services::UploadStudentExercises::Service
+    service_spy_3 = instance_spy(service_class_3)
+    expect(service_class_3).to receive(:new).and_return(service_spy_3)
+    expect(service_spy_3).to receive(:process)
 
     subject.invoke
   end

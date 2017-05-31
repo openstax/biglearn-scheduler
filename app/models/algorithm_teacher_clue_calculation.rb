@@ -3,7 +3,14 @@ class AlgorithmTeacherClueCalculation < ApplicationRecord
                                         foreign_key: :teacher_clue_calculation_uuid,
                                         inverse_of: :algorithm_teacher_clue_calculations
 
-  validates :teacher_clue_calculation, presence: true
   validates :algorithm_name, presence: true, uniqueness: { scope: :teacher_clue_calculation_uuid }
   validates :clue_data, presence: true
+
+  scope :unassociated, -> do
+    where.not(
+      TeacherClueCalculation.where(
+        '"uuid" = "algorithm_teacher_clue_calculations"."teacher_clue_calculation_uuid"'
+      ).exists
+    )
+  end
 end

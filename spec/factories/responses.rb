@@ -8,6 +8,7 @@ FactoryGirl.define do
     responded_at                     { Time.now }
     is_correct                       { [true, false].sample }
     used_in_clue_calculations        { [true, false].sample }
+    used_in_exercise_calculations    { [true, false].sample }
     used_in_ecosystem_matrix_updates { [true, false].sample }
   end
 end

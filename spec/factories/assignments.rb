@@ -27,7 +27,7 @@ FactoryGirl.define do
       assigned_exercise_uuids.each_with_index do |assigned_exercise_uuid, index|
         create(
           :assigned_exercise,
-          assignment_uuid: assignment.uuid,
+          assignment: assignment,
           exercise_uuid: assigned_exercise_uuid,
           is_spe: index >= first_spe_index,
           is_pe: index >= first_pe_index && index < first_spe_index

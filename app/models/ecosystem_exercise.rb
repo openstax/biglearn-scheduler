@@ -4,7 +4,9 @@ class EcosystemExercise < ApplicationRecord
                         inverse_of: :ecosystem_exercises
 
   validates :ecosystem_uuid,       presence: true
-  validates :exercise,             presence: true
-  validates :exercise_group_uuid,  presence: true
   validates :book_container_uuids, presence: true
+
+  scope :with_group_uuids, -> do
+    joins(:exercise).select [arel_table[Arel.star], Exercise.arel_table[:group_uuid]]
+  end
 end

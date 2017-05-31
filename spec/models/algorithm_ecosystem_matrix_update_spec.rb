@@ -5,7 +5,6 @@ RSpec.describe AlgorithmEcosystemMatrixUpdate, type: :model do
 
   it { is_expected.to belong_to :ecosystem_matrix_update }
 
-  it { is_expected.to validate_presence_of(:ecosystem_matrix_update) }
   it { is_expected.to validate_presence_of(:algorithm_name) }
 
   it do

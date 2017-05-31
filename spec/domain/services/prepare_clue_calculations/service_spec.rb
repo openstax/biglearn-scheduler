@@ -10,7 +10,6 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                 .and not_change { TeacherClueCalculation.count          }
                                 .and not_change { AlgorithmStudentClueCalculation.count }
                                 .and not_change { AlgorithmTeacherClueCalculation.count }
-                                .and not_change { StudentPeCalculation.count            }
     end
   end
 
@@ -105,7 +104,6 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
          .and not_change { TeacherClueCalculation.count }
          .and not_change { AlgorithmStudentClueCalculation.count }
          .and not_change { AlgorithmTeacherClueCalculation.count }
-         .and not_change { StudentPeCalculation.count   }
 
       @unprocessed_responses.each do |response|
         expect(response.reload.used_in_clue_calculations).to eq true
@@ -155,30 +153,30 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
 
         # Old ecosystem (unused)
         FactoryGirl.create :ecosystem_exercise, ecosystem_uuid: @ecosystem_1.uuid,
-                                                exercise_group_uuid: @exercise_1.group_uuid,
+                                                exercise: @exercise_1,
                                                 book_container_uuids: old_book_container_uuids
         FactoryGirl.create :ecosystem_exercise, ecosystem_uuid: @ecosystem_1.uuid,
-                                                exercise_group_uuid: @exercise_2.group_uuid,
+                                                exercise: @exercise_2,
                                                 book_container_uuids: old_book_container_uuids
         FactoryGirl.create :ecosystem_exercise, ecosystem_uuid: @ecosystem_1.uuid,
-                                                exercise_group_uuid: @exercise_3.group_uuid,
+                                                exercise: @exercise_3,
                                                 book_container_uuids: old_book_container_uuids
 
         # New ecosystem
         FactoryGirl.create :ecosystem_exercise, ecosystem_uuid: @ecosystem_2.uuid,
-                                                exercise_group_uuid: @exercise_1.group_uuid,
+                                                exercise: @exercise_1,
                                                 book_container_uuids: book_container_uuids_1
         FactoryGirl.create :ecosystem_exercise, ecosystem_uuid: @ecosystem_2.uuid,
-                                                exercise_group_uuid: @exercise_2.group_uuid,
+                                                exercise: @exercise_2,
                                                 book_container_uuids: book_container_uuids_1
         FactoryGirl.create :ecosystem_exercise, ecosystem_uuid: @ecosystem_2.uuid,
-                                                exercise_group_uuid: @exercise_3.group_uuid,
+                                                exercise: @exercise_3,
                                                 book_container_uuids: book_container_uuids_1
         FactoryGirl.create :ecosystem_exercise, ecosystem_uuid: @ecosystem_2.uuid,
-                                                exercise_group_uuid: @exercise_4.group_uuid,
+                                                exercise: @exercise_4,
                                                 book_container_uuids: book_container_uuids_2
         FactoryGirl.create :ecosystem_exercise, ecosystem_uuid: @ecosystem_2.uuid,
-                                                exercise_group_uuid: @exercise_5.group_uuid,
+                                                exercise: @exercise_5,
                                                 book_container_uuids: book_container_uuids_2
 
         # Will not updated due to no new responses
@@ -215,7 +213,6 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
            .and change     { TeacherClueCalculation.count          }.by(1)
            .and not_change { AlgorithmStudentClueCalculation.count }
            .and change     { AlgorithmTeacherClueCalculation.count }.by(-1)
-           .and not_change { StudentPeCalculation.count            }
 
         @unprocessed_responses.each do |response|
           expect(response.reload.used_in_clue_calculations).to eq true

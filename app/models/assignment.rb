@@ -1,4 +1,44 @@
 class Assignment < ApplicationRecord
+  has_many :assigned_exercises, primary_key: :uuid,
+                                foreign_key: :assignment_uuid,
+                                dependent: :destroy,
+                                inverse_of: :assignment
+  has_many :assignment_pes,     primary_key: :uuid,
+                                foreign_key: :assignment_uuid,
+                                dependent: :destroy,
+                                inverse_of: :assignment
+  has_many :assignment_spes,    primary_key: :uuid,
+                                foreign_key: :assignment_uuid,
+                                dependent: :destroy,
+                                inverse_of: :assignment
+  has_one :exercise_calculation,
+    -> { where '"exercise_calculations"."ecosystem_uuid" = "assignments"."ecosystem_uuid"' },
+    primary_key: :student_uuid,
+    foreign_key: :student_uuid,
+    inverse_of: :assignments
+
+  scope :need_spes, -> do
+    where(
+      arel_table[:spes_are_assigned].eq(false).and(
+        arel_table[:goal_num_tutor_assigned_spes].eq(nil).or(
+          arel_table[:goal_num_tutor_assigned_spes].gt(0)
+        )
+      )
+    )
+  end
+  scope :need_pes, -> do
+    where(
+      arel_table[:pes_are_assigned].eq(false).and(
+        arel_table[:goal_num_tutor_assigned_pes].eq(nil).or(
+          arel_table[:goal_num_tutor_assigned_pes].gt(0)
+        )
+      )
+    )
+  end
+  scope :need_spes_or_pes, -> do
+    need_spes.or(need_pes)
+  end
+
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
   scope :with_instructor_and_student_driven_sequence_numbers,
         ->(student_uuids: nil, assignment_types: nil) do

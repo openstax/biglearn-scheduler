@@ -137,15 +137,10 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                   current_container_uuid = parent_uuids_by_container_uuid[current_container_uuid]
                 end
 
-                # pes_are_assigned starts as true because there is no point in trying to assign PEs
-                # until we have some CLUes, at which point it will be set to false
-                # pes_are_assigned is NOT part of ON CONFLICT DO UPDATE so after the first time
-                # it will be controlled only by the other background tasks
                 students << Student.new(
                   uuid: student_uuid,
                   course_uuid: course_uuid,
-                  course_container_uuids: container_uuids,
-                  pes_are_assigned: true
+                  course_container_uuids: container_uuids
                 )
               end
 
@@ -162,7 +157,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
             # Update course active dates is used to exclude past courses from calculations
             update_course_active_dates = events_by_type['update_course_active_dates'] || []
-            # TODO: Handle update course active dates
+            # TODO: Handle updating course active dates
 
             # Update globally excluded exercises and update course excluded exercises
             # mark some exercises as unavailable for PE/SPE/PracticeWorstAreas
@@ -216,7 +211,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
               opens_at = exclusion_info[:opens_at]
               due_at = exclusion_info[:due_at]
 
-              assignments << Assignment.new(
+              assignment = Assignment.new(
                 uuid: assignment_uuid,
                 course_uuid: course_uuid,
                 ecosystem_uuid: ecosystem_uuid,
@@ -231,11 +226,12 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 goal_num_tutor_assigned_pes: data[:goal_num_tutor_assigned_pes],
                 pes_are_assigned: data.fetch(:pes_are_assigned)
               )
+              assignments << assignment
 
               data.fetch(:assigned_exercises).each do |assigned_exercise|
                 assigned_exercises << AssignedExercise.new(
                   uuid: assigned_exercise.fetch(:trial_uuid),
-                  assignment_uuid: assignment_uuid,
+                  assignment: assignment,
                   exercise_uuid: assigned_exercise.fetch(:exercise_uuid),
                   is_spe: assigned_exercise.fetch(:is_spe),
                   is_pe: assigned_exercise.fetch(:is_pe)
@@ -262,6 +258,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 responded_at: data.fetch(:responded_at),
                 is_correct: data.fetch(:is_correct),
                 used_in_clue_calculations: false,
+                used_in_exercise_calculations: false,
                 used_in_ecosystem_matrix_updates: false
               )
             end
@@ -419,18 +416,10 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           # Event side-effects
 
           unless course_uuids_with_changed_ecosystems.empty?
-            # Mark students in courses with updated ecosystems as needing PE recalculation
-            course_uuids_sql = course_uuids_with_changed_ecosystems.map { |uuid| "'#{uuid}'" }
-                                                                   .join(', ')
-
-            changed_ecosystem_student_uuids = Student.connection.execute(
-              <<-SQL.strip_heredoc
-                UPDATE "students"
-                SET "pes_are_assigned" = FALSE
-                WHERE "students"."course_uuid" IN (#{course_uuids_sql})
-                RETURNING "uuid"
-              SQL
-            ).map { |result| result['uuid'] }
+            # Get students in courses with updated ecosystems
+            changed_ecosystem_student_uuids = Student
+              .where(course_uuid: course_uuids_with_changed_ecosystems)
+              .pluck(:uuid)
 
             # Mark CLUes and ecosystem matrices for recalculation
             # for students in courses with updated ecosystems
@@ -460,62 +449,89 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
           # Find conflicting SPEs and PEs for students with updated assignments
           # (with the same exercise_uuids) and mark them for recalculation
-          aspec = AssignmentSpeCalculation.arel_table
-          aspece = AssignmentSpeCalculationExercise.arel_table
-          apec = AssignmentPeCalculation.arel_table
-          apece = AssignmentPeCalculationExercise.arel_table
-          spec = StudentPeCalculation.arel_table
-          spece = StudentPeCalculationExercise.arel_table
-          aspece_queries = []
-          apece_queries =  []
-          spece_queries =  []
+          aa = Assignment.arel_table
+          aspe = AssignmentSpe.arel_table
+          ape = AssignmentPe.arel_table
+          ec = ExerciseCalculation.arel_table
+          spe = StudentPe.arel_table
+          aspe_queries = []
+          ape_queries =  []
+          spe_queries =  []
           assigned_exercise_uuids_by_student_uuids.each do |student_uuids, assigned_exercise_uuids|
-            aspece_queries << aspec[:student_uuid].in(student_uuids).and(
-                                aspece[:exercise_uuid].in(assigned_exercise_uuids)
-                              )
+            aspe_queries << aa[:student_uuid].in(student_uuids).and(
+                              aspe[:exercise_uuid].in(assigned_exercise_uuids)
+                            )
 
-            apece_queries << apec[:student_uuid].in(student_uuids).and(
-                               apece[:exercise_uuid].in(assigned_exercise_uuids)
-                             )
+            ape_queries << aa[:student_uuid].in(student_uuids).and(
+                             ape[:exercise_uuid].in(assigned_exercise_uuids)
+                           )
 
-            spece_queries << spec[:student_uuid].in(student_uuids).and(
-                               spece[:exercise_uuid].in(assigned_exercise_uuids)
-                             )
+            spe_queries << ec[:student_uuid].in(student_uuids).and(
+                             spe[:exercise_uuid].in(assigned_exercise_uuids)
+                           )
           end
 
-          aspece_query = aspece_queries.reduce(:or)
-          unless aspece_query.nil?
-            conflicting_spe_assignment_uuids =
-              AssignmentSpeCalculationExercise.joins(:assignment_spe_calculation)
-                                              .where(aspece_query)
-                                              .distinct
-                                              .pluck(:assignment_uuid)
+          aspe_query = aspe_queries.reduce(:or)
+          unless aspe_query.nil?
+            # Do the same grouping as above to try to improve query performance
+            conflicting_spe_a_uuids_by_calc_uuid =
+              AssignmentSpe.with_student_uuids
+                           .where(aspe_query)
+                           .distinct
+                           .pluck(:algorithm_exercise_calculation_uuid, :assignment_uuid)
+                           .to_h
 
-            Assignment.where(uuid: conflicting_spe_assignment_uuids)
-                      .update_all(spes_are_assigned: false)
+            conflicting_spe_calc_uuids_by_a_uuids = Hash.new { |hash, key| hash[key] = [] }
+            conflicting_spe_a_uuids_by_calc_uuid.each do |calc_uuid, assignment_uuids|
+              conflicting_spe_calc_uuids_by_a_uuids[assignment_uuids] << calc_uuid
+            end
+
+            delete_aspe_queries = []
+            conflicting_spe_calc_uuids_by_a_uuids.each do |calc_uuids, assignment_uuids|
+              delete_aspe_queries << aspe[:algorithm_exercise_calculation_uuid].in(calc_uuids).and(
+                aspe[:assignment_uuid].in(assignment_uuids)
+              )
+            end
+
+            AssignmentSpe.where(delete_aspe_queries.reduce(:or)).delete_all
           end
 
-          apece_query = apece_queries.reduce(:or)
-          unless apece_query.nil?
-            conflicting_pe_assignment_uuids =
-              AssignmentPeCalculationExercise.joins(:assignment_pe_calculation)
-                                             .where(apece_query)
-                                             .distinct
-                                             .pluck(:assignment_uuid)
+          ape_query = ape_queries.reduce(:or)
+          unless ape_query.nil?
+            # Do the same grouping as above to try to improve query performance
+            conflicting_pe_a_uuids_by_calc_uuid =
+              AssignmentPe.with_student_uuids
+                          .where(ape_query)
+                          .distinct
+                          .pluck(:algorithm_exercise_calculation_uuid, :assignment_uuid)
+                          .to_h
 
-            Assignment.where(uuid: conflicting_pe_assignment_uuids)
-                      .update_all(pes_are_assigned: false)
+            conflicting_pe_calc_uuids_by_a_uuids = Hash.new { |hash, key| hash[key] = [] }
+            conflicting_pe_a_uuids_by_calc_uuid.each do |calc_uuid, assignment_uuids|
+              conflicting_pe_calc_uuids_by_a_uuids[assignment_uuids] << calc_uuid
+            end
+
+            delete_ape_queries = []
+            conflicting_pe_calc_uuids_by_a_uuids.each do |calc_uuids, assignment_uuids|
+              delete_ape_queries << ape[:algorithm_exercise_calculation_uuid].in(calc_uuids).and(
+                ape[:assignment_uuid].in(assignment_uuids)
+              )
+            end
+
+            AssignmentPe.where(delete_ape_queries.reduce(:or)).delete_all
           end
 
-          spece_query = spece_queries.reduce(:or)
-          unless spece_query.nil?
-            conflicting_student_uuids =
-              StudentPeCalculation.joins(:student_pe_calculation_exercises)
-                                  .where(spece_query)
-                                  .distinct
-                                  .pluck(:student_uuid)
+          spe_query = spe_queries.reduce(:or)
+          unless spe_query.nil?
+            conflicting_algorithm_exercise_calculation_uuids =
+              StudentPe.with_student_uuids
+                       .where(spe_query)
+                       .distinct
+                       .pluck(:algorithm_exercise_calculation_uuid)
 
-            Student.where(uuid: conflicting_student_uuids).update_all(pes_are_assigned: false)
+            StudentPe.where(
+              algorithm_exercise_calculation_uuid: conflicting_algorithm_exercise_calculation_uuids
+            ).delete_all
           end
 
           results << Course.import(

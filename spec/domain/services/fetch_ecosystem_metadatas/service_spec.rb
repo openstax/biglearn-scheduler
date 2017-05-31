@@ -34,7 +34,10 @@ RSpec.describe Services::FetchEcosystemMetadatas::Service, type: :service do
 
       new_ecosystem_uuids = new_ecosystem_metadatas.map { |metadata| metadata.fetch :uuid }
       new_ecosystems = Ecosystem.where uuid: new_ecosystem_uuids
-      new_ecosystems.each { |ecosystem| expect(ecosystem.sequence_number).to eq 0 }
+      new_ecosystems.each do |ecosystem|
+        expect(ecosystem.sequence_number).to eq 0
+        expect(ecosystem.exercise_uuids).to eq []
+      end
     end
   end
 end

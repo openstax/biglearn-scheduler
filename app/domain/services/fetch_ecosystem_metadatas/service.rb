@@ -8,7 +8,7 @@ class Services::FetchEcosystemMetadatas::Service < Services::ApplicationService
     ecosystems = OpenStax::Biglearn::Api.fetch_ecosystem_metadatas
                                         .fetch(:ecosystem_responses)
                                         .map do |ecosystem_hash|
-      Ecosystem.new uuid: ecosystem_hash.fetch(:uuid), sequence_number: 0
+      Ecosystem.new uuid: ecosystem_hash.fetch(:uuid), sequence_number: 0, exercise_uuids: []
     end
 
     result = Ecosystem.import ecosystems, validate: false,

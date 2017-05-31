@@ -5,6 +5,7 @@ class StudentClueCalculation < ApplicationRecord
 
   has_many :algorithm_student_clue_calculations, primary_key: :uuid,
                                                  foreign_key: :student_clue_calculation_uuid,
+                                                 dependent: :destroy,
                                                  inverse_of: :student_clue_calculation
 
   validates :ecosystem_uuid,      presence: true

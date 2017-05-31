@@ -49,8 +49,15 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
     )
   end
 
-  validates :student_clue_calculation, presence: true
   validates :algorithm_name, presence: true, uniqueness: { scope: :student_clue_calculation_uuid }
   validates :clue_data, presence: true
   validates :clue_value, presence: true
+
+  scope :unassociated, -> do
+    where.not(
+      StudentClueCalculation.where(
+        '"uuid" = "algorithm_student_clue_calculations"."student_clue_calculation_uuid"'
+      ).exists
+    )
+  end
 end

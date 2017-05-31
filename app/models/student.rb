@@ -1,4 +1,12 @@
 class Student < ApplicationRecord
-  validates :course_uuid,            presence: true
+  has_many :exercise_calculations, primary_key: :uuid,
+                                   foreign_key: :student_uuid,
+                                   dependent: :destroy,
+                                   inverse_of: :student
+
+  belongs_to :course, primary_key: :uuid,
+                      foreign_key: :course_uuid,
+                      inverse_of: :students
+
   validates :course_container_uuids, presence: true
 end

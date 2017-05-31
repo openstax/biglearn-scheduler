@@ -4,7 +4,6 @@ class CreateEcosystemExercises < ActiveRecord::Migration[5.0]
       t.uuid :uuid,                 null: false, index: { unique: true }
       t.uuid :ecosystem_uuid,       null: false, index: true
       t.uuid :exercise_uuid,        null: false
-      t.uuid :exercise_group_uuid,  null: false
       t.uuid :book_container_uuids, null: false, array: true
 
       t.timestamps                  null: false
@@ -14,9 +13,5 @@ class CreateEcosystemExercises < ActiveRecord::Migration[5.0]
               [ :exercise_uuid, :ecosystem_uuid ],
               unique: true,
               name: 'index_eco_exercises_on_exercise_uuid_and_eco_uuid'
-    add_index :ecosystem_exercises,
-              [ :exercise_group_uuid, :ecosystem_uuid ],
-              unique: true,
-              name: 'index_eco_exercises_on_exercise_group_uuid_and_eco_uuid'
   end
 end
