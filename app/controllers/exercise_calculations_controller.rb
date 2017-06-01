@@ -6,7 +6,7 @@ class ExerciseCalculationsController < JsonApiController
     respond_with_json_apis_and_service(
       input_schema: _fetch_exercise_calculations_request_payload_schema,
       output_schema: _fetch_exercise_calculations_response_payload_schema,
-      service:Services::FetchExerciseCalculations::Service
+      service: Services::FetchExerciseCalculations::Service
     )
   end
 
@@ -14,7 +14,7 @@ class ExerciseCalculationsController < JsonApiController
     respond_with_json_apis_and_service(
       input_schema: _update_exercise_calculations_request_payload_schema,
       output_schema: _update_exercise_calculations_response_payload_schema,
-      service:Services::UpdateExerciseCalculations::Service
+      service: Services::UpdateExerciseCalculations::Service
     )
   end
 
@@ -55,7 +55,7 @@ class ExerciseCalculationsController < JsonApiController
             'additionalProperties': false
           },
           'minItems': 0,
-          'maxItems': 3000
+          'maxItems': 10
         },
       },
       'required': ['exercise_calculations'],
@@ -85,7 +85,7 @@ class ExerciseCalculationsController < JsonApiController
             'additionalProperties': false
           },
           'minItems': 1,
-          'maxItems': 3000
+          'maxItems': 10
         }
       },
       'required': ['exercise_calculation_updates'],
@@ -113,7 +113,7 @@ class ExerciseCalculationsController < JsonApiController
             'additionalProperties': false
           },
           'minItems': 1,
-          'maxItems': 3000
+          'maxItems': 10
         }
       },
       'required': ['exercise_calculation_update_responses'],
