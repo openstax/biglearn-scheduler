@@ -41,7 +41,7 @@ class Assignment < ApplicationRecord
 
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
   scope :with_instructor_and_student_driven_sequence_numbers,
-        ->(student_uuids: nil, assignment_types: nil) do
+        ->(student_uuids: nil, assignment_types: nil, current_time: nil) do
     wheres = []
     unless student_uuids.nil?
       wheres << if student_uuids.empty?
@@ -61,29 +61,31 @@ class Assignment < ApplicationRecord
         })"
       end
     end
+    current_time ||= Time.current
 
     from(
       <<-SQL.strip_heredoc
         (
-          SELECT assignments.*, assignment_core_steps_completion.core_steps_completed_at,
+          SELECT assignments.*, assignment_core_steps_completion.student_history_at,
             row_number() OVER (
               PARTITION BY assignments.student_uuid, assignments.assignment_type
               ORDER BY assignments.due_at ASC, assignments.opens_at ASC, assignments.created_at ASC
             ) AS instructor_driven_sequence_number,
             row_number() OVER (
               PARTITION BY assignments.student_uuid, assignments.assignment_type
-              ORDER BY assignment_core_steps_completion.core_steps_completed_at ASC
+              ORDER BY assignment_core_steps_completion.student_history_at ASC
             ) AS student_driven_sequence_number
           FROM assignments
-            LEFT OUTER JOIN (
+            LEFT OUTER JOIN LATERAL (
               SELECT assigned_exercises.assignment_uuid,
-                MAX(responses.responded_at) AS core_steps_completed_at
+                COALESCE(MAX(responses.responded_at), assignments.due_at) AS student_history_at
               FROM assigned_exercises
               LEFT OUTER JOIN responses
                 ON responses.uuid = assigned_exercises.uuid
               WHERE assigned_exercises.is_spe = FALSE
               GROUP BY assigned_exercises.assignment_uuid
               HAVING COUNT(assigned_exercises.*) = COUNT(DISTINCT responses.trial_uuid)
+                OR assignments.due_at >= '#{current_time.to_s(:db)}'
             ) AS assignment_core_steps_completion
               ON assignment_core_steps_completion.assignment_uuid = assignments.uuid
           #{"WHERE #{wheres.join(' AND ')}" unless wheres.empty?}
