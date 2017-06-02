@@ -80,8 +80,7 @@ class Assignment < ApplicationRecord
               SELECT assigned_exercises.assignment_uuid,
                 COALESCE(MAX(responses.responded_at), assignments.due_at) AS student_history_at
               FROM assigned_exercises
-              LEFT OUTER JOIN responses
-                ON responses.uuid = assigned_exercises.uuid
+              LEFT OUTER JOIN responses ON responses.trial_uuid = assigned_exercises.uuid
               WHERE assigned_exercises.is_spe = FALSE
               GROUP BY assigned_exercises.assignment_uuid
               HAVING COUNT(assigned_exercises.*) = COUNT(DISTINCT responses.trial_uuid)

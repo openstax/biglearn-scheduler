@@ -501,7 +501,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         assigned_exercises = assigned_exercises_by_assignment_uuid[assignment_uuid]
 
         assigned_exercises.map do |assigned_exercise|
-          FactoryGirl.create :response, uuid: assigned_exercise.uuid
+          FactoryGirl.create :response, trial_uuid: assigned_exercise.uuid
         end
       end
     end
