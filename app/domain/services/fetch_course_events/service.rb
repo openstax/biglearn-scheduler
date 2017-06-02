@@ -50,6 +50,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           students = []
           assignments = []
           assigned_exercises = []
+          student_uuids_by_assigned_exercise_uuid = Hash.new { |hash, key| hash[key] = [] }
           responses = []
           response_uuids = []
           courses = course_event_responses.map do |course_event_response|
@@ -204,6 +205,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
               data = last_create_update_assignment.fetch(:event_data)
 
               ecosystem_uuid = data.fetch(:ecosystem_uuid)
+              student_uuid = data.fetch(:student_uuid)
               exercises = data.fetch(:assigned_exercises)
               exercise_uuids = exercises.map { |exercise| exercise.fetch(:exercise_uuid) }.uniq
 
@@ -215,7 +217,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 uuid: assignment_uuid,
                 course_uuid: course_uuid,
                 ecosystem_uuid: ecosystem_uuid,
-                student_uuid: data.fetch(:student_uuid),
+                student_uuid: student_uuid,
                 assignment_type: data.fetch(:assignment_type),
                 opens_at: opens_at.nil? ? nil : DateTime.parse(opens_at),
                 due_at: due_at.nil? ? nil : DateTime.parse(due_at),
@@ -229,13 +231,17 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
               assignments << assignment
 
               data.fetch(:assigned_exercises).each do |assigned_exercise|
+                exercise_uuid = assigned_exercise.fetch(:exercise_uuid)
+
                 assigned_exercises << AssignedExercise.new(
                   uuid: assigned_exercise.fetch(:trial_uuid),
                   assignment: assignment,
-                  exercise_uuid: assigned_exercise.fetch(:exercise_uuid),
+                  exercise_uuid: exercise_uuid,
                   is_spe: assigned_exercise.fetch(:is_spe),
                   is_pe: assigned_exercise.fetch(:is_pe)
                 )
+
+                student_uuids_by_assigned_exercise_uuid[exercise_uuid] << student_uuid
               end
             end
 
@@ -428,20 +434,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             )
           end
 
-          # Reverse the grouping to be by exercise_uuid instead of student_uuid
-          # hoping that the number of different exercise_uuids << the number of student_uuids
-          # to try to improve performance when assignments are created for large classes
-          student_uuids_by_assigned_exercise_uuid = Hash.new { |hash, key| hash[key] = [] }
-          assignments.each do |assignment|
-            student_uuid = assignment.student_uuid
-
-            assignment.assigned_exercise_uuids.each do |assigned_exercise_uuid|
-              student_uuids_by_assigned_exercise_uuid[assigned_exercise_uuid] << student_uuid
-            end
-          end
-
-          # Now group by student_uuids so exercises assigned to exactly
-          # the same students (usually the core exercises) can become 1 statement
+          # Group assigned exercises by student_uuids so exercises assigned to exactly
+          # the same students (usually the core exercises) can become a single query
           assigned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
           student_uuids_by_assigned_exercise_uuid.each do |assigned_exercise_uuid, student_uuids|
             assigned_exercise_uuids_by_student_uuids[student_uuids] << assigned_exercise_uuid
