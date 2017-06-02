@@ -1,5 +1,5 @@
 class Services::UploadAssignmentExercises::Service < Services::ApplicationService
-  BATCH_SIZE = 100
+  BATCH_SIZE = 10
 
   DEFAULT_NUM_PES_PER_BOOK_CONTAINER = 3
   DEFAULT_NUM_SPES_PER_K_AGO_BOOK_CONTAINER = 1
@@ -67,6 +67,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
         assignments = (pe_assignments + spe_assignments).uniq
 
+        # TODO: Combine with the history query below into 1 query using case statements
         spe_student_uuids = spe_assignments.map(&:student_uuid)
         spe_assignment_types = spe_assignments.map(&:assignment_type)
         spe_assignment_uuids = spe_assignments.map(&:uuid)

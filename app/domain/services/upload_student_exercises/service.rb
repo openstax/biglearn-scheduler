@@ -1,5 +1,5 @@
 class Services::UploadStudentExercises::Service < Services::ApplicationService
-  BATCH_SIZE = 1000
+  BATCH_SIZE = 10
 
   NUM_PES_PER_STUDENT = 5
   MAX_NUM_WORST_CLUES = NUM_PES_PER_STUDENT
