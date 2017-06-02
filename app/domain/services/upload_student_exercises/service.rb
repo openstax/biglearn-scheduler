@@ -15,6 +15,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
     ec = ExerciseCalculation.arel_table
     cc = Course.arel_table
     spe = StudentPe.arel_table
+    aa = Assignment.arel_table
 
     total_students = 0
     loop do
@@ -74,16 +75,30 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
 
         # Get exercise exclusions for each course
         course_uuids = students.map(&:course_uuid)
-        exclusions = Course.where(uuid: course_uuids).pluck(
+        course_exclusions_by_course_uuid = Course.where(uuid: course_uuids).pluck(
           :uuid,
           :global_excluded_exercise_uuids,
           :course_excluded_exercise_uuids,
           :global_excluded_exercise_group_uuids,
           :course_excluded_exercise_group_uuids
-        )
+        ).index_by(&:first)
 
-        excluded_exercise_group_uuids = exclusions.flat_map(&:fourth) +
-                                        exclusions.flat_map(&:fifth)
+        # Get assignments that are not yet due for each student
+        not_yet_due_assignments = Assignment
+                                    .where(student_uuid: student_uuids)
+                                    .where(aa[:due_at].gt(start_time))
+                                    .pluck(:uuid, :student_uuid, :due_at, :assigned_exercise_uuids)
+
+        # Convert not yet due exercise uuids to group uuids
+        assigned_exercise_uuids = not_yet_due_assignments.flat_map(&:fourth)
+        assigned_exercise_group_uuid_by_uuid = Exercise.where(uuid: assigned_exercise_uuids)
+                                                       .pluck(:uuid, :group_uuid)
+                                                       .to_h
+
+        # Convert exclusion group uuids to uuids
+        excluded_exercise_group_uuids = course_exclusions_by_course_uuid.values.flat_map(&:fourth) +
+                                        course_exclusions_by_course_uuid.values.flat_map(&:fifth) +
+                                        assigned_exercise_group_uuid_by_uuid.values
         excluded_exercise_uuids_by_group_uuid = Hash.new { |hash, key| hash[key] = [] }
         Exercise.where(group_uuid: excluded_exercise_group_uuids)
                 .pluck(:group_uuid, :uuid)
@@ -91,69 +106,40 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           excluded_exercise_uuids_by_group_uuid[group_uuid] << uuid
         end
 
-        excluded_uuids_by_course_uuid = Hash.new { |hash, key| hash[key] = [] }
-        exclusions.each do |
-          uuid,
-          global_excluded_exercise_uuids,
-          course_excluded_exercise_uuids,
-          global_excluded_exercise_group_uuids,
-          course_excluded_exercise_group_uuids
-        |
-          group_uuids = global_excluded_exercise_group_uuids + course_excluded_exercise_group_uuids
-          converted_excluded_exercise_uuids = group_uuids.flat_map do |group_uuid|
-            excluded_exercise_uuids_by_group_uuid[group_uuid]
+        # Create a map of excluded exercise uuids for each student
+        excluded_uuids_by_student_uuid = Hash.new { |hash, key| hash[key] = [] }
+
+        # Add the course exclusions to the map above
+        students.group_by(&:course_uuid).each do |course_uuid, students|
+          course_exclusions = course_exclusions_by_course_uuid[course_uuid]
+          next if course_exclusions.nil?
+
+          group_uuids = course_exclusions.fourth + course_exclusions.fifth
+          converted_excluded_exercise_uuids =
+            excluded_exercise_uuids_by_group_uuid.values_at(*group_uuids).flatten
+          course_excluded_uuids = course_exclusions.second +
+                                  course_exclusions.third +
+                                  converted_excluded_exercise_uuids
+
+          students.each do |student|
+            excluded_uuids_by_student_uuid[student.uuid].concat course_excluded_uuids
           end
-
-          excluded_uuids_by_course_uuid[uuid].concat(
-            global_excluded_exercise_uuids +
-            course_excluded_exercise_uuids +
-            converted_excluded_exercise_uuids
-          )
         end
 
-        # Get exercises that have already been assigned to each student
-        student_assignments = Assignment
-                                .where(student_uuid: student_uuids)
-                                .pluck(:uuid, :student_uuid, :due_at, :assigned_exercise_uuids)
-        student_assignment_uuids = student_assignments.map(&:first)
-        assigned_and_not_due_exercise_uuids_by_student_uuid = Hash.new do |hash, key|
-          hash[key] = []
-        end
-        student_assignments.select do |uuid, student_uuid, due_at, assigned_exercise_uuids|
-          due_at.present? && due_at > start_time
-        end.each do |uuid, student_uuid, due_at, assigned_exercise_uuids|
-          assigned_and_not_due_exercise_uuids_by_student_uuid[student_uuid].concat(
-            assigned_exercise_uuids
-          )
-        end
-
-        # Convert relevant exercise uuids to group uuids
-        relevant_exercise_uuids = ( exercise_uuids_by_book_container_uuids.values +
-                                    student_assignments.map(&:fourth) ).flatten
-        exercise_group_uuid_by_uuid = Exercise.where(uuid: relevant_exercise_uuids)
-                                              .pluck(:uuid, :group_uuid)
-                                              .to_h
-
-        # Convert the map above to use exercise_group_uuids
-        assigned_and_not_due_exercise_group_uuids_by_student_uuid = Hash.new do |hash, key|
-          hash[key] = []
-        end
-        assigned_and_not_due_exercise_uuids_by_student_uuid
-          .each do |student_uuid, assigned_and_not_due_exercise_uuids|
-          assigned_and_not_due_exercise_group_uuids_by_student_uuid[student_uuid] =
-            exercise_group_uuid_by_uuid.values_at(*assigned_and_not_due_exercise_uuids).uniq
+        # Add the exclusions from not yet due assignments to the map above
+        not_yet_due_assignments.each do |uuid, student_uuid, due_at, assigned_exercise_uuids|
+          excluded_group_uuids =
+            assigned_exercise_group_uuid_by_uuid.values_at(*assigned_exercise_uuids)
+          excluded_exercise_uuids =
+            excluded_exercise_uuids_by_group_uuid.values_at(*excluded_group_uuids).flatten
+          excluded_uuids_by_student_uuid[student_uuid].concat excluded_exercise_uuids
         end
 
         student_pe_requests = []
         student_pes = students.flat_map do |student|
           student_uuid = student.uuid
           prioritized_exercise_uuids = student.exercise_uuids
-          course_uuid = student.course_uuid
-          course_excluded_uuids = excluded_uuids_by_course_uuid[course_uuid]
-
-          # Collect info about exercises that have already been assigned to this student
-          assigned_and_not_due_exercise_group_uuids =
-            assigned_and_not_due_exercise_group_uuids_by_student_uuid[student_uuid]
+          excluded_exercise_uuids = excluded_uuids_by_student_uuid[student_uuid]
 
           worst_clues_by_algorithm_name =
             worst_clues_by_student_uuid_and_algorithm_name[student_uuid]
@@ -171,11 +157,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
               exercise_uuids_by_book_container_uuids[book_container_uuid]
 
             # Remove exclusions and assigned and not yet due exercises
-            allowed_pe_uuids = ( book_container_exercise_uuids -
-                                 course_excluded_uuids ).reject do |allowed_exercise_uuid|
-              exercise_group_uuid = exercise_group_uuid_by_uuid[allowed_exercise_uuid]
-              assigned_and_not_due_exercise_group_uuids.include?(exercise_group_uuid)
-            end
+            allowed_pe_uuids = book_container_exercise_uuids - excluded_exercise_uuids
 
             (prioritized_exercise_uuids & allowed_pe_uuids).first(NUM_PES_PER_STUDENT)
           end

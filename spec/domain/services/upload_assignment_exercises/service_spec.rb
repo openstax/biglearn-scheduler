@@ -291,6 +291,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
       ].flat_map(&:exercise_uuids)
       new_exercise_uuids.each { |exercise_uuid| FactoryGirl.create :exercise, uuid: exercise_uuid }
 
+      # EO - Expected Order (Instructor-Driven and Student-Driven in the expected order)
+      # RO - Student-Driven in the reverse order
+
       # 0 SPEs, 0 PEs requested
       @reading_1 = FactoryGirl.create(
         :assignment,
@@ -309,9 +312,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # 1 SPEs, 1 PEs requested
-      # ID: SPE filled from reading 1
-      # SD: SPE filled from reading 3
+      # 1 SPEs, 1 PEs requested; PE is filled
+      # EO: SPE filled from reading 1
+      # RO: SPE filled from reading 3
       @reading_2 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -329,9 +332,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # 2 SPEs, 2 PEs requested
-      # ID: 1-ago SPE filled from reading 2, 3-ago SPE filled as PE since no 3-ago reading
-      # SD: Both SPEs filled as PEs
+      # 2 SPEs, 2 PEs requested; PEs are filled
+      # EO: 1-ago SPE filled from reading 2, 3-ago SPE filled as PE since no 3-ago reading
+      # RO: Only 1 SPE filled as PE since the real PEs took 2 out of 3 available exercises
       @reading_3 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -350,9 +353,10 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
       )
 
       # These homeworks are taking all available exercises, so no PEs are possible
-      # 2 SPEs, 1 PE requested
-      # ID: No exercises available to fill anything
-      # SD: Only 1-ago SPE can be filled from homework 2
+
+      # 2 SPEs, 1 PE requested; PE cannot be filled
+      # EO: No exercises available to fill anything
+      # RO: Only 1-ago SPE can be filled from homework 2
       @homework_1 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -370,9 +374,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # 1 SPE, 1 PE requested
-      # ID: Only 1-ago SPE can be filled from homework 1
-      # SD: Only 1-ago SPE can be filled from homework 3
+      # 1 SPE, 1 PE requested; PE cannot be filled
+      # EO: Only 1-ago SPE can be filled from homework 1
+      # RO: Only 1-ago SPE can be filled from homework 3
       @homework_2 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -390,9 +394,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # 2 SPEs, 1 PE requested
-      # ID: Only 1-ago SPE can be filled from homework 2
-      # SD: No exercises available to fill anything
+      # 2 SPEs, 1 PE requested; PE cannot be filled
+      # EO: Only 1-ago SPE can be filled from homework 2
+      # RO: No exercises available to fill anything
       @homework_3 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -724,7 +728,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             exercise_pool: @reading_pool_4_new.exercise_uuids +
                            @reading_pool_5_new.exercise_uuids -
                            @reading_3.assigned_exercise_uuids,
-            exercise_count: 2
+            exercise_count: 1
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_1,
