@@ -9,10 +9,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
   MAX_RANDOM_AGO = 5
   MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO = 5
 
-  # NOTE: We don't support partial PE/SPE assignments yet, we do all of them in one go
-  # If partial assignments are needed, we can look at AssignedExercise records
-  # to figure out how many PEs and SPEs we have, but will potentially need to add more info
-  # like book_container_uuid and k_ago to these records
+  # NOTE: We don't support partial PE/SPE assignments, we create all of them in one go
   def process
     start_time = Time.now
     Rails.logger.tagged 'UploadAssignmentExercises' do |logger|
@@ -364,6 +361,17 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           if assignment_pe_requests.any?
 
         AssignmentPe.import assignment_pes, validate: false
+
+        # Remove SPEs for any assignments that are using the PEs above (PEs have priority over SPEs)
+        unless assignment_pe_requests.empty?
+          aspe_query = assignment_pe_requests.map do |assignment_pe_request|
+            aspe[:assignment_uuid].eq(assignment_pe_request[:assignment_uuid]).and(
+              aspe[:exercise_uuid].in(assignment_pe_request[:exercise_uuids])
+            )
+          end.reduce(:or)
+          conflicting_assignment_uuids = AssignmentSpe.where(aspe_query).pluck(:assignment_uuid)
+          AssignmentSpe.where(assignment_uuid: conflicting_assignment_uuids).delete_all
+        end
 
         excluded_pe_uuids_by_assignment_uuid = AssignmentPe
           .where(assignment_uuid: spe_assignment_uuids)
