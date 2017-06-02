@@ -4,6 +4,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
   DEFAULT_NUM_PES_PER_BOOK_CONTAINER = 3
   DEFAULT_NUM_SPES_PER_K_AGO_BOOK_CONTAINER = 1
 
+  NON_RANDOM_K_AGOS = [ 1, 3 ]
   MIN_RANDOM_AGO = 1
   MAX_RANDOM_AGO = 5
   MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO = 5
@@ -462,7 +463,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
   protected
 
   def get_k_agos(random_ago = nil)
-    [2, 4].tap do |k_agos|
+    NON_RANDOM_K_AGOS.tap do |k_agos|
       k_agos << random_ago unless random_ago.nil?
     end
   end
