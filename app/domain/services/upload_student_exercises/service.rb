@@ -136,10 +136,11 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         end
 
         student_pe_requests = []
-        student_pes = students.flat_map do |student|
+        student_pes = []
+        students.each do |student|
           student_uuid = student.uuid
           prioritized_exercise_uuids = student.exercise_uuids
-          excluded_exercise_uuids = excluded_uuids_by_student_uuid[student_uuid]
+          student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[student_uuid]
 
           worst_clues_by_algorithm_name =
             worst_clues_by_student_uuid_and_algorithm_name[student_uuid]
@@ -157,7 +158,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
               exercise_uuids_by_book_container_uuids[book_container_uuid]
 
             # Remove exclusions and assigned and not yet due exercises
-            allowed_pe_uuids = book_container_exercise_uuids - excluded_exercise_uuids
+            allowed_pe_uuids = book_container_exercise_uuids - student_excluded_exercise_uuids
 
             (prioritized_exercise_uuids & allowed_pe_uuids).first(NUM_PES_PER_STUDENT)
           end
@@ -165,11 +166,12 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           num_worst_clues = worst_clues.size
           worst_clue_num_pes_map = get_worst_clue_num_pes_map(num_worst_clues)
 
-          assigned_pe_uuids = []
           algorithm_exercise_calculation_uuid = student.algorithm_exercise_calculation_uuid
           # Assign the candidate exercises for each position in the worst_clue_pes_map
           # based on the priority of each CLUe
-          new_student_pes = worst_clues.each_with_index.flat_map do |clue, index|
+          spy_info = {}
+          chosen_pe_uuids = []
+          worst_clues.each_with_index do |clue, index|
             clue_num_pes = worst_clue_num_pes_map[index] || 0
 
             next [] if clue_num_pes == 0 # No slot is available for this CLUe
@@ -179,33 +181,31 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
               [ candidate_pe_uuids[index] ] +
               candidate_pe_uuids.first(index) +
               candidate_pe_uuids.last(num_worst_clues - index - 1)
-            ).flatten.uniq - assigned_pe_uuids
+            ).flatten.uniq - chosen_pe_uuids
 
-            chosen_pe_uuids = prioritized_candidate_pe_uuids.first(clue_num_pes)
-            assigned_pe_uuids += chosen_pe_uuids
+            chosen_pe_uuids.concat prioritized_candidate_pe_uuids.first(clue_num_pes)
+          end
 
-            chosen_pe_uuids.map do |chosen_pe_uuid|
-              StudentPe.new(
-                uuid: SecureRandom.uuid,
-                algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid,
-                exercise_uuid: chosen_pe_uuid
-              )
-            end
-          end.tap do |result|
-            # If no PEs, record a StudentPe with nil exercise_uuid
-            # to denote that we already processed this student
-            result << StudentPe.new(
+          student_pe_request = {
+            student_uuid: student_uuid,
+            exercise_uuids: chosen_pe_uuids,
+            algorithm_name: exercise_algorithm_name,
+            spy_info: spy_info
+          }
+          student_pe_requests << student_pe_request
+
+          exercise_uuids = student_pe_request[:exercise_uuids]
+          # If no PEs, record a StudentPe with nil exercise_uuid
+          # to denote that we already processed this student
+          exercise_uuids << nil if exercise_uuids.empty?
+          pes = exercise_uuids.map do |exercise_uuid|
+            StudentPe.new(
               uuid: SecureRandom.uuid,
               algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid,
-              exercise_uuid: nil
-            ) if result.empty?
-
-            student_pe_requests << {
-              student_uuid: student_uuid,
-              exercise_uuids: result.map(&:exercise_uuid).compact,
-              algorithm_name: exercise_algorithm_name
-            }
+              exercise_uuid: exercise_uuid
+            )
           end
+          student_pes.concat pes
         end
 
         # Send the StudentPes to the api server and record them

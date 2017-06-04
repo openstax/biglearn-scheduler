@@ -240,7 +240,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           :exercise_uuids
         ).each do |book_container_uuid, assignment_types, exercise_uuids|
           assignment_types.each do |assignment_type|
-            @exercise_uuids_map[book_container_uuid][assignment_type].concat exercise_uuids
+            @exercise_uuids_map[assignment_type][book_container_uuid].concat exercise_uuids
           end
         end
 
@@ -313,10 +313,12 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
           student_instructor_histories
             .each do |assignment_type, student_assignment_type_instructor_histories|
+            assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
             student_assignment_type_instructor_histories.each do |sequence_number, history_entry|
               history_entry.second.reject! do |book_container_uuid|
-                ( @exercise_uuids_map[book_container_uuid][assignment_type] -
-                  excluded_exercise_uuids ).empty?
+                (
+                  assignment_type_exercise_uuids_map[book_container_uuid] - excluded_exercise_uuids
+                ).empty?
               end
             end
           end
@@ -326,10 +328,12 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
           student_student_histories
             .each do |assignment_type, student_assignment_type_student_histories|
+            assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
             student_assignment_type_student_histories.each do |sequence_number, history_entry|
               history_entry.second.reject! do |book_container_uuid|
-                ( @exercise_uuids_map[book_container_uuid][assignment_type] -
-                  excluded_exercise_uuids ).empty?
+                (
+                  assignment_type_exercise_uuids_map[book_container_uuid] - excluded_exercise_uuids
+                ).empty?
               end
             end
           end
@@ -385,23 +389,34 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         end
 
         # Personalized
-        assignment_pes = []
         assignment_pe_requests = []
+        assignment_pes = []
         pe_assignments.each do |assignment|
           prioritized_exercise_uuids = assignment.exercise_uuids
           student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[assignment.student_uuid]
+          algorithm_exercise_calculation_uuid = assignment.algorithm_exercise_calculation_uuid
+          assignment_uuid = assignment.uuid
 
-          new_pes = new_pes(
+          pe_request = build_pe_request(
             assignment: assignment,
             prioritized_exercise_uuids: prioritized_exercise_uuids,
             excluded_exercise_uuids: student_excluded_exercise_uuids
           )
-          assignment_pes.concat new_pes
-          assignment_pe_requests << {
-            assignment_uuid: assignment.uuid,
-            exercise_uuids: new_pes.map(&:exercise_uuid).compact,
-            algorithm_name: assignment.algorithm_name
-          }
+          assignment_pe_requests << pe_request
+
+          exercise_uuids = pe_request[:exercise_uuids]
+          # If no PEs, record an AssignmentPe with nil exercise_uuid
+          # to denote that we already processed this assignment
+          exercise_uuids << nil if exercise_uuids.empty?
+          pes = exercise_uuids.map do |exercise_uuid|
+            AssignmentPe.new(
+              uuid: SecureRandom.uuid,
+              algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid,
+              assignment_uuid: assignment_uuid,
+              exercise_uuid: exercise_uuid
+            )
+          end
+          assignment_pes.concat pes
         end
 
         # Send the AssignmentPes to the api server and record them
@@ -431,31 +446,35 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         end
 
         # Spaced Practice
-        assignment_spes = []
         assignment_spe_requests = []
+        assignment_spes = []
         spe_assignments.each do |assignment|
-          uuid = assignment.uuid
+          assignment_uuid = assignment.uuid
           assignment_type = assignment.assignment_type
           student_uuid = assignment.student_uuid
-          algorithm_name = assignment.algorithm_name
+          algorithm_exercise_calculation_uuid = assignment.algorithm_exercise_calculation_uuid
           prioritized_exercise_uuids = assignment.exercise_uuids
           student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[student_uuid]
 
           assigned_book_container_uuids = assignment.assigned_book_container_uuids
 
           assignment_instructor_book_container_uuids_map = \
-            instructor_book_container_uuids_map[uuid]
+            instructor_book_container_uuids_map[assignment_uuid]
           assignment_student_book_container_uuids_map = \
-            student_book_container_uuids_map[uuid]
+            student_book_container_uuids_map[assignment_uuid]
 
-          instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(uuid)
-          student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
+          instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(
+            assignment_uuid
+          )
+          student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(
+            assignment_uuid
+          )
 
           excluded_exercise_uuids = student_excluded_exercise_uuids +
-                                    excluded_pe_uuids_by_assignment_uuid[uuid]
+                                    excluded_pe_uuids_by_assignment_uuid[assignment_uuid]
 
           # Instructor-driven
-          new_instructor_driven_spes = new_spes(
+          instructor_driven_spe_request = build_spe_request(
             assignment: assignment,
             assignment_sequence_number: instructor_sequence_number,
             history_type: :instructor_driven,
@@ -463,15 +482,25 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             prioritized_exercise_uuids: prioritized_exercise_uuids,
             excluded_exercise_uuids: excluded_exercise_uuids
           )
-          assignment_spes.concat new_instructor_driven_spes
-          assignment_spe_requests << {
-            assignment_uuid: uuid,
-            exercise_uuids: new_instructor_driven_spes.map(&:exercise_uuid).compact,
-            algorithm_name: "instructor_driven_#{algorithm_name}"
-          }
+          assignment_spe_requests << instructor_driven_spe_request
+
+          instructor_driven_exercise_uuids = instructor_driven_spe_request[:exercise_uuids]
+          # If no SPEs, record an AssignmentSpe with nil exercise_uuid
+          # to denote that we already processed this assignment
+          instructor_driven_exercise_uuids << nil if instructor_driven_exercise_uuids.empty?
+          instructor_driven_spes = instructor_driven_exercise_uuids.map do |exercise_uuid|
+            AssignmentSpe.new(
+              uuid: SecureRandom.uuid,
+              algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid,
+              assignment_uuid: assignment_uuid,
+              history_type: :instructor_driven,
+              exercise_uuid: exercise_uuid
+            )
+          end
+          assignment_spes.concat instructor_driven_spes
 
           # Student-driven
-          new_student_driven_spes = new_spes(
+          student_driven_spe_request = build_spe_request(
             assignment: assignment,
             assignment_sequence_number: student_sequence_number,
             history_type: :student_driven,
@@ -479,12 +508,22 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             prioritized_exercise_uuids: prioritized_exercise_uuids,
             excluded_exercise_uuids: excluded_exercise_uuids
           )
-          assignment_spes.concat new_student_driven_spes
-          assignment_spe_requests << {
-            assignment_uuid: uuid,
-            exercise_uuids: new_student_driven_spes.map(&:exercise_uuid).compact,
-            algorithm_name: "student_driven_#{algorithm_name}"
-          }
+          assignment_spe_requests << student_driven_spe_request
+
+          student_driven_exercise_uuids = student_driven_spe_request[:exercise_uuids]
+          # If no SPEs, record an AssignmentSpe with nil exercise_uuid
+          # to denote that we already processed this assignment
+          student_driven_exercise_uuids << nil if student_driven_exercise_uuids.empty?
+          student_driven_spes = student_driven_exercise_uuids.map do |exercise_uuid|
+            AssignmentSpe.new(
+              uuid: SecureRandom.uuid,
+              algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid,
+              assignment_uuid: assignment_uuid,
+              history_type: :student_driven,
+              exercise_uuid: exercise_uuid
+            )
+          end
+          assignment_spes.concat student_driven_spes
         end
 
         # Send the AssignmentSpes to the api server and record them
@@ -553,9 +592,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     book_container_uuids = [book_container_uuids].flatten
 
     # Get exercises in relevant book containers for the relevant assignment type
-    book_container_exercise_uuids = book_container_uuids.flat_map do |book_container_uuid|
-      @exercise_uuids_map[book_container_uuid][assignment.assignment_type]
-    end
+    book_container_exercise_uuids =
+      @exercise_uuids_map[assignment.assignment_type].values_at(*book_container_uuids).flatten
 
     # Remove duplicates (same assignment), exclusions and assigned and not yet due exercises
     allowed_exercise_uuids = book_container_exercise_uuids -
@@ -565,71 +603,56 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     (prioritized_exercise_uuids & allowed_exercise_uuids).first(exercise_count)
   end
 
-  def new_pes(assignment:, prioritized_exercise_uuids:, excluded_exercise_uuids:)
+  def build_pe_request(assignment:, prioritized_exercise_uuids:, excluded_exercise_uuids:)
     assignment_type = assignment.assignment_type
+    assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment.assignment_type]
     assignment_excluded_uuids = excluded_exercise_uuids
     # Ignore book containers with no dynamic exercises
     book_container_uuids = assignment.assigned_book_container_uuids
                                      .uniq
                                      .reject do |book_container_uuid|
-      ( @exercise_uuids_map[book_container_uuid][assignment_type] -
-        assignment_excluded_uuids ).empty?
+      ( assignment_type_exercise_uuids_map[book_container_uuid] - assignment_excluded_uuids ).empty?
     end.shuffle
     return [] if book_container_uuids.empty?
-
-    assignment_uuid = assignment.uuid
-    algorithm_exercise_calculation_uuid = assignment.algorithm_exercise_calculation_uuid
 
     num_pes_per_book_container, remainder = assignment.goal_num_tutor_assigned_pes.nil? ?
       [DEFAULT_NUM_PES_PER_BOOK_CONTAINER, 0] :
       assignment.goal_num_tutor_assigned_pes.divmod(book_container_uuids.size)
 
-    book_container_uuids.flat_map do |book_container_uuid|
+    spy_info = {}
+    chosen_pe_uuids = book_container_uuids.flat_map do |book_container_uuid|
       book_container_num_pes = remainder > 0 ?
         num_pes_per_book_container + 1 : num_pes_per_book_container
       next [] if book_container_num_pes == 0
 
-      chosen_pe_uuids = choose_exercise_uuids(
+      choose_exercise_uuids(
         assignment: assignment,
         book_container_uuids: book_container_uuid,
         prioritized_exercise_uuids: prioritized_exercise_uuids,
         excluded_exercise_uuids: assignment_excluded_uuids,
         exercise_count: book_container_num_pes
-      )
-
-      num_chosen_pes = chosen_pe_uuids.size
-      remainder += num_pes_per_book_container - num_chosen_pes
-      assignment_excluded_uuids += chosen_pe_uuids
-
-      chosen_pe_uuids.map do |chosen_pe_uuid|
-        AssignmentPe.new(
-          uuid: SecureRandom.uuid,
-          algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid,
-          assignment_uuid: assignment_uuid,
-          exercise_uuid: chosen_pe_uuid
-        )
+      ).tap do |chosen_pe_uuids|
+        num_chosen_pes = chosen_pe_uuids.size
+        remainder += num_pes_per_book_container - num_chosen_pes
+        assignment_excluded_uuids += chosen_pe_uuids
       end
-    end.tap do |result|
-      # If no PEs, record an AssignmentPe with nil exercise_uuid
-      # to denote that we already processed this assignment
-      result << AssignmentPe.new(
-        uuid: SecureRandom.uuid,
-        algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid,
-        assignment_uuid: assignment_uuid,
-        exercise_uuid: nil
-      ) if result.empty?
     end
+
+    {
+      assignment_uuid: assignment.uuid,
+      exercise_uuids: chosen_pe_uuids,
+      algorithm_name: assignment.algorithm_name,
+      spy_info: spy_info
+    }
   end
 
-  def new_spes(assignment:,
-               assignment_sequence_number:,
-               history_type:,
-               assignment_book_container_uuids_map:,
-               prioritized_exercise_uuids:,
-               excluded_exercise_uuids:)
-    assignment_uuid = assignment.uuid
+  def build_spe_request(assignment:,
+                        assignment_sequence_number:,
+                        history_type:,
+                        assignment_book_container_uuids_map:,
+                        prioritized_exercise_uuids:,
+                        excluded_exercise_uuids:)
     assignment_type = assignment.assignment_type
-    algorithm_exercise_calculation_uuid = assignment.algorithm_exercise_calculation_uuid
 
     include_random_ago = history_type == :student_driven &&
                          assignment_sequence_number >= MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO
@@ -640,6 +663,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     forbidden_random_k_agos = k_ago_map.map(&:first).compact
     allowed_random_k_agos = RANDOM_K_AGOS - forbidden_random_k_agos
     num_remaining_exercises = 0
+    spy_info = {}
     chosen_spe_uuids = k_ago_map.flat_map do |k_ago, num_exercises|
       num_remaining_exercises += num_exercises
 
@@ -684,24 +708,11 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       exercise_count: num_remaining_exercises
     )
 
-    (chosen_spe_uuids + chosen_pe_uuids).map do |chosen_exercise_uuid|
-      AssignmentSpe.new(
-        uuid: SecureRandom.uuid,
-        algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid,
-        assignment_uuid: assignment_uuid,
-        history_type: history_type,
-        exercise_uuid: chosen_exercise_uuid
-      )
-    end.tap do |result|
-      # If no SPEs, record an AssignmentSpe with nil exercise_uuid
-      # to denote that we already processed this assignment
-      result << AssignmentSpe.new(
-        uuid: SecureRandom.uuid,
-        algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid,
-        assignment_uuid: assignment_uuid,
-        history_type: history_type,
-        exercise_uuid: nil
-      ) if result.empty?
-    end
+    {
+      assignment_uuid: assignment.uuid,
+      exercise_uuids: chosen_spe_uuids + chosen_pe_uuids,
+      algorithm_name: "#{history_type}_#{assignment.algorithm_name}",
+      spy_info: spy_info
+    }
   end
 end
