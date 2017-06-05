@@ -80,7 +80,7 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
         .pluck(:uuid)
 
       StudentPe.where(
-        algorithm_exercise_calculation_uuids: affected_algorithm_exercise_calculation_uuids
+        algorithm_exercise_calculation_uuid: affected_algorithm_exercise_calculation_uuids
       ).delete_all
     end
 
