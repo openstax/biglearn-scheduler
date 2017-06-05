@@ -183,7 +183,13 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
               candidate_pe_uuids.last(num_worst_clues - index - 1)
             ).flatten.uniq - chosen_pe_uuids
 
-            chosen_pe_uuids.concat prioritized_candidate_pe_uuids.first(clue_num_pes)
+            new_chosen_pe_uuids = prioritized_candidate_pe_uuids.first(clue_num_pes)
+
+            chosen_pe_uuids.concat new_chosen_pe_uuids
+
+            new_chosen_pe_uuids.each do |chosen_pe_uuid|
+              spy_info[chosen_pe_uuid] = { book_container_uuid: clue.book_container_uuid }
+            end
           end
 
           student_pe_request = {

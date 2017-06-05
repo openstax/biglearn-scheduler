@@ -83,7 +83,7 @@ class OpenStax::Biglearn::Api::RealClient
 
   def update_assignment_pes(pe_updates)
     requests = pe_updates.map do |request|
-      request.slice(:request_uuid, :assignment_uuid, :exercise_uuids, :algorithm_name)
+      request.slice(:request_uuid, :algorithm_name, :assignment_uuid, :exercise_uuids, :spy_info)
     end
 
     bulk_api_request url: :update_assignment_pes,
@@ -94,7 +94,7 @@ class OpenStax::Biglearn::Api::RealClient
 
   def update_assignment_spes(spe_updates)
     requests = spe_updates.map do |request|
-      request.slice(:request_uuid, :assignment_uuid, :exercise_uuids, :algorithm_name)
+      request.slice(:request_uuid, :algorithm_name, :assignment_uuid, :exercise_uuids, :spy_info)
     end
 
     bulk_api_request url: :update_assignment_spes,
@@ -105,7 +105,7 @@ class OpenStax::Biglearn::Api::RealClient
 
   def update_practice_worst_areas(practice_worst_areas_updates)
     requests = practice_worst_areas_updates.map do |request|
-      request.slice(:request_uuid, :student_uuid, :exercise_uuids, :algorithm_name)
+      request.slice(:request_uuid, :algorithm_name, :student_uuid, :exercise_uuids, :spy_info)
     end
 
     bulk_api_request url: :update_practice_worst_areas_exercises,

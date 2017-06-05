@@ -49,6 +49,8 @@ RSpec.shared_examples 'a biglearn api client' do
     ecosystem_uuid: dummy_ecosystem.uuid
   }
 
+  dummy_spy_info = { test: true }
+
   when_tagged_with_vcr = { vcr: ->(v) { !!v } }
 
   before(:all, when_tagged_with_vcr) do
@@ -148,7 +150,8 @@ RSpec.shared_examples 'a biglearn api client' do
         {
           algorithm_name: 'local_query',
           assignment_uuid: dummy_assignment.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid)
+          exercise_uuids: dummy_exercises.map(&:uuid),
+          spy_info: dummy_spy_info
         }
       ],
       [
@@ -161,12 +164,14 @@ RSpec.shared_examples 'a biglearn api client' do
         {
           algorithm_name: 'instructor_driven_local_query',
           assignment_uuid: dummy_assignment.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid)
+          exercise_uuids: dummy_exercises.map(&:uuid),
+          spy_info: dummy_spy_info
         },
         {
           algorithm_name: 'student_driven_local_query',
           assignment_uuid: dummy_assignment.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid)
+          exercise_uuids: dummy_exercises.map(&:uuid),
+          spy_info: dummy_spy_info
         }
       ],
       [
@@ -180,7 +185,8 @@ RSpec.shared_examples 'a biglearn api client' do
         {
           algorithm_name: 'local_query',
           student_uuid: dummy_student.uuid,
-          exercise_uuids: dummy_exercises.map(&:uuid)
+          exercise_uuids: dummy_exercises.map(&:uuid),
+          spy_info: dummy_spy_info
         }
       ],
       [

@@ -118,6 +118,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
         ).where(history_queries)
         .pluck(
+          :uuid,
           :student_uuid,
           :assignment_type,
           :instructor_driven_sequence_number,
@@ -125,6 +126,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           :ecosystem_uuid,
           :assigned_book_container_uuids
         ).each do |
+          assignment_uuid,
           student_uuid,
           assignment_type,
           instructor_driven_sequence_number,
@@ -133,9 +135,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           assigned_book_container_uuids
         |
           instructor_histories[student_uuid][assignment_type][instructor_driven_sequence_number] = \
-            [ecosystem_uuid, assigned_book_container_uuids]
+            [assignment_uuid, ecosystem_uuid, assigned_book_container_uuids]
           student_histories[student_uuid][assignment_type][student_driven_sequence_number] = \
-            [ecosystem_uuid, assigned_book_container_uuids]
+            [assignment_uuid, ecosystem_uuid, assigned_book_container_uuids]
         end unless history_queries.nil?
 
         # Create a mapping of spaced practice book containers to each assignment's ecosystem
@@ -161,7 +163,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           end.compact
 
           from_queries = (instructor_spaced_assignments + student_spaced_assignments)
-                           .map do |from_ecosystem_uuid, from_book_container_uuids|
+                           .map do |assignment_uuid, from_ecosystem_uuid, from_book_container_uuids|
             next if from_ecosystem_uuid == to_ecosystem_uuid
 
             bcm[:from_ecosystem_uuid].eq(from_ecosystem_uuid).and(
@@ -199,7 +201,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
           NON_RANDOM_K_AGOS.flat_map do |k_ago|
             instructor_spaced_sequence_number = instructor_sequence_number - k_ago
-            instructor_from_ecosystem_uuid, instructor_spaced_book_container_uuids = \
+            spaced_uuid, instructor_from_ecosystem_uuid, instructor_spaced_book_container_uuids = \
               instructor_history[instructor_spaced_sequence_number]
             instructor_spaced_book_container_uuids ||= []
 
@@ -212,7 +214,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             end
           end + ALL_K_AGOS.flat_map do |k_ago|
             student_spaced_sequence_number = student_sequence_number - k_ago
-            student_from_ecosystem_uuid, student_spaced_book_container_uuids = \
+            spaced_uuid, student_from_ecosystem_uuid, student_spaced_book_container_uuids = \
               student_history[student_spaced_sequence_number]
             student_spaced_book_container_uuids ||= []
 
@@ -315,7 +317,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             .each do |assignment_type, student_assignment_type_instructor_histories|
             assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
             student_assignment_type_instructor_histories.each do |sequence_number, history_entry|
-              history_entry.second.reject! do |book_container_uuid|
+              history_entry.third.reject! do |book_container_uuid|
                 (
                   assignment_type_exercise_uuids_map[book_container_uuid] - excluded_exercise_uuids
                 ).empty?
@@ -330,7 +332,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             .each do |assignment_type, student_assignment_type_student_histories|
             assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
             student_assignment_type_student_histories.each do |sequence_number, history_entry|
-              history_entry.second.reject! do |book_container_uuid|
+              history_entry.third.reject! do |book_container_uuid|
                 (
                   assignment_type_exercise_uuids_map[book_container_uuid] - excluded_exercise_uuids
                 ).empty?
@@ -340,8 +342,11 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         end
 
         # Map book_container_uuids with exercises to the current ecosystem spaced assignments
+        # Also map assignment_uuids for use in the SPE spy info
         instructor_book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
         student_book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
+        instructor_assignment_uuids_map = Hash.new { |hash, key| hash[key] = {} }
+        student_assignment_uuids_map = Hash.new { |hash, key| hash[key] = {} }
         spe_assignments.each do |spe_assignment|
           uuid = spe_assignment.uuid
           student_uuid = spe_assignment.student_uuid
@@ -355,7 +360,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
           NON_RANDOM_K_AGOS.each do |k_ago|
             instructor_spaced_sequence_number = instructor_sequence_number - k_ago
-            instructor_from_ecosystem_uuid, instructor_spaced_book_container_uuids = \
+            spaced_uuid, instructor_from_ecosystem_uuid, instructor_spaced_book_container_uuids = \
               instructor_history[instructor_spaced_sequence_number]
             instructor_spaced_book_container_uuids ||= []
 
@@ -369,10 +374,11 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               end
 
             instructor_book_container_uuids_map[uuid][k_ago] = instructor_mapped_book_containers
+            instructor_assignment_uuids_map[uuid][k_ago] = spaced_uuid
           end
           ALL_K_AGOS.each do |k_ago|
             student_spaced_sequence_number = student_sequence_number - k_ago
-            student_from_ecosystem_uuid, student_spaced_book_container_uuids = \
+            spaced_uuid, student_from_ecosystem_uuid, student_spaced_book_container_uuids = \
               student_history[student_spaced_sequence_number]
             student_spaced_book_container_uuids ||= []
 
@@ -385,6 +391,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             end
 
             student_book_container_uuids_map[uuid][k_ago] = student_mapped_book_containers
+            student_assignment_uuids_map[uuid][k_ago] = spaced_uuid
           end
         end
 
@@ -462,6 +469,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             instructor_book_container_uuids_map[assignment_uuid]
           assignment_student_book_container_uuids_map = \
             student_book_container_uuids_map[assignment_uuid]
+          assignment_instructor_assignment_uuids_map = \
+            instructor_assignment_uuids_map[assignment_uuid]
+          assignment_student_assignment_uuids_map = \
+            student_assignment_uuids_map[assignment_uuid]
 
           instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(
             assignment_uuid
@@ -480,7 +491,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             history_type: :instructor_driven,
             assignment_book_container_uuids_map: assignment_instructor_book_container_uuids_map,
             prioritized_exercise_uuids: prioritized_exercise_uuids,
-            excluded_exercise_uuids: excluded_exercise_uuids
+            excluded_exercise_uuids: excluded_exercise_uuids,
+            assignment_uuids_map: assignment_instructor_assignment_uuids_map
           )
           assignment_spe_requests << instructor_driven_spe_request
 
@@ -506,7 +518,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             history_type: :student_driven,
             assignment_book_container_uuids_map: assignment_student_book_container_uuids_map,
             prioritized_exercise_uuids: prioritized_exercise_uuids,
-            excluded_exercise_uuids: excluded_exercise_uuids
+            excluded_exercise_uuids: excluded_exercise_uuids,
+            assignment_uuids_map: assignment_student_assignment_uuids_map
           )
           assignment_spe_requests << student_driven_spe_request
 
@@ -635,6 +648,11 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         num_chosen_pes = chosen_pe_uuids.size
         remainder += num_pes_per_book_container - num_chosen_pes
         assignment_excluded_uuids += chosen_pe_uuids
+
+        # PE spy info
+        chosen_pe_uuids.each do |chosen_pe_uuid|
+          spy_info[chosen_pe_uuid] = { book_container_uuid: book_container_uuid }
+        end
       end
     end
 
@@ -651,7 +669,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                         history_type:,
                         assignment_book_container_uuids_map:,
                         prioritized_exercise_uuids:,
-                        excluded_exercise_uuids:)
+                        excluded_exercise_uuids:,
+                        assignment_uuids_map:)
+    assignment_uuid = assignment.uuid
     assignment_type = assignment.assignment_type
 
     include_random_ago = history_type == :student_driven &&
@@ -695,6 +715,20 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           num_remaining_exercises -= num_chosen_spes
           remainder += num_spes_per_book_container - num_chosen_spes
           assignment_excluded_uuids += chosen_spe_uuids
+
+          # SPE spy info
+          chosen_k_ago = k_ago.nil? ? assignment_book_container_uuids_map
+                                        .find do |k_ago, book_container_uuids|
+            book_container_uuids.include? book_container_uuid
+          end : k_ago
+          spaced_assignment_uuid = assignment_uuids_map[chosen_k_ago]
+          chosen_spe_uuids.each do |chosen_spe_uuid|
+            spy_info[chosen_spe_uuid] = {
+              k_ago: chosen_k_ago,
+              assignment_uuid: spaced_assignment_uuid,
+              book_container_uuid: book_container_uuid
+            }
+          end
         end
       end
     end
@@ -708,8 +742,19 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       exercise_count: num_remaining_exercises
     )
 
+    # PE as SPE spy info
+    chosen_pe_uuids.each do |chosen_pe_uuid|
+      spy_info[chosen_pe_uuid] = {
+        k_ago: 0,
+        assignment_uuid: assignment_uuid,
+        book_container_uuid: assignment.assigned_book_container_uuids.find do |book_container_uuid|
+          @exercise_uuids_map[assignment_type][book_container_uuid].include? chosen_pe_uuid
+        end
+      }
+    end
+
     {
-      assignment_uuid: assignment.uuid,
+      assignment_uuid: assignment_uuid,
       exercise_uuids: chosen_spe_uuids + chosen_pe_uuids,
       algorithm_name: "#{history_type}_#{assignment.algorithm_name}",
       spy_info: spy_info
