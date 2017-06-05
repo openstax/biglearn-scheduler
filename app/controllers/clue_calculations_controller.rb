@@ -4,7 +4,7 @@ class ClueCalculationsController < JsonApiController
     respond_with_json_apis_and_service(
       input_schema: _fetch_clue_calculations_request_payload_schema,
       output_schema: _fetch_clue_calculations_response_payload_schema,
-      service:Services::FetchClueCalculations::Service
+      service: Services::FetchClueCalculations::Service
     )
   end
 
@@ -12,7 +12,7 @@ class ClueCalculationsController < JsonApiController
     respond_with_json_apis_and_service(
       input_schema: _update_clue_calculations_request_payload_schema,
       output_schema: _update_clue_calculations_response_payload_schema,
-      service:Services::UpdateClueCalculations::Service
+      service: Services::UpdateClueCalculations::Service
     )
   end
 

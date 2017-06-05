@@ -1,5 +1,5 @@
 class Services::FetchExerciseCalculations::Service < Services::ApplicationService
-  BATCH_SIZE = 1000
+  BATCH_SIZE = 10
 
   def process(algorithm_name:)
     ec = ExerciseCalculation.arel_table

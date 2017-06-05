@@ -1,6 +1,7 @@
 require 'json-schema'
 
 class JsonApiController < ApplicationController
+  VALIDATE_JSON = false
 
   # Skip verifying the CSRF token
   skip_before_action :verify_authenticity_token
@@ -38,6 +39,8 @@ class JsonApiController < ApplicationController
       unless request.content_type == 'application/json'
 
     _json_parsed_request_payload.tap do |parsed_request|
+      next unless VALIDATE_JSON
+
       validation_errors = JSON::Validator.fully_validate(
         input_schema,
         parsed_request,
@@ -57,9 +60,12 @@ class JsonApiController < ApplicationController
     return {} if output_schema.nil?
 
     JSON.parse(response.body).tap do |parsed_response|
+      next unless VALIDATE_JSON
+
       validation_errors = JSON::Validator.fully_validate(
         output_schema,
         parsed_response,
+        insert_defaults: true,
         validate_schema: true
       )
 
