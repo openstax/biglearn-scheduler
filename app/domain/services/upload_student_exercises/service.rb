@@ -230,7 +230,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
 
     Rails.logger.tagged 'UploadStudentExercises' do |logger|
       logger.debug do
-        "#{total_students} student(s) updated in #{Time.now - start_time} second(s)"
+        "#{total_students} student(s) processed in #{Time.now - start_time} second(s)"
       end
     end
   end
