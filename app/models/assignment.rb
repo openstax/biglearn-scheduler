@@ -86,7 +86,7 @@ class Assignment < ApplicationRecord
               HAVING COUNT(assigned_exercises.*) = COUNT(DISTINCT responses.trial_uuid)
                 OR assignments.due_at <= '#{current_time.to_s(:db)}'
             ) AS assignment_core_steps_completion
-              ON true
+              ON TRUE
           #{"WHERE #{wheres.join(' AND ')}" unless wheres.empty?}
         ) AS assignments
       SQL

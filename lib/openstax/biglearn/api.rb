@@ -30,14 +30,14 @@ module OpenStax::Biglearn::Api
       bulk_api_request method: :fetch_ecosystem_events,
                        requests: ecosystem_event_requests,
                        keys: [ :event_types, :ecosystem, ],
-                       optional_keys: [ :max_num_events ]
+                       optional_keys: :max_num_events
     end
 
     def fetch_course_events(course_event_requests)
       bulk_api_request method: :fetch_course_events,
                        requests: course_event_requests,
                        keys: [ :event_types, :course ],
-                       optional_keys: [ :max_num_events ]
+                       optional_keys: :max_num_events
     end
 
     def update_student_clues(student_clue_updates)
@@ -49,25 +49,30 @@ module OpenStax::Biglearn::Api
     def update_teacher_clues(teacher_clue_updates)
       bulk_api_request method: :update_teacher_clues,
                        requests: teacher_clue_updates,
-                       keys: [ :algorithm_name, :course_container_uuid, :book_container_uuid, :clue_data ]
+                       keys: [
+                         :algorithm_name, :course_container_uuid, :book_container_uuid, :clue_data
+                       ]
     end
 
     def update_assignment_pes(pe_updates)
       bulk_api_request method: :update_assignment_pes,
                        requests: pe_updates,
-                       keys: [ :algorithm_name, :assignment_uuid, :exercise_uuids ]
+                       keys: [ :algorithm_name, :assignment_uuid, :exercise_uuids ],
+                       optional_keys: :spy_info
     end
 
     def update_assignment_spes(spe_updates)
       bulk_api_request method: :update_assignment_spes,
                        requests: spe_updates,
-                       keys: [ :algorithm_name, :assignment_uuid, :exercise_uuids ]
+                       keys: [ :algorithm_name, :assignment_uuid, :exercise_uuids ],
+                       optional_keys: :spy_info
     end
 
     def update_practice_worst_areas(practice_worst_areas_updates)
       bulk_api_request method: :update_practice_worst_areas,
                        requests: practice_worst_areas_updates,
-                       keys: [ :algorithm_name, :student_uuid, :exercise_uuids ]
+                       keys: [ :algorithm_name, :student_uuid, :exercise_uuids ],
+                       optional_keys: :spy_info
     end
 
     def use_fake_client
@@ -92,11 +97,11 @@ module OpenStax::Biglearn::Api
       end
     end
 
-    def verify_and_slice_request(method:, request:, keys:, optional_keys:)
+    def verify_and_slice_request(method:, request:, keys:, optional_keys: [])
       required_keys = [keys].flatten
       return if request.nil? && required_keys.empty?
 
-      missing_keys = required_keys.reject{ |key| request.has_key? key }
+      missing_keys = required_keys.reject { |key| request.has_key? key }
 
       raise(
         OpenStax::Biglearn::Api::MalformedRequest,
@@ -104,7 +109,10 @@ module OpenStax::Biglearn::Api
         } is missing these required key(s): #{missing_keys.inspect}"
       ) if missing_keys.any?
 
-      request.slice(*required_keys)
+      optional_keys = [optional_keys].flatten
+      request_keys = required_keys + optional_keys
+
+      request.slice(*request_keys)
     end
 
     def verify_result(result:, result_class: Hash)

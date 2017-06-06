@@ -73,7 +73,8 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
           [
             {
               event_types: @ecosystem_event_types,
-              ecosystem: @ecosystem
+              ecosystem: @ecosystem,
+              max_num_events: 10
             }
           ]
         },
@@ -85,7 +86,8 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
           [
             {
               event_types: @course_event_types,
-              course: @course
+              course: @course,
+              max_num_events: 100
             }
           ]
         },
@@ -126,7 +128,8 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
             {
               algorithm_name: 'local_query',
               assignment_uuid: @assignment.uuid,
-              exercise_uuids: @exercises.map(&:uuid)
+              exercise_uuids: @exercises.map(&:uuid),
+              spy_info: {}
             }
           ]
         },
@@ -139,7 +142,8 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
             {
               algorithm_name: 'local_query_student_driven',
               assignment_uuid: @assignment.uuid,
-              exercise_uuids: @exercises.map(&:uuid)
+              exercise_uuids: @exercises.map(&:uuid),
+              spy_info: {}
             }
           ]
         },
@@ -152,7 +156,8 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
             {
               algorithm_name: 'local_query',
               student_uuid: @student.uuid,
-              exercise_uuids: @exercises.map(&:uuid)
+              exercise_uuids: @exercises.map(&:uuid),
+              spy_info: {}
             }
           ]
         },
