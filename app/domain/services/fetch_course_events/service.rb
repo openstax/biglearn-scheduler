@@ -467,52 +467,46 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
           aspe_query = aspe_queries.reduce(:or)
           unless aspe_query.nil?
-            # Do the same grouping as above to try to improve query performance
-            conflicting_spe_a_uuids_by_calc_uuid =
-              AssignmentSpe.with_student_uuids
-                           .where(aspe_query)
-                           .distinct
-                           .pluck(:algorithm_exercise_calculation_uuid, :assignment_uuid)
-                           .to_h
-
-            conflicting_spe_calc_uuids_by_a_uuids = Hash.new { |hash, key| hash[key] = [] }
-            conflicting_spe_a_uuids_by_calc_uuid.each do |calc_uuid, assignment_uuids|
-              conflicting_spe_calc_uuids_by_a_uuids[assignment_uuids] << calc_uuid
+            # Group by algorithm_exercise_calculation_uuid to try to improve query performance
+            conflicting_spe_a_uuids_by_calc_uuid = Hash.new { |hash, key| hash[key] = [] }
+            AssignmentSpe.with_student_uuids
+                         .where(aspe_query)
+                         .distinct
+                         .pluck(:algorithm_exercise_calculation_uuid, :assignment_uuid)
+                         .each do |calc_uuid, assignment_uuid|
+              conflicting_spe_a_uuids_by_calc_uuid[calc_uuid] << assignment_uuid
             end
 
-            delete_aspe_queries = []
-            conflicting_spe_calc_uuids_by_a_uuids.each do |calc_uuids, assignment_uuids|
-              delete_aspe_queries << aspe[:algorithm_exercise_calculation_uuid].in(calc_uuids).and(
+            delete_aspe_query = conflicting_spe_a_uuids_by_calc_uuid
+                                  .map do |calc_uuid, assignment_uuids|
+              aspe[:algorithm_exercise_calculation_uuid].eq(calc_uuid).and(
                 aspe[:assignment_uuid].in(assignment_uuids)
               )
-            end
+            end.reduce(:or)
 
-            AssignmentSpe.where(delete_aspe_queries.reduce(:or)).delete_all
+            AssignmentSpe.where(delete_aspe_query).delete_all unless delete_aspe_query.nil?
           end
 
           ape_query = ape_queries.reduce(:or)
           unless ape_query.nil?
-            # Do the same grouping as above to try to improve query performance
-            conflicting_pe_a_uuids_by_calc_uuid =
-              AssignmentPe.with_student_uuids
-                          .where(ape_query)
-                          .distinct
-                          .pluck(:algorithm_exercise_calculation_uuid, :assignment_uuid)
-                          .to_h
-
-            conflicting_pe_calc_uuids_by_a_uuids = Hash.new { |hash, key| hash[key] = [] }
-            conflicting_pe_a_uuids_by_calc_uuid.each do |calc_uuid, assignment_uuids|
-              conflicting_pe_calc_uuids_by_a_uuids[assignment_uuids] << calc_uuid
+            # Group by algorithm_exercise_calculation_uuid to try to improve query performance
+            conflicting_pe_a_uuids_by_calc_uuid = Hash.new { |hash, key| hash[key] = [] }
+            AssignmentPe.with_student_uuids
+                        .where(ape_query)
+                        .distinct
+                        .pluck(:algorithm_exercise_calculation_uuid, :assignment_uuid)
+                        .each do |calc_uuid, assignment_uuid|
+              conflicting_pe_a_uuids_by_calc_uuid[calc_uuid] << assignment_uuid
             end
 
-            delete_ape_queries = []
-            conflicting_pe_calc_uuids_by_a_uuids.each do |calc_uuids, assignment_uuids|
-              delete_ape_queries << ape[:algorithm_exercise_calculation_uuid].in(calc_uuids).and(
+            delete_ape_query = conflicting_pe_a_uuids_by_calc_uuid
+                                 .map do |calc_uuid, assignment_uuids|
+              ape[:algorithm_exercise_calculation_uuid].eq(calc_uuid).and(
                 ape[:assignment_uuid].in(assignment_uuids)
               )
-            end
+            end.reduce(:or)
 
-            AssignmentPe.where(delete_ape_queries.reduce(:or)).delete_all
+            AssignmentPe.where(delete_ape_query).delete_all unless delete_ape_query.nil?
           end
 
           spe_query = spe_queries.reduce(:or)
