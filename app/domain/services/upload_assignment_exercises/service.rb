@@ -437,7 +437,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           exercise_uuids = pe_request[:exercise_uuids]
           # If no PEs, record an AssignmentPe with nil exercise_uuid
           # to denote that we already processed this assignment
-          exercise_uuids << nil if exercise_uuids.empty?
+          exercise_uuids = [nil] if exercise_uuids.empty?
           pes = exercise_uuids.map do |exercise_uuid|
             AssignmentPe.new(
               uuid: SecureRandom.uuid,
@@ -526,7 +526,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           instructor_driven_exercise_uuids = instructor_driven_spe_request[:exercise_uuids]
           # If no SPEs, record an AssignmentSpe with nil exercise_uuid
           # to denote that we already processed this assignment
-          instructor_driven_exercise_uuids << nil if instructor_driven_exercise_uuids.empty?
+          instructor_driven_exercise_uuids = [nil] if instructor_driven_exercise_uuids.empty?
           instructor_driven_spes = instructor_driven_exercise_uuids.map do |exercise_uuid|
             AssignmentSpe.new(
               uuid: SecureRandom.uuid,
@@ -554,7 +554,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           student_driven_exercise_uuids = student_driven_spe_request[:exercise_uuids]
           # If no SPEs, record an AssignmentSpe with nil exercise_uuid
           # to denote that we already processed this assignment
-          student_driven_exercise_uuids << nil if student_driven_exercise_uuids.empty?
+          student_driven_exercise_uuids = [nil] if student_driven_exercise_uuids.empty?
           student_driven_spes = student_driven_exercise_uuids.map do |exercise_uuid|
             AssignmentSpe.new(
               uuid: SecureRandom.uuid,

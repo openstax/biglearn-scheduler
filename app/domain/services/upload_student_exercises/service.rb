@@ -203,7 +203,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           exercise_uuids = student_pe_request[:exercise_uuids]
           # If no PEs, record a StudentPe with nil exercise_uuid
           # to denote that we already processed this student
-          exercise_uuids << nil if exercise_uuids.empty?
+          exercise_uuids = [nil] if exercise_uuids.empty?
           pes = exercise_uuids.map do |exercise_uuid|
             StudentPe.new(
               uuid: SecureRandom.uuid,
