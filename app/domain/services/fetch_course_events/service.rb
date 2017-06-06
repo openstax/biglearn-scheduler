@@ -365,7 +365,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
           results << BookContainerMapping.import(
             chain_mappings + reverse_mappings, validate: false, on_duplicate_key_ignore: {
-              conflict_target: [ :from_book_container_uuid, :from_ecosystem_uuid, :to_ecosystem_uuid ]
+              conflict_target: [
+                :from_book_container_uuid, :from_ecosystem_uuid, :to_ecosystem_uuid
+              ]
             }
           )
 
@@ -429,9 +431,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
             # Mark CLUes and ecosystem matrices for recalculation
             # for students in courses with updated ecosystems
-            Response.where(student_uuid: changed_ecosystem_student_uuids).update_all(
-              used_in_clue_calculations: false, used_in_ecosystem_matrix_updates: false
-            )
+            Response.where(student_uuid: changed_ecosystem_student_uuids)
+                    .update_all(used_in_clue_calculations: false)
           end
 
           # Group assigned exercises by student_uuids so exercises assigned to exactly

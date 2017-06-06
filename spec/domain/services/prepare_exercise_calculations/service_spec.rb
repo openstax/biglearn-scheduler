@@ -17,6 +17,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
       @ecosystem_1 = FactoryGirl.create :ecosystem
       @ecosystem_2 = FactoryGirl.create :ecosystem
       @ecosystem_3 = FactoryGirl.create :ecosystem
+      @ecosystem_4 = FactoryGirl.create :ecosystem
 
       @reading_pool_1_old = FactoryGirl.create(
         :exercise_pool,
@@ -110,7 +111,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
       exercise_uuids = [ practice_pool_1_new, practice_pool_2_new ].flat_map(&:exercise_uuids)
       exercise_uuids.each { |exercise_uuid| FactoryGirl.create :exercise, uuid: exercise_uuid }
 
-      course = FactoryGirl.create :course
+      course = FactoryGirl.create :course, ecosystem_uuid: @ecosystem_4.uuid
       @student_1 = FactoryGirl.create :student, course: course
       @student_2 = FactoryGirl.create :student, course: course
 
@@ -215,6 +216,14 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         },
         {
           ecosystem_uuid: @ecosystem_3.uuid,
+          student_uuid: @student_2.uuid
+        },
+        {
+          ecosystem_uuid: @ecosystem_4.uuid,
+          student_uuid: @student_1.uuid
+        },
+        {
+          ecosystem_uuid: @ecosystem_4.uuid,
           student_uuid: @student_2.uuid
         }
       ]
