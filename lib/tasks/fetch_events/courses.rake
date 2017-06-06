@@ -1,5 +1,5 @@
 namespace :fetch_events do
   task courses: :environment do
-    Services::FetchCourseEvents::Service.new.process
+    Services::FetchCourseEvents::Service.process
   end
 end
