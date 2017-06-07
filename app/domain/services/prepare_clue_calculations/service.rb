@@ -7,16 +7,21 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
       logger.debug { "Started at #{start_time}" }
     end
 
-    ee = EcosystemExercise.arel_table
+    rr = Response.arel_table
     ex = Exercise.arel_table
-    rsp = Response.arel_table
+    ee = EcosystemExercise.arel_table
 
     # Do all the processing in batches to avoid OOM problems
     total_responses = 0
     loop do
       num_responses = Response.transaction do
         # Get Responses that have not yet been used in CLUes
-        responses = Response.where(used_in_clue_calculations: false).lock.take(BATCH_SIZE)
+        # Responses with no Exercise or AssignedExercise are completely ignored
+        responses = Response.joins(:exercise, assigned_exercise: :assignment)
+                            .where(used_in_clue_calculations: false)
+                            .select([rr[Arel.star], ex[:group_uuid]])
+                            .lock
+                            .take(BATCH_SIZE)
 
         # Build some hashes to minimize the number of queries
 
@@ -32,7 +37,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
         # Map the course containers back to students
         course_container_uuids = course_container_uuids_by_student_uuids.values.flatten
-        student_uuids_by_course_container_uuids = \
+        student_uuids_by_course_container_uuids =
           CourseContainer.where(uuid: course_container_uuids)
                          .pluck(:uuid, :student_uuids)
                          .to_h
@@ -43,40 +48,31 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                                               .pluck(:uuid, :ecosystem_uuid)
                                               .to_h
 
-        # Map the exercise_uuids to exercise_group_uuids
-        exercise_uuids = responses.map(&:exercise_uuid)
-        group_uuid_by_exercise_uuid = Exercise.where(uuid: exercise_uuids)
-                                              .pluck(:uuid, :group_uuid)
-                                              .to_h
-
         # Build a query to obtain the book_container_uuids for the new Responses
         # Mark the responses as used in CLUe calculations
         # (in case we don't use them later because they got removed from the book or something)
         used_response_uuids = []
-        ee_queries = responses.map do |response|
+        ee_query = responses.map do |response|
           student_uuid = response.student_uuid
           course_uuid = course_uuid_by_student_uuid[student_uuid]
           ecosystem_uuid = ecosystem_uuid_by_course_uuid[course_uuid]
 
-          exercise_uuid = response.exercise_uuid
-          group_uuid = group_uuid_by_exercise_uuid[exercise_uuid]
+          group_uuid = response.group_uuid
 
           used_response_uuids << response.uuid
 
-          ee[:ecosystem_uuid].eq(ecosystem_uuid).and(
-            ex[:group_uuid].eq(group_uuid)
-          )
+          ee[:ecosystem_uuid].eq(ecosystem_uuid).and ex[:group_uuid].eq(group_uuid)
         end.compact.reduce(:or)
 
-        # Map the ecosystem_uuids and exercise_group_uuids to book_container_uuids
+        # Map the ecosystem_uuids and group_uuids to book_container_uuids
         book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
         EcosystemExercise
           .with_group_uuids
-          .where(ee_queries)
+          .where(ee_query)
           .pluck(:ecosystem_uuid, :group_uuid, :book_container_uuids)
           .each do |ecosystem_uuid, group_uuid, book_container_uuids|
           book_container_uuids_map[ecosystem_uuid][group_uuid] = book_container_uuids
-        end unless ee_queries.nil?
+        end unless ee_query.nil?
 
         # Map the book_container_uuids to ecosystem_uuids and back to exercise_uuids
         book_container_uuids = book_container_uuids_map.values.map(&:values).flatten
@@ -91,47 +87,33 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           exercise_uuids_by_book_container_uuids[book_container_uuid].concat exercise_uuids
         end
 
-        # Find all relevant exercise group_uuids
-        # (all exercise group_uuids in the matching book_containers)
+        # Get the group_uuids for the above exercise_uuids
         exercise_uuids = exercise_uuids_by_book_container_uuids.values.flatten
-        exercise_group_uuids = Exercise.where(uuid: exercise_uuids).pluck(:group_uuid)
+        group_uuids_by_exercise_uuids = Exercise.where(uuid: exercise_uuids)
+                                                .pluck(:uuid, :group_uuid)
+                                                .to_h
 
-        # Re-map the exercise_uuids to exercise_group_uuids since the exercises may have changed
-        exercise_group_uuid_by_exercise_uuid = Exercise.where(group_uuid: exercise_group_uuids)
-                                                       .pluck(:uuid, :group_uuid)
-                                                       .to_h
-
-        trial_uuids = responses.map(&:trial_uuid)
-        assignment_uuid_by_trial_uuid = AssignedExercise.where(uuid: trial_uuids)
-                                                        .pluck(:uuid, :assignment_uuid)
-                                                        .to_h
-
-        # Collect ongoing assignment uuids so we can exclude them from the student CLUes
-        ongoing_assignment_uuids = []
-        Assignment.where(student_uuid: student_uuids)
-                  .pluck(:uuid, :due_at, :opens_at)
-                  .each do |assignment_uuid, due_at, opens_at|
-          ongoing_assignment_uuids << assignment_uuid \
-            if due_at.present? && due_at > start_time && (opens_at.nil? || opens_at < start_time)
+        # Create a map of group_uuids for each book_container_uuid
+        group_uuids_by_book_container_uuids = {}
+        exercise_uuids_by_book_container_uuids.each do |book_container_uuid, exercise_uuids|
+          group_uuids = group_uuids_by_exercise_uuids.values_at(*exercise_uuids)
+          group_uuids_by_book_container_uuids[book_container_uuid] = group_uuids
         end
 
         # Collect the CLUes that need to be updated and build the final Response query
         student_clues_to_update = Hash.new { |hash, key| hash[key] = [] }
         teacher_clues_to_update = Hash.new { |hash, key| hash[key] = [] }
-        response_queries = responses.map do |response|
+        response_query = responses.map do |response|
           student_uuid = response.student_uuid
           course_uuid = course_uuid_by_student_uuid[student_uuid]
           ecosystem_uuid = ecosystem_uuid_by_course_uuid[course_uuid]
-          exercise_uuid = response.exercise_uuid
-          exercise_group_uuid = exercise_group_uuid_by_exercise_uuid[exercise_uuid]
+          group_uuid = response.group_uuid
 
           # Find all book containers that contain the given exercise and all their exercises
           # exercise_group_uuid can be nil here...
           # this simply means the exercise was removed from the book and should not count for CLUes
-          book_container_uuids = book_container_uuids_map[ecosystem_uuid].fetch exercise_group_uuid,
-                                                                                []
-          exercise_uuids = \
-            exercise_uuids_by_book_container_uuids.values_at(*book_container_uuids).flatten
+          book_container_uuids = book_container_uuids_map[ecosystem_uuid].fetch group_uuid, []
+          group_uuids = group_uuids_by_book_container_uuids.values_at(*book_container_uuids).flatten
 
           # Find all course containers that contain the given student
           course_container_uuids = course_container_uuids_by_student_uuids.fetch student_uuid, []
@@ -144,48 +126,36 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
           # All responses from students in the same course containers
           # that refer to any exercise in the same book containers should be considered
-          student_uuids = \
-            student_uuids_by_course_container_uuids.values_at(*course_container_uuids).flatten
-          rsp[:student_uuid].in(student_uuids).and rsp[:exercise_uuid].in(exercise_uuids)
+          student_uuids = student_uuids_by_course_container_uuids.values_at(*course_container_uuids)
+                                                                 .flatten
+          rr[:student_uuid].in(student_uuids).and ex[:group_uuid].in(group_uuids)
         end.compact.reduce(:or)
 
         # Map student_uuids and exercise_group_uuids to correctness information
         # Take only the latest answer for each exercise_group_uuid
         # Mark responses found here as used in CLUe calculations
-        student_responses_map = Hash.new do |hash, key|
-          hash[key] = Hash.new { |hash, key| hash[key] = [] }
-        end
-        teacher_responses_map = Hash.new do |hash, key|
-          hash[key] = Hash.new { |hash, key| hash[key] = [] }
-        end
-        Response.where(response_queries)
-                .order(:responded_at)
-                .pluck(:uuid, :trial_uuid, :student_uuid, :exercise_uuid, :is_correct)
-                .each do |response_uuid, trial_uuid, student_uuid, exercise_uuid, is_correct|
-          exercise_group_uuid = exercise_group_uuid_by_exercise_uuid[exercise_uuid]
-          if exercise_group_uuid.nil?
-            Rails.logger.tagged 'PrepareClueCalculations' do |logger|
-              logger.warn do
-                "Response skipped due to no information about exercise #{exercise_uuid}"
-              end
-            end
+        student_responses_map = Hash.new { |hash, key| hash[key] = {} }
+        teacher_responses_map = Hash.new { |hash, key| hash[key] = {} }
+        Response
+          .joins(:exercise, assigned_exercise: :assignment)
+          .where(response_query)
+          .order(:responded_at)
+          .pluck(:uuid, :trial_uuid, :student_uuid, :group_uuid, :is_correct, :due_at)
+          .each do |response_uuid, trial_uuid, student_uuid, group_uuid, is_correct, due_at|
+          used_response_uuids << response_uuid
 
-            next
-          end
-
-          assignment_uuid = assignment_uuid_by_trial_uuid[trial_uuid]
           response_hash = {
             response_uuid: response_uuid,
             trial_uuid: trial_uuid,
             is_correct: is_correct
           }
-          student_responses_map[student_uuid][exercise_group_uuid] << response_hash \
-            unless ongoing_assignment_uuids.include?(assignment_uuid)
-          teacher_responses_map[student_uuid][exercise_group_uuid] << response_hash
 
-          course_uuid = course_uuid_by_student_uuid[student_uuid]
-          used_response_uuids << response_uuid
-        end unless response_queries.nil?
+          teacher_responses_map[student_uuid][group_uuid] = response_hash
+
+          next unless due_at.nil? || due_at <= start_time
+
+          student_responses_map[student_uuid][group_uuid] = response_hash
+        end unless response_query.nil?
 
         # Calculate student CLUes
         student_clue_calculations =
@@ -206,13 +176,11 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           exercise_uuids = exercise_uuids_by_book_container_uuids[book_container_uuid]
           next if exercise_uuids.empty?
 
-          exercise_group_uuids = exercise_group_uuid_by_exercise_uuid.values_at(*exercise_uuids)
-                                                                     .compact
-                                                                     .uniq
+          group_uuids = group_uuids_by_book_container_uuids[book_container_uuid]
 
           student_uuids.uniq.map do |student_uuid|
             responses_map = student_responses_map[student_uuid]
-            responses = responses_map.values_at(*exercise_group_uuids).compact.flatten
+            response_hashes = responses_map.values_at(*group_uuids).compact
             next if responses.empty?
 
             StudentClueCalculation.new(
@@ -221,7 +189,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               book_container_uuid: book_container_uuid,
               student_uuid: student_uuid,
               exercise_uuids: exercise_uuids,
-              responses: responses
+              responses: response_hashes
             )
           end
         end.compact
@@ -245,9 +213,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           exercise_uuids = exercise_uuids_by_book_container_uuids[book_container_uuid]
           next if exercise_uuids.empty?
 
-          exercise_group_uuids = exercise_group_uuid_by_exercise_uuid.values_at(*exercise_uuids)
-                                                                     .compact
-                                                                     .uniq
+          group_uuids = group_uuids_by_book_container_uuids[book_container_uuid]
 
           course_container_uuids.uniq.map do |course_container_uuid|
             student_uuids = student_uuids_by_course_container_uuids[course_container_uuid]
@@ -268,9 +234,9 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             next if student_uuids.empty?
 
             responses_maps = teacher_responses_map.values_at(*student_uuids).compact
-            response_hashes = responses_maps.map do |responses_map|
-              responses_map.values_at(*exercise_group_uuids)
-            end.flatten.compact
+            response_hashes = responses_maps.flat_map do |responses_map|
+              responses_map.values_at(*group_uuids)
+            end.compact
             next if response_hashes.empty?
 
             TeacherClueCalculation.new(
