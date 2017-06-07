@@ -16,10 +16,10 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
     total_students = 0
     loop do
       num_students = Student.transaction do
-        # Get Students that don't have an ExerciseCalculation for their Courses' latest
-        # ecosystem or that have a response that has not yet been used in ExerciseCalculations
+        # Get Students that don't have an ExerciseCalculation for their Courses' latest ecosystem
+        # or that have a response that has not yet been used in ExerciseCalculations
         # Also return the Students' Courses' latest ecosystems
-        students = Student
+        student_uuid_ecosystem_uuid_pairs = Student
           .where(
             ExerciseCalculation.where(
               ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(co[:ecosystem_uuid])
@@ -32,23 +32,29 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
             )
           )
           .joins(:course)
-          .select([:uuid, :ecosystem_uuid])
+          .limit(BATCH_SIZE)
           .lock
-          .take(BATCH_SIZE)
-        student_uuids = students.map(&:uuid)
+          .pluck(:uuid, :ecosystem_uuid)
+        student_uuids = student_uuid_ecosystem_uuid_pairs.map(&:first)
+
+        # We lock the Responses here to avoid deadlocks when updating them later
+        response_uuids = Response
+          .where(student_uuid: student_uuids, used_in_exercise_calculations: false)
+          .lock
+          .pluck(:uuid)
 
         # For each student, the ecosystems that need calculations are the course's latest
         # ecosystem plus any ecosystems used by assignments that still need SPEs or PEs
-        ecosystem_uuid_student_uuid_pairs = (
-          students.map { |student| [ student.ecosystem_uuid, student.uuid ] } +
+        student_uuid_ecosystem_uuid_pairs = (
+          student_uuid_ecosystem_uuid_pairs +
           Assignment.need_spes_or_pes
                     .where(student_uuid: student_uuids)
-                    .pluck(:ecosystem_uuid, :student_uuid)
+                    .pluck(:student_uuid, :ecosystem_uuid)
         ).uniq
 
         # Create the ExerciseCalculations
-        exercise_calculations = ecosystem_uuid_student_uuid_pairs
-                                  .map do |ecosystem_uuid, student_uuid|
+        exercise_calculations = student_uuid_ecosystem_uuid_pairs
+                                  .map do |student_uuid, ecosystem_uuid|
           ExerciseCalculation.new(
             uuid: SecureRandom.uuid,
             ecosystem_uuid: ecosystem_uuid,
@@ -68,9 +74,9 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
         AlgorithmExerciseCalculation.unassociated.delete_all
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
-        Response.where(student_uuid: student_uuids).update_all(used_in_exercise_calculations: true)
+        Response.where(uuid: response_uuids).update_all(used_in_exercise_calculations: true)
 
-        students.size
+        student_uuids.size
       end
 
       # If we got less students than the batch size, then this is the last batch

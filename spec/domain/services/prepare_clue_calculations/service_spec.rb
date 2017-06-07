@@ -98,7 +98,7 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                        exercise_uuid: @exercise_5.uuid,
                                        used_in_clue_calculations: false
 
-      @unprocessed_responses = [ @response_4, @response_5, @response_8, @response_9, @response_10 ]
+      @unprocessed_responses = [ @response_4, @response_5, @response_8, @response_10 ]
 
       [ @response_1, @response_2, @response_3, @response_4, @response_5 ].each do |response|
         FactoryGirl.create :assigned_exercise, uuid: response.trial_uuid,

@@ -244,7 +244,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
 
     let(:exercise_calculation_attributes_set) do
       Set.new expected_exercise_calculations.map do |calc|
-        [ calc[:ecosystem_uuid], calc[:student_uuid] ]
+        [ calc[:student_uuid], calc[:ecosystem_uuid] ]
       end
     end
 
@@ -254,7 +254,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
                                                     .by(expected_exercise_calculations.size)
                                   .and not_change { AlgorithmExerciseCalculation.count }
 
-        ExerciseCalculation.pluck(:ecosystem_uuid, :student_uuid).each do |attributes|
+        ExerciseCalculation.pluck(:student_uuid, :ecosystem_uuid).each do |attributes|
           expect(exercise_calculation_attributes_set).to include attributes
         end
       end
@@ -281,7 +281,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
                                          .by(expected_exercise_calculations.size - 1)
                                   .and change { AlgorithmExerciseCalculation.count  }.by(-1)
 
-        ExerciseCalculation.pluck(:ecosystem_uuid, :student_uuid).each do |attributes|
+        ExerciseCalculation.pluck(:student_uuid, :ecosystem_uuid).each do |attributes|
           expect(exercise_calculation_attributes_set).to include attributes
         end
       end
