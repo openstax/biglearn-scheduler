@@ -660,11 +660,12 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                                      .reject do |book_container_uuid|
       ( assignment_type_exercise_uuids_map[book_container_uuid] - assignment_excluded_uuids ).empty?
     end.shuffle
-    return [] if book_container_uuids.empty?
 
-    num_pes_per_book_container, remainder = assignment.goal_num_tutor_assigned_pes.nil? ?
-      [DEFAULT_NUM_PES_PER_BOOK_CONTAINER, 0] :
-      assignment.goal_num_tutor_assigned_pes.divmod(book_container_uuids.size)
+    unless book_container_uuids.empty?
+      num_pes_per_book_container, remainder = assignment.goal_num_tutor_assigned_pes.nil? ?
+        [DEFAULT_NUM_PES_PER_BOOK_CONTAINER, 0] :
+        assignment.goal_num_tutor_assigned_pes.divmod(book_container_uuids.size)
+    end
 
     spy_info = {}
     chosen_pe_uuids = book_container_uuids.flat_map do |book_container_uuid|
