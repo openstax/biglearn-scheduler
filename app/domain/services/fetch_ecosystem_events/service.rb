@@ -11,7 +11,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
     # Since create_ecosystem is our only event here right now,
     # we can ignore all ecosystems that already processed it (sequence_number > 0)
-    ecosystem_ids_to_query = Ecosystem.where(sequence_number: 0).lock.ids
+    ecosystem_ids_to_query = Ecosystem.where(sequence_number: 0).ids
     total_ecosystems = ecosystem_ids_to_query.size
 
     results = []
@@ -23,7 +23,9 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
       ecosystem_ids.each_slice(ECOSYSTEM_BATCH_SIZE) do |ecosystem_ids|
         Ecosystem.transaction do
           ecosystem_event_requests = []
-          ecosystems_by_ecosystem_uuid = Ecosystem.where(id: ecosystem_ids).map do |ecosystem|
+          ecosystems_by_ecosystem_uuid = Ecosystem.where(id: ecosystem_ids)
+                                                  .lock('FOR UPDATE SKIP LOCKED')
+                                                  .map do |ecosystem|
             ecosystem_event_requests << { ecosystem: ecosystem, event_types: RELEVANT_EVENT_TYPES }
 
             [ ecosystem.uuid, ecosystem ]

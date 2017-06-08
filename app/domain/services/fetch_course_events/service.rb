@@ -32,7 +32,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       course_ids.each_slice(COURSE_BATCH_SIZE) do |course_ids|
         Course.transaction do
           course_event_requests = []
-          courses_by_course_uuid = Course.where(id: course_ids).lock.map do |course|
+          courses_by_course_uuid = Course.where(id: course_ids)
+                                         .lock('FOR UPDATE SKIP LOCKED')
+                                         .map do |course|
             course_event_requests << { course: course, event_types: RELEVANT_EVENT_TYPES }
 
             [ course.uuid, course ]

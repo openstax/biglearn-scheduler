@@ -33,7 +33,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           .where(
             StudentPe.where(spe[:algorithm_exercise_calculation_uuid].eq aec[:uuid]).exists.not
           )
-          .lock
+          .lock('FOR UPDATE SKIP LOCKED')
           .take(BATCH_SIZE)
         student_uuids = students.map(&:uuid)
 

@@ -20,7 +20,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         responses = Response.joins(:exercise, assigned_exercise: :assignment)
                             .where(used_in_clue_calculations: false)
                             .select([rr[Arel.star], ex[:group_uuid]])
-                            .lock
+                            .lock('FOR UPDATE SKIP LOCKED')
                             .take(BATCH_SIZE)
 
         # Build some hashes to minimize the number of queries

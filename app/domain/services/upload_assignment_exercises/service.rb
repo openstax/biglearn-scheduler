@@ -53,7 +53,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
           .where(uuid: algorithm_exercise_calculation_uuids)
           .select([:uuid, :algorithm_name, :exercise_uuids])
-          .lock
+          .lock('FOR UPDATE SKIP LOCKED')
           .index_by(&:uuid)
 
         pe_assignments = Assignment

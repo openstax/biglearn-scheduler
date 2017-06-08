@@ -13,7 +13,7 @@ class Services::UploadStudentClueCalculations::Service < Services::ApplicationSe
       num_calculations = AlgorithmStudentClueCalculation.transaction do
         # is_uploaded tracks the status of each calculation
         algorithm_calculations = AlgorithmStudentClueCalculation.where(is_uploaded: false)
-                                                                .lock
+                                                                .lock('FOR UPDATE SKIP LOCKED')
                                                                 .take(BATCH_SIZE)
 
         algorithm_calculations.size.tap do |num_calculations|

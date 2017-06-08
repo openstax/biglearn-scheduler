@@ -20,7 +20,9 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
           .with_new_response_ratio_above_threshold(threshold: UPDATE_THRESHOLD, limit: BATCH_SIZE)
           .joins(:ecosystem_exercises)
           .select('"ecosystem_exercises"."ecosystem_uuid"')
-        ecosystem_uuids = Ecosystem.where(uuid: subquery).lock.pluck(:uuid)
+        ecosystem_uuids = Ecosystem.where(uuid: subquery)
+                                   .lock('FOR UPDATE SKIP LOCKED')
+                                   .pluck(:uuid)
 
         ecosystem_matrix_updates = ecosystem_uuids.map do |ecosystem_uuid|
           EcosystemMatrixUpdate.new(
