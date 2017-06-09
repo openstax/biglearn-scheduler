@@ -6,7 +6,8 @@ class CreateResponses < ActiveRecord::Migration[5.0]
       t.uuid     :trial_uuid,                       null: false, index: true
       t.uuid     :student_uuid,                     null: false, index: true
       t.uuid     :exercise_uuid,                    null: false
-      t.datetime :responded_at,                     null: false, index: true
+      t.datetime :first_responded_at,               null: false, index: true
+      t.datetime :last_responded_at,                null: false, index: true
       t.boolean  :is_correct,                       null: false
       t.boolean  :used_in_clue_calculations,        null: false, index: true
       t.boolean  :used_in_exercise_calculations,    null: false, index: true

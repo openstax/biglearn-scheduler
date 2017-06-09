@@ -256,6 +256,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             end.each do |response_uuid, record_responses|
               last_record_response = record_responses.last
               data = last_record_response.fetch(:event_data)
+              responded_at = data.fetch(:responded_at)
 
               response_uuids << response_uuid
 
@@ -265,7 +266,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 trial_uuid: data.fetch(:trial_uuid),
                 student_uuid: data.fetch(:student_uuid),
                 exercise_uuid: data.fetch(:exercise_uuid),
-                responded_at: data.fetch(:responded_at),
+                first_responded_at: responded_at,
+                last_responded_at: responded_at,
                 is_correct: data.fetch(:is_correct),
                 used_in_clue_calculations: false,
                 used_in_exercise_calculations: false,
@@ -410,9 +412,12 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           )
 
           results << AssignedExercise.import(
-            assigned_exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+            assigned_exercises, validate: false, on_duplicate_key_ignore: {
+              conflict_target: [ :uuid ]
+            }
           )
 
+          # NOTE: first_responded_at is not included here so it is never updated after set
           results << Response.import(
             responses, validate: false, on_duplicate_key_update: {
               conflict_target: [ :uuid ],
@@ -420,7 +425,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 :trial_uuid,
                 :student_uuid,
                 :exercise_uuid,
-                :responded_at,
+                :last_responded_at,
                 :is_correct
               ]
             }

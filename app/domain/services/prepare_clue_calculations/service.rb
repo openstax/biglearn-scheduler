@@ -139,7 +139,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         Response
           .joins(:exercise, assigned_exercise: :assignment)
           .where(response_query)
-          .order(:responded_at)
+          .order(:last_responded_at)
           .pluck(:uuid, :trial_uuid, :student_uuid, :group_uuid, :is_correct, :feedback_at)
           .each do |response_uuid, trial_uuid, student_uuid, group_uuid, is_correct, feedback_at|
           used_response_uuids << response_uuid
