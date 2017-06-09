@@ -140,8 +140,8 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           .joins(:exercise, assigned_exercise: :assignment)
           .where(response_query)
           .order(:responded_at)
-          .pluck(:uuid, :trial_uuid, :student_uuid, :group_uuid, :is_correct, :due_at)
-          .each do |response_uuid, trial_uuid, student_uuid, group_uuid, is_correct, due_at|
+          .pluck(:uuid, :trial_uuid, :student_uuid, :group_uuid, :is_correct, :feedback_at)
+          .each do |response_uuid, trial_uuid, student_uuid, group_uuid, is_correct, feedback_at|
           used_response_uuids << response_uuid
 
           response_hash = {
@@ -152,7 +152,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
           teacher_responses_map[student_uuid][group_uuid] = response_hash
 
-          next unless due_at.nil? || due_at <= start_time
+          next unless feedback_at.nil? || feedback_at <= start_time
 
           student_responses_map[student_uuid][group_uuid] = response_hash
         end unless response_query.nil?

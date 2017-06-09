@@ -385,6 +385,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         end
       end
       let(:event_data)                        do
+        due_at = Time.now.tomorrow.utc.iso8601
+
         {
           request_uuid: event_uuid,
           course_uuid: course.uuid,
@@ -396,7 +398,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           assignment_type: assignment_type,
           exclusion_info: {
             opens_at: Time.now.yesterday.utc.iso8601,
-            due_at: Time.now.tomorrow.utc.iso8601
+            due_at: due_at,
+            feedback_at: due_at
           },
           assigned_book_container_uuids: assigned_book_container_uuids,
           goal_num_tutor_assigned_spes: goal_num_tutor_assigned_spes,

@@ -214,6 +214,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
               exclusion_info = data.fetch(:exclusion_info, {})
               opens_at = exclusion_info[:opens_at]
               due_at = exclusion_info[:due_at]
+              feedback_at = exclusion_info[:feedback_at]
 
               assignment = Assignment.new(
                 uuid: assignment_uuid,
@@ -223,6 +224,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 assignment_type: data.fetch(:assignment_type),
                 opens_at: opens_at.nil? ? nil : DateTime.parse(opens_at),
                 due_at: due_at.nil? ? nil : DateTime.parse(due_at),
+                feedback_at: feedback_at.nil? ? nil : DateTime.parse(feedback_at),
                 assigned_book_container_uuids: data.fetch(:assigned_book_container_uuids),
                 assigned_exercise_uuids: exercise_uuids,
                 goal_num_tutor_assigned_spes: data[:goal_num_tutor_assigned_spes],
@@ -396,6 +398,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 :assignment_type,
                 :opens_at,
                 :due_at,
+                :feedback_at,
                 :assigned_book_container_uuids,
                 :assigned_exercise_uuids,
                 :goal_num_tutor_assigned_spes,
