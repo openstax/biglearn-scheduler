@@ -63,29 +63,46 @@ class Assignment < ApplicationRecord
     end
     current_time ||= Time.current
 
+    # We use DENSE_RANK() for the student history because we want all assignments
+    # not yet in the student history to receive SPEs as if they were next in line
+    # One of the conditions for adding an assignment to the student history is answering questions
+    # and we do recalculate all outstanding SPEs for that student after every question answered
+    # Unfortunately, we don't yet recalculate all SPEs for a student after an incomplete assignment
+    # becomes due (the other condition for adding assignments to the student history)
+    # Avoiding stale SPEs when incomplete assignments become due would probably require
+    # a background job checking that condition periodically
     from(
       <<-SQL.strip_heredoc
         (
-          SELECT assignments.*, assignment_core_steps_completion.student_history_at,
-            row_number() OVER (
+          SELECT assignments.*,
+            assignment_core_step_responses.student_history_at,
+            ROW_NUMBER() OVER (
               PARTITION BY assignments.student_uuid, assignments.assignment_type
               ORDER BY assignments.due_at ASC, assignments.opens_at ASC, assignments.created_at ASC
             ) AS instructor_driven_sequence_number,
-            row_number() OVER (
+            DENSE_RANK() OVER (
               PARTITION BY assignments.student_uuid, assignments.assignment_type
-              ORDER BY assignment_core_steps_completion.student_history_at ASC
+              ORDER BY assignment_core_step_responses.student_history_at ASC
             ) AS student_driven_sequence_number
           FROM assignments
             LEFT OUTER JOIN LATERAL (
-              SELECT COALESCE(MAX(responses.responded_at), assignments.due_at) AS student_history_at
+              SELECT CASE
+                WHEN EVERY(responses.id IS NOT NULL)
+                  THEN MAX(responses.first_responded_at)
+                WHEN assignments.due_at <= '#{current_time.to_s(:db)}'
+                  THEN assignments.due_at
+                END AS student_history_at
               FROM assigned_exercises
-              LEFT OUTER JOIN responses ON responses.trial_uuid = assigned_exercises.uuid
+              LEFT OUTER JOIN responses
+                ON responses.trial_uuid = assigned_exercises.uuid
+                  AND (
+                    assignments.due_at IS NULL
+                      OR responses.first_responded_at <= assignments.due_at
+                  )
               WHERE assigned_exercises.assignment_uuid = assignments.uuid
                 AND assigned_exercises.is_spe = FALSE
               GROUP BY assigned_exercises.assignment_uuid
-              HAVING COUNT(assigned_exercises.*) = COUNT(DISTINCT responses.trial_uuid)
-                OR assignments.due_at <= '#{current_time.to_s(:db)}'
-            ) AS assignment_core_steps_completion
+            ) AS assignment_core_step_responses
               ON TRUE
           #{"WHERE #{wheres.join(' AND ')}" unless wheres.empty?}
         ) AS assignments

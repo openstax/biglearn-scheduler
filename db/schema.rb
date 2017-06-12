@@ -258,7 +258,8 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "trial_uuid",                       null: false
     t.uuid     "student_uuid",                     null: false
     t.uuid     "exercise_uuid",                    null: false
-    t.datetime "responded_at",                     null: false
+    t.datetime "first_responded_at",               null: false
+    t.datetime "last_responded_at",                null: false
     t.boolean  "is_correct",                       null: false
     t.boolean  "used_in_clue_calculations",        null: false
     t.boolean  "used_in_exercise_calculations",    null: false
@@ -267,7 +268,8 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.datetime "updated_at",                       null: false
     t.index ["ecosystem_uuid"], name: "index_responses_on_ecosystem_uuid", using: :btree
     t.index ["exercise_uuid", "used_in_ecosystem_matrix_updates"], name: "index_responses_on_ex_uuid_and_used_in_eco_mtx_updates", using: :btree
-    t.index ["responded_at"], name: "index_responses_on_responded_at", using: :btree
+    t.index ["first_responded_at"], name: "index_responses_on_first_responded_at", using: :btree
+    t.index ["last_responded_at"], name: "index_responses_on_last_responded_at", using: :btree
     t.index ["student_uuid"], name: "index_responses_on_student_uuid", using: :btree
     t.index ["trial_uuid"], name: "index_responses_on_trial_uuid", using: :btree
     t.index ["used_in_clue_calculations"], name: "index_responses_on_used_in_clue_calculations", using: :btree
