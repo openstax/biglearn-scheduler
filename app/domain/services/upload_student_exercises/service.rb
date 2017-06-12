@@ -83,14 +83,14 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           :course_excluded_exercise_group_uuids
         ).index_by(&:first)
 
-        # Get assignments that are not yet due for each student
-        not_yet_due_assignments = Assignment
-                                    .where(student_uuid: student_uuids)
-                                    .where(aa[:due_at].gt(start_time))
-                                    .pluck(:uuid, :student_uuid, :due_at, :assigned_exercise_uuids)
+        # Get assignments that should have hidden feedback for each student
+        no_feedback_yet_assignments = Assignment
+                                        .where(student_uuid: student_uuids)
+                                        .where(aa[:feedback_at].gt(start_time))
+                                        .pluck(:student_uuid, :assigned_exercise_uuids)
 
         # Convert not yet due exercise uuids to group uuids
-        assigned_exercise_uuids = not_yet_due_assignments.flat_map(&:fourth)
+        assigned_exercise_uuids = no_feedback_yet_assignments.flat_map(&:second)
         assigned_exercise_group_uuid_by_uuid = Exercise.where(uuid: assigned_exercise_uuids)
                                                        .pluck(:uuid, :group_uuid)
                                                        .to_h
@@ -127,7 +127,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         end
 
         # Add the exclusions from not yet due assignments to the map above
-        not_yet_due_assignments.each do |uuid, student_uuid, due_at, assigned_exercise_uuids|
+        no_feedback_yet_assignments.each do |student_uuid, assigned_exercise_uuids|
           excluded_group_uuids =
             assigned_exercise_group_uuid_by_uuid.values_at(*assigned_exercise_uuids)
           excluded_exercise_uuids =

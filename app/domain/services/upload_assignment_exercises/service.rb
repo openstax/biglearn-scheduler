@@ -275,15 +275,15 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           :course_excluded_exercise_group_uuids
         ).index_by(&:first)
 
-        # Get assignments that are not yet due for each student
+        # Get assignments that should have hidden feedback for each student
         student_uuids = assignments.map(&:student_uuid)
-        not_yet_due_assignments = Assignment
-                                    .where(student_uuid: student_uuids)
-                                    .where(aa[:due_at].gt(start_time))
-                                    .pluck(:uuid, :student_uuid, :due_at, :assigned_exercise_uuids)
+        no_feedback_yet_assignments = Assignment
+                                        .where(student_uuid: student_uuids)
+                                        .where(aa[:feedback_at].gt(start_time))
+                                        .pluck(:student_uuid, :assigned_exercise_uuids)
 
-        # Convert not yet due exercise uuids to group uuids
-        assigned_exercise_uuids = not_yet_due_assignments.flat_map(&:fourth)
+        # Convert excluded exercise uuids to group uuids
+        assigned_exercise_uuids = no_feedback_yet_assignments.flat_map(&:second)
         assigned_exercise_group_uuid_by_uuid = Exercise.where(uuid: assigned_exercise_uuids)
                                                        .pluck(:uuid, :group_uuid)
                                                        .to_h
@@ -319,8 +319,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           end
         end
 
-        # Add the exclusions from not yet due assignments to the map above
-        not_yet_due_assignments.each do |uuid, student_uuid, due_at, assigned_exercise_uuids|
+        # Add the exclusions from no_feedback_yet_assignments to the map above
+        no_feedback_yet_assignments.each do |student_uuid, assigned_exercise_uuids|
           excluded_group_uuids =
             assigned_exercise_group_uuid_by_uuid.values_at(*assigned_exercise_uuids)
           excluded_exercise_uuids =
@@ -639,7 +639,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     book_container_exercise_uuids =
       @exercise_uuids_map[assignment.assignment_type].values_at(*book_container_uuids).flatten
 
-    # Remove duplicates (same assignment), exclusions and assigned and not yet due exercises
+    # Remove duplicates (same assignment), assigned exercises and exclusions
     allowed_exercise_uuids = book_container_exercise_uuids -
                              assignment.assigned_exercise_uuids -
                              excluded_exercise_uuids

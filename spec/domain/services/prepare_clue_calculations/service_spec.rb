@@ -43,9 +43,9 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
 
       assignment_1 = FactoryGirl.create :assignment, student_uuid: @student_1.uuid
       assignment_2 = FactoryGirl.create :assignment, student_uuid: @student_2.uuid
-      # Not yet due
+      # Feedback not yet available
       assignment_3 = FactoryGirl.create :assignment, student_uuid: @student_2.uuid,
-                                                     due_at: Time.current.tomorrow
+                                                     feedback_at: Time.current.tomorrow
 
       @response_1 = FactoryGirl.create :response,
                                        is_correct: true,

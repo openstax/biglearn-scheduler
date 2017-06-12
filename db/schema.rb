@@ -115,6 +115,7 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.string   "assignment_type",               null: false
     t.datetime "opens_at"
     t.datetime "due_at"
+    t.datetime "feedback_at"
     t.uuid     "assigned_book_container_uuids", null: false, array: true
     t.uuid     "assigned_exercise_uuids",       null: false, array: true
     t.integer  "goal_num_tutor_assigned_spes"
@@ -126,8 +127,10 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.index ["course_uuid"], name: "index_assignments_on_course_uuid", using: :btree
     t.index ["due_at", "opens_at", "created_at"], name: "index_assignments_on_due_at_and_opens_at_and_created_at", using: :btree
     t.index ["ecosystem_uuid"], name: "index_assignments_on_ecosystem_uuid", using: :btree
+    t.index ["feedback_at"], name: "index_assignments_on_feedback_at", using: :btree
     t.index ["goal_num_tutor_assigned_pes"], name: "index_assignments_on_goal_num_tutor_assigned_pes", using: :btree
     t.index ["goal_num_tutor_assigned_spes"], name: "index_assignments_on_goal_num_tutor_assigned_spes", using: :btree
+    t.index ["opens_at"], name: "index_assignments_on_opens_at", using: :btree
     t.index ["pes_are_assigned"], name: "index_assignments_on_pes_are_assigned", using: :btree
     t.index ["spes_are_assigned"], name: "index_assignments_on_spes_are_assigned", using: :btree
     t.index ["student_uuid"], name: "index_assignments_on_student_uuid", using: :btree
