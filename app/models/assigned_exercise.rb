@@ -5,7 +5,7 @@ class AssignedExercise < ApplicationRecord
 
   has_many :responses, primary_key: :uuid,
                        foreign_key: :trial_uuid,
-                       inverse_of: :responses
+                       inverse_of: :assigned_exercise
 
   validates :exercise_uuid,   presence: true
 end

@@ -88,7 +88,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
               ecosystem.exercise_uuids = data.fetch(:exercises).map do |exercise|
                 exercise.fetch(:exercise_uuid).tap do |exercise_uuid|
-                  book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid]
+                  book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid].uniq
 
                   exercises << Exercise.new(
                     uuid: exercise_uuid,

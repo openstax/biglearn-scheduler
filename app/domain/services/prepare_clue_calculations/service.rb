@@ -49,17 +49,12 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                                               .to_h
 
         # Build a query to obtain the book_container_uuids for the new Responses
-        # Mark the responses as used in CLUe calculations
-        # (in case we don't use them later because they got removed from the book or something)
-        used_response_uuids = []
         ee_query = responses.map do |response|
           student_uuid = response.student_uuid
           course_uuid = course_uuid_by_student_uuid[student_uuid]
           ecosystem_uuid = ecosystem_uuid_by_course_uuid[course_uuid]
 
           group_uuid = response.group_uuid
-
-          used_response_uuids << response.uuid
 
           ee[:ecosystem_uuid].eq(ecosystem_uuid).and ex[:group_uuid].eq(group_uuid)
         end.compact.reduce(:or)
@@ -134,6 +129,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         # Map student_uuids and exercise_group_uuids to correctness information
         # Take only the latest answer for each exercise_group_uuid
         # Mark responses found here as used in CLUe calculations
+        # Don't use SKIP LOCKED here because we need all responses that match the queries
         student_responses_map = Hash.new { |hash, key| hash[key] = {} }
         teacher_responses_map = Hash.new { |hash, key| hash[key] = {} }
         Response
@@ -142,8 +138,6 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           .order(:last_responded_at)
           .pluck(:uuid, :trial_uuid, :student_uuid, :group_uuid, :is_correct, :feedback_at)
           .each do |response_uuid, trial_uuid, student_uuid, group_uuid, is_correct, feedback_at|
-          used_response_uuids << response_uuid
-
           response_hash = {
             response_uuid: response_uuid,
             trial_uuid: trial_uuid,
@@ -276,7 +270,8 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         AlgorithmTeacherClueCalculation.unassociated.delete_all
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
-        Response.where(uuid: used_response_uuids).update_all(used_in_clue_calculations: true)
+        response_uuids = responses.map(&:uuid)
+        Response.where(uuid: response_uuids).update_all(used_in_clue_calculations: true)
 
         responses.size
       end
