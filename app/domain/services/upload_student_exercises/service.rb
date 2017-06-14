@@ -169,7 +169,6 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           algorithm_exercise_calculation_uuid = student.algorithm_exercise_calculation_uuid
           # Assign the candidate exercises for each position in the worst_clue_pes_map
           # based on the priority of each CLUe
-          spy_info = {}
           chosen_pe_uuids = []
           worst_clues.each_with_index do |clue, index|
             clue_num_pes = worst_clue_num_pes_map[index] || 0
@@ -186,17 +185,16 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
             new_chosen_pe_uuids = prioritized_candidate_pe_uuids.first(clue_num_pes)
 
             chosen_pe_uuids.concat new_chosen_pe_uuids
-
-            new_chosen_pe_uuids.each do |chosen_pe_uuid|
-              spy_info[chosen_pe_uuid] = { book_container_uuid: clue.book_container_uuid }
-            end
           end
 
           student_pe_request = {
             student_uuid: student_uuid,
             exercise_uuids: chosen_pe_uuids,
             algorithm_name: exercise_algorithm_name,
-            spy_info: spy_info
+            spy_info: {
+              clue_algorithm_name: clue_algorithm_name,
+              exercise_algorithm_name: exercise_algorithm_name
+            }
           }
           student_pe_requests << student_pe_request
 

@@ -361,11 +361,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         end
 
         # Map book_container_uuids with exercises to the current ecosystem spaced assignments
-        # Also map assignment_uuids for use in the SPE spy info
-        instructor_book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
-        student_book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
-        instructor_assignment_uuids_map = Hash.new { |hash, key| hash[key] = {} }
-        student_assignment_uuids_map = Hash.new { |hash, key| hash[key] = {} }
+        # Also store assignment_uuids for use in the SPE spy info
+        mapped_instructor_histories = Hash.new { |hash, key| hash[key] = {} }
+        mapped_student_histories = Hash.new { |hash, key| hash[key] = {} }
         spe_assignments.each do |spe_assignment|
           uuid = spe_assignment.uuid
           student_uuid = spe_assignment.student_uuid
@@ -392,8 +390,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                 end
               end
 
-            instructor_book_container_uuids_map[uuid][k_ago] = instructor_mapped_book_containers
-            instructor_assignment_uuids_map[uuid][k_ago] = spaced_uuid
+            mapped_instructor_histories[uuid][k_ago] = {
+              assignment_uuid: spaced_uuid,
+              book_container_uuids: instructor_mapped_book_containers
+            }
           end
           ALL_K_AGOS.each do |k_ago|
             student_spaced_sequence_number = student_sequence_number - k_ago
@@ -409,8 +409,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               end
             end
 
-            student_book_container_uuids_map[uuid][k_ago] = student_mapped_book_containers
-            student_assignment_uuids_map[uuid][k_ago] = spaced_uuid
+            mapped_student_histories[uuid][k_ago] = {
+              assignment_uuid: spaced_uuid,
+              book_container_uuids: student_mapped_book_containers
+            }
           end
         end
 
@@ -491,14 +493,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
           assigned_book_container_uuids = assignment.assigned_book_container_uuids
 
-          assignment_instructor_book_container_uuids_map = \
-            instructor_book_container_uuids_map[assignment_uuid]
-          assignment_student_book_container_uuids_map = \
-            student_book_container_uuids_map[assignment_uuid]
-          assignment_instructor_assignment_uuids_map = \
-            instructor_assignment_uuids_map[assignment_uuid]
-          assignment_student_assignment_uuids_map = \
-            student_assignment_uuids_map[assignment_uuid]
+          mapped_instructor_history = mapped_instructor_histories[assignment_uuid]
+          mapped_student_history = mapped_student_histories[assignment_uuid]
 
           instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(
             assignment_uuid
@@ -515,11 +511,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             assignment: assignment,
             assignment_sequence_number: instructor_sequence_number,
             history_type: :instructor_driven,
-            assignment_book_container_uuids_map: assignment_instructor_book_container_uuids_map,
+            assignment_history: mapped_instructor_history,
             algorithm_name: algorithm_name,
             prioritized_exercise_uuids: prioritized_exercise_uuids,
-            excluded_exercise_uuids: excluded_exercise_uuids,
-            assignment_uuids_map: assignment_instructor_assignment_uuids_map
+            excluded_exercise_uuids: excluded_exercise_uuids
           )
           assignment_spe_requests << instructor_driven_spe_request
 
@@ -543,11 +538,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             assignment: assignment,
             assignment_sequence_number: student_sequence_number,
             history_type: :student_driven,
-            assignment_book_container_uuids_map: assignment_student_book_container_uuids_map,
+            assignment_history: mapped_student_history,
             algorithm_name: algorithm_name,
             prioritized_exercise_uuids: prioritized_exercise_uuids,
-            excluded_exercise_uuids: excluded_exercise_uuids,
-            assignment_uuids_map: assignment_student_assignment_uuids_map
+            excluded_exercise_uuids: excluded_exercise_uuids
           )
           assignment_spe_requests << student_driven_spe_request
 
@@ -667,7 +661,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         assignment.goal_num_tutor_assigned_pes.divmod(book_container_uuids.size)
     end
 
-    spy_info = {}
     chosen_pe_uuids = book_container_uuids.flat_map do |book_container_uuid|
       book_container_num_pes = remainder > 0 ?
         num_pes_per_book_container + 1 : num_pes_per_book_container
@@ -683,11 +676,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         num_chosen_pes = chosen_pe_uuids.size
         remainder += num_pes_per_book_container - num_chosen_pes
         assignment_excluded_uuids += chosen_pe_uuids
-
-        # PE spy info
-        chosen_pe_uuids.each do |chosen_pe_uuid|
-          spy_info[chosen_pe_uuid] = { book_container_uuid: book_container_uuid }
-        end
       end
     end
 
@@ -695,18 +683,17 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       assignment_uuid: assignment.uuid,
       exercise_uuids: chosen_pe_uuids,
       algorithm_name: algorithm_name,
-      spy_info: spy_info
+      spy_info: { exercise_algorithm_name: algorithm_name }
     }
   end
 
   def build_spe_request(assignment:,
                         assignment_sequence_number:,
                         history_type:,
-                        assignment_book_container_uuids_map:,
+                        assignment_history:,
                         algorithm_name:,
                         prioritized_exercise_uuids:,
-                        excluded_exercise_uuids:,
-                        assignment_uuids_map:)
+                        excluded_exercise_uuids:)
     assignment_uuid = assignment.uuid
     assignment_type = assignment.assignment_type
 
@@ -719,15 +706,16 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     forbidden_random_k_agos = k_ago_map.map(&:first).compact
     allowed_random_k_agos = RANDOM_K_AGOS - forbidden_random_k_agos
     num_remaining_exercises = 0
-    spy_info = {}
+    exercises_spy_info = {}
     chosen_spe_uuids = k_ago_map.flat_map do |k_ago, num_exercises|
       num_remaining_exercises += num_exercises
 
-      book_container_uuids = (
-        k_ago.nil? ?
-          assignment_book_container_uuids_map.values_at(*allowed_random_k_agos).compact.flatten :
-          assignment_book_container_uuids_map[k_ago]
-      ).uniq#.shuffle # TODO: Shuffle causes intermittent failure... see question in #tutor-biglearn
+      k_agos = k_ago.nil? ? allowed_random_k_agos : [ k_ago ]
+      spaced_assignments = assignment_history.values_at(*k_agos).flatten.compact
+      book_container_uuids = spaced_assignments.flat_map { |hash| hash[:book_container_uuids] }
+                                               .uniq
+                                              #.shuffle
+      # TODO: Shuffle causes intermittent failure... see question in #tutor-biglearn
       num_book_containers = book_container_uuids.size
 
       next [] if num_book_containers == 0
@@ -757,13 +745,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                                         .find do |k_ago, book_container_uuids|
             book_container_uuids.include? book_container_uuid
           end : k_ago
-          spaced_assignment_uuid = assignment_uuids_map[chosen_k_ago]
           chosen_spe_uuids.each do |chosen_spe_uuid|
-            spy_info[chosen_spe_uuid] = {
-              k_ago: chosen_k_ago,
-              assignment_uuid: spaced_assignment_uuid,
-              book_container_uuid: book_container_uuid
-            }
+            exercises_spy_info[chosen_spe_uuid] = { k_ago: chosen_k_ago, is_random_ago: k_ago.nil? }
           end
         end
       end
@@ -780,20 +763,19 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
     # PE as SPE spy info
     chosen_pe_uuids.each do |chosen_pe_uuid|
-      spy_info[chosen_pe_uuid] = {
-        k_ago: 0,
-        assignment_uuid: assignment_uuid,
-        book_container_uuid: assignment.assigned_book_container_uuids.find do |book_container_uuid|
-          @exercise_uuids_map[assignment_type][book_container_uuid].include? chosen_pe_uuid
-        end
-      }
+      exercises_spy_info[chosen_pe_uuid] = { k_ago: 0 }
     end
 
     {
       assignment_uuid: assignment_uuid,
       exercise_uuids: chosen_spe_uuids + chosen_pe_uuids,
       algorithm_name: "#{history_type}_#{algorithm_name}",
-      spy_info: spy_info
+      spy_info: {
+        exercise_algorithm_name: algorithm_name,
+        history_type: history_type,
+        assignment_history: assignment_history,
+        exercises: exercises_spy_info
+      }
     }
   end
 end
