@@ -15,7 +15,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
   ]
 
   def process
-    start_time = Time.now
+    start_time = Time.current
     Rails.logger.tagged 'FetchCourseEvents' do |logger|
       logger.debug { "Started at #{start_time}" }
     end
@@ -555,7 +555,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     Rails.logger.tagged 'FetchCourseEvents' do |logger|
       logger.debug do
         conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-        time = Time.now - start_time
+        time = Time.current - start_time
 
         "Received: #{total_events} event(s) from #{total_courses} course(s)" +
         " with #{conflicts} conflict(s) in #{time} second(s)"

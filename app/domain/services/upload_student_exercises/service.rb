@@ -5,7 +5,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
   MAX_NUM_WORST_CLUES = NUM_PES_PER_STUDENT
 
   def process
-    start_time = Time.now
+    start_time = Time.current
     Rails.logger.tagged 'UploadStudentExercises' do |logger|
       logger.debug { "Started at #{start_time}" }
     end
@@ -228,7 +228,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
 
     Rails.logger.tagged 'UploadStudentExercises' do |logger|
       logger.debug do
-        "#{total_students} student(s) processed in #{Time.now - start_time} second(s)"
+        "#{total_students} student(s) processed in #{Time.current - start_time} second(s)"
       end
     end
   end

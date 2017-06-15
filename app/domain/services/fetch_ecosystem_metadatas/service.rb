@@ -1,6 +1,6 @@
 class Services::FetchEcosystemMetadatas::Service < Services::ApplicationService
   def process
-    start_time = Time.now
+    start_time = Time.current
     Rails.logger.tagged 'FetchEcosystemMetadatas' do |logger|
       logger.debug { "Started at #{start_time}" }
     end
@@ -19,7 +19,7 @@ class Services::FetchEcosystemMetadatas::Service < Services::ApplicationService
         conflicts = result.failed_instances.size
         successes = metadatas - conflicts
         total = Ecosystem.count
-        time = Time.now - start_time
+        time = Time.current - start_time
 
         "Received: #{metadatas} - Existing: #{conflicts} - New: #{successes}" +
         " - Total: #{total} - Took: #{time} second(s)"

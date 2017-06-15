@@ -14,7 +14,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
   # NOTE: We don't support partial PE/SPE assignments, we create all of them in one go
   def process
-    start_time = Time.now
+    start_time = Time.current
     Rails.logger.tagged 'UploadAssignmentExercises' do |logger|
       logger.debug { "Started at #{start_time}" }
     end
@@ -589,7 +589,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     Rails.logger.tagged 'UploadAssignmentExercises' do |logger|
       logger.debug do
         "#{total_algorithm_exercise_calculations} algorithm exercise calculations(s) and #{
-          total_assignments} assignment(s) processed in #{Time.now - start_time} second(s)"
+          total_assignments} assignment(s) processed in #{Time.current - start_time} second(s)"
       end
     end
   end

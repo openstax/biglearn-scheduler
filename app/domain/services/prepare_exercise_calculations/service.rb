@@ -2,7 +2,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
   BATCH_SIZE = 1000
 
   def process
-    start_time = Time.now
+    start_time = Time.current
     Rails.logger.tagged 'PrepareExerciseCalculations' do |logger|
       logger.debug { "Started at #{start_time}" }
     end
@@ -86,7 +86,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
 
     Rails.logger.tagged 'PrepareExerciseCalculations' do |logger|
       logger.debug do
-        "#{total_students} student(s) processed in #{Time.now - start_time} second(s)"
+        "#{total_students} student(s) processed in #{Time.current - start_time} second(s)"
       end
     end
   end

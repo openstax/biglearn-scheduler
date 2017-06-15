@@ -2,7 +2,7 @@ class Services::UploadStudentClueCalculations::Service < Services::ApplicationSe
   BATCH_SIZE = 1000
 
   def process
-    start_time = Time.now
+    start_time = Time.current
     Rails.logger.tagged 'UploadStudentClueCalculations' do |logger|
       logger.debug { "Started at #{start_time}" }
     end
@@ -62,7 +62,7 @@ class Services::UploadStudentClueCalculations::Service < Services::ApplicationSe
 
     Rails.logger.tagged 'UploadStudentClueCalculations' do |logger|
       logger.debug do
-        "#{total_calculations} calculation(s) uploaded in #{Time.now - start_time} second(s)"
+        "#{total_calculations} calculation(s) uploaded in #{Time.current - start_time} second(s)"
       end
     end
   end

@@ -1,6 +1,6 @@
 class Services::FetchCourseMetadatas::Service < Services::ApplicationService
   def process
-    start_time = Time.now
+    start_time = Time.current
     Rails.logger.tagged 'FetchCourseMetadatas' do |logger|
       logger.debug { "Started at #{start_time}" }
     end
@@ -25,7 +25,7 @@ class Services::FetchCourseMetadatas::Service < Services::ApplicationService
         conflicts = result.failed_instances.size
         successes = metadatas - conflicts
         total = Course.count
-        time = Time.now - start_time
+        time = Time.current - start_time
 
         "Received: #{metadatas} - Existing: #{conflicts} - New: #{successes}" +
         " - Total: #{total} - Took: #{time} second(s)"

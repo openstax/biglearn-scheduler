@@ -4,7 +4,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
   RELEVANT_EVENT_TYPES = [ :create_ecosystem ]
 
   def process
-    start_time = Time.now
+    start_time = Time.current
     Rails.logger.tagged 'FetchEcosystemEvents' do |logger|
       logger.debug { "Started at #{start_time}" }
     end
@@ -141,7 +141,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
     Rails.logger.tagged 'FetchEcosystemEvents' do |logger|
       logger.debug do
         conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-        time = Time.now - start_time
+        time = Time.current - start_time
 
         "Received #{total_events} event(s) from #{total_ecosystems} ecosystems(s)" +
         " with #{conflicts} conflict(s) in #{time} second(s)"

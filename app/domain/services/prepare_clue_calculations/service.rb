@@ -2,7 +2,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 1000
 
   def process
-    start_time = Time.now
+    start_time = Time.current
     Rails.logger.tagged 'PrepareClueCalculations' do |logger|
       logger.debug { "Started at #{start_time}" }
     end
@@ -283,7 +283,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
     Rails.logger.tagged 'PrepareClueCalculations' do |logger|
       logger.debug do
-        "#{total_responses} response(s) processed in #{Time.now - start_time} second(s)"
+        "#{total_responses} response(s) processed in #{Time.current - start_time} second(s)"
       end
     end
   end
