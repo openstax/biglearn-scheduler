@@ -362,6 +362,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
         # Map book_container_uuids with exercises to the current ecosystem spaced assignments
         # Also store assignment_uuids for use in the SPE spy info
+        # Each book_container_uuid can only appear in the history once (the most recent time)
         mapped_instructor_histories = Hash.new { |hash, key| hash[key] = {} }
         mapped_student_histories = Hash.new { |hash, key| hash[key] = {} }
         spe_assignments.each do |spe_assignment|
@@ -375,39 +376,47 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
           to_ecosystem_uuid = spe_assignment.ecosystem_uuid
 
+          instructor_book_container_uuids = spe_assignment.assigned_book_container_uuids.dup
           NON_RANDOM_K_AGOS.each do |k_ago|
             instructor_spaced_sequence_number = instructor_sequence_number - k_ago
             spaced_uuid, instructor_from_ecosystem_uuid, instructor_spaced_book_container_uuids = \
               instructor_history[instructor_spaced_sequence_number]
             instructor_spaced_book_container_uuids ||= []
 
-            instructor_mapped_book_containers = \
+            instructor_mapped_book_containers =
               if instructor_from_ecosystem_uuid == to_ecosystem_uuid
                 instructor_spaced_book_container_uuids
               else
                 instructor_spaced_book_container_uuids.map do |book_container_uuid|
                   ecosystems_map[to_ecosystem_uuid][book_container_uuid]
                 end
-              end
+              end - instructor_book_container_uuids
+
+            instructor_book_container_uuids.concat instructor_mapped_book_containers
 
             mapped_instructor_histories[uuid][k_ago] = {
               assignment_uuid: spaced_uuid,
               book_container_uuids: instructor_mapped_book_containers
             }
           end
+
+          student_book_container_uuids = spe_assignment.assigned_book_container_uuids.dup
           ALL_K_AGOS.each do |k_ago|
             student_spaced_sequence_number = student_sequence_number - k_ago
             spaced_uuid, student_from_ecosystem_uuid, student_spaced_book_container_uuids = \
               student_history[student_spaced_sequence_number]
             student_spaced_book_container_uuids ||= []
 
-            student_mapped_book_containers = if student_from_ecosystem_uuid == to_ecosystem_uuid
-              student_spaced_book_container_uuids
-            else
-              student_spaced_book_container_uuids.map do |book_container_uuid|
-                ecosystems_map[to_ecosystem_uuid][book_container_uuid]
-              end
-            end
+            student_mapped_book_containers =
+              if student_from_ecosystem_uuid == to_ecosystem_uuid
+                student_spaced_book_container_uuids
+              else
+                student_spaced_book_container_uuids.map do |book_container_uuid|
+                  ecosystems_map[to_ecosystem_uuid][book_container_uuid]
+                end
+              end - student_book_container_uuids
+
+            student_book_container_uuids.concat student_mapped_book_containers
 
             mapped_student_histories[uuid][k_ago] = {
               assignment_uuid: spaced_uuid,
@@ -717,8 +726,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       spaced_assignments = assignment_history.values_at(*k_agos).flatten.compact
       book_container_uuids = spaced_assignments.flat_map { |hash| hash[:book_container_uuids] }
                                                .uniq
-                                              #.shuffle
-      # TODO: Shuffle causes intermittent failure... see question in #tutor-biglearn
+                                               .shuffle
       num_book_containers = book_container_uuids.size
 
       next [] if num_book_containers == 0
