@@ -683,7 +683,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       assignment_uuid: assignment.uuid,
       exercise_uuids: chosen_pe_uuids,
       algorithm_name: algorithm_name,
-      spy_info: { exercise_algorithm_name: algorithm_name }
+      spy_info: {
+        assignment_type: assignment_type,
+        exercise_algorithm_name: algorithm_name
+      }
     }
   end
 
@@ -771,6 +774,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       exercise_uuids: chosen_spe_uuids + chosen_pe_uuids,
       algorithm_name: "#{history_type}_#{algorithm_name}",
       spy_info: {
+        assignment_type: assignment_type,
         exercise_algorithm_name: algorithm_name,
         history_type: history_type,
         assignment_history: assignment_history,
