@@ -754,7 +754,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           # SPE spy info
           chosen_k_ago = k_ago.nil? ? assignment_history.find do |k_ago, history_entry|
             history_entry[:book_container_uuids].include? book_container_uuid
-          end : k_ago
+          end.first : k_ago
           chosen_spe_uuids.each do |chosen_spe_uuid|
             exercises_spy_info[chosen_spe_uuid] = { k_ago: chosen_k_ago, is_random_ago: k_ago.nil? }
           end
