@@ -376,8 +376,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
           to_ecosystem_uuid = spe_assignment.ecosystem_uuid
 
-          instructor_book_container_uuids = spe_assignment.assigned_book_container_uuids.dup
-          NON_RANDOM_K_AGOS.each do |k_ago|
+          instructor_book_container_uuids = []
+          ([ 0 ] + NON_RANDOM_K_AGOS).each do |k_ago|
             instructor_spaced_sequence_number = instructor_sequence_number - k_ago
             spaced_uuid, instructor_from_ecosystem_uuid, instructor_spaced_book_container_uuids = \
               instructor_history[instructor_spaced_sequence_number]
@@ -400,8 +400,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             }
           end
 
-          student_book_container_uuids = spe_assignment.assigned_book_container_uuids.dup
-          ALL_K_AGOS.each do |k_ago|
+          student_book_container_uuids = []
+          ([ 0 ] + ALL_K_AGOS).each do |k_ago|
             student_spaced_sequence_number = student_sequence_number - k_ago
             spaced_uuid, student_from_ecosystem_uuid, student_spaced_book_container_uuids = \
               student_history[student_spaced_sequence_number]
