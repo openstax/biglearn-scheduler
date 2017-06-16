@@ -54,6 +54,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           .select([:uuid, :algorithm_name, :exercise_uuids])
           .lock('FOR UPDATE SKIP LOCKED')
           .index_by(&:uuid)
+        # Reload the uuids since they may have changed between the first request and the lock
+        algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
 
         pe_assignments = Assignment
           .need_pes
