@@ -775,7 +775,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
     # PE as SPE spy info
     chosen_pe_uuids.each do |chosen_pe_uuid|
-      exercises_spy_info[chosen_pe_uuid] = { k_ago: 0 }
+      exercises_spy_info[chosen_pe_uuid] = { k_ago: 0, is_random_ago: false }
     end
 
     {
