@@ -5,7 +5,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
   DEFAULT_NUM_PES_PER_BOOK_CONTAINER = 3
   DEFAULT_NUM_SPES_PER_K_AGO = 1
 
-  K_AGOS_TO_LOAD = [ 0, 1, 2, 3, 4, 5 ]
+  K_AGOS_TO_LOAD = [ 1, 2, 3, 4, 5 ]
   NON_RANDOM_K_AGOS = [ 1, 3, 5 ]
   MAX_K_AGO = K_AGOS_TO_LOAD.max
 
@@ -112,14 +112,14 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(uuid)
           instructor_sequence_number_query =
             aa[:instructor_driven_sequence_number].gteq(instructor_sequence_number - MAX_K_AGO).and(
-              aa[:instructor_driven_sequence_number].lteq(instructor_sequence_number)
+              aa[:instructor_driven_sequence_number].lt(instructor_sequence_number)
             )
 
           # Find the range of allowed k's for student SPEs
           student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
           student_sequence_number_query =
             aa[:student_driven_sequence_number].gteq(student_sequence_number - MAX_K_AGO).and(
-              aa[:student_driven_sequence_number].lteq(student_sequence_number)
+              aa[:student_driven_sequence_number].lt(student_sequence_number)
             )
 
           sequence_number_query = instructor_sequence_number_query.or student_sequence_number_query
@@ -369,6 +369,18 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         mapped_student_histories = Hash.new { |hash, key| hash[key] = {} }
         spe_assignments.each do |spe_assignment|
           uuid = spe_assignment.uuid
+          assigned_book_container_uuids = spe_assignment.assigned_book_container_uuids
+
+          # Add the current assignment as 0-ago
+          mapped_instructor_histories[uuid][0] = {
+            assignment_uuid: uuid,
+            book_container_uuids: assigned_book_container_uuids
+          }
+          mapped_student_histories[uuid][0] = {
+            assignment_uuid: uuid,
+            book_container_uuids: assigned_book_container_uuids
+          }
+
           student_uuid = spe_assignment.student_uuid
           assignment_type = spe_assignment.assignment_type
           instructor_history = instructor_histories[student_uuid][assignment_type]
@@ -378,7 +390,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
           to_ecosystem_uuid = spe_assignment.ecosystem_uuid
 
-          instructor_book_container_uuids = []
+          instructor_book_container_uuids = assigned_book_container_uuids.dup
           K_AGOS_TO_LOAD.each do |k_ago|
             instructor_spaced_sequence_number = instructor_sequence_number - k_ago
             spaced_uuid, instructor_from_ecosystem_uuid, instructor_spaced_book_container_uuids = \
@@ -402,7 +414,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             }
           end
 
-          student_book_container_uuids = []
+          student_book_container_uuids = assigned_book_container_uuids.dup
           K_AGOS_TO_LOAD.each do |k_ago|
             student_spaced_sequence_number = student_sequence_number - k_ago
             spaced_uuid, student_from_ecosystem_uuid, student_spaced_book_container_uuids = \
@@ -719,7 +731,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
     assignment_excluded_uuids = excluded_exercise_uuids
 
-    forbidden_random_k_agos = [ 0 ] + k_ago_map.map(&:first).compact
+    forbidden_random_k_agos = k_ago_map.map(&:first).compact
     allowed_random_k_agos = K_AGOS_TO_LOAD - forbidden_random_k_agos
     num_remaining_exercises = 0
     exercises_spy_info = {}
