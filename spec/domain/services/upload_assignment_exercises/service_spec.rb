@@ -312,9 +312,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # 1 SPEs, 1 PEs requested; PE is filled
-      # EO: SPE filled from reading 1
-      # RO: SPE filled from reading 3
+      # 2 SPEs (1 random-ago), 1 PEs requested; PE is filled
+      # EO: 1-ago SPE filled from reading 1, random-ago SPE filled as PE
+      # RO: 1-ago SPE filled from reading 3, random-ago SPE filled as PE
       @reading_2 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -326,15 +326,15 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         assigned_book_container_uuids: [
           @reading_pool_3_new.book_container_uuid, @reading_pool_4_new.book_container_uuid
         ],
-        goal_num_tutor_assigned_spes: 1,
+        goal_num_tutor_assigned_spes: 2,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 1,
         pes_are_assigned: false
       )
 
-      # 2 SPEs, 2 PEs requested; PEs are filled
-      # EO: 1-ago SPE filled from reading 2, 3-ago SPE filled as PE since no 3-ago reading
-      # RO: Only 1 SPE filled as PE since the real PEs took 2 out of 3 available exercises
+      # 3 SPEs (1 random-ago), 2 PEs requested; PEs are filled taking 2 out of 3 available exercises
+      # EO: 1-ago SPE filled from reading 2, 3-ago SPE filled as PE, random-ago SPE unfilled
+      # RO: Only 1-ago SPE filled as PE
       @reading_3 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -346,7 +346,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         assigned_book_container_uuids: [
           @reading_pool_4_new.book_container_uuid, @reading_pool_5_new.book_container_uuid
         ],
-        goal_num_tutor_assigned_spes: 2,
+        goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 2,
         pes_are_assigned: false
@@ -354,7 +354,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
 
       # These homeworks are taking all available exercises, so no PEs are possible
 
-      # 2 SPEs, 1 PE requested; PE cannot be filled
+      # 3 SPEs, 1 PE requested; PE cannot be filled
       # EO: No exercises available to fill anything
       # RO: Only 1-ago SPE can be filled from homework 2
       @homework_1 = FactoryGirl.create(
@@ -368,13 +368,13 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         assigned_book_container_uuids: [
           @homework_pool_1_old.book_container_uuid, @homework_pool_2_old.book_container_uuid
         ],
-        goal_num_tutor_assigned_spes: 2,
+        goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 1,
         pes_are_assigned: false
       )
 
-      # 1 SPE, 1 PE requested; PE cannot be filled
+      # 2 SPEs, 1 PE requested; PE cannot be filled
       # EO: Only 1-ago SPE can be filled from homework 1
       # RO: Only 1-ago SPE can be filled from homework 3
       @homework_2 = FactoryGirl.create(
@@ -388,13 +388,13 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         assigned_book_container_uuids: [
           @homework_pool_3_new.book_container_uuid, @homework_pool_4_new.book_container_uuid
         ],
-        goal_num_tutor_assigned_spes: 1,
+        goal_num_tutor_assigned_spes: 2,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 1,
         pes_are_assigned: false
       )
 
-      # 2 SPEs, 1 PE requested; PE cannot be filled
+      # 3 SPEs, 1 PE requested; PE cannot be filled
       # EO: Only 1-ago SPE can be filled from homework 2
       # RO: No exercises available to fill anything
       @homework_3 = FactoryGirl.create(
@@ -408,7 +408,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         assigned_book_container_uuids: [
           @homework_pool_4_new.book_container_uuid, @homework_pool_5_new.book_container_uuid
         ],
-        goal_num_tutor_assigned_spes: 2,
+        goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 1,
         pes_are_assigned: false
@@ -544,18 +544,22 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             assignment_uuid: @reading_2.uuid,
             history_type: 'instructor_driven',
             exercise_pool: @reading_pool_1_new.exercise_uuids +
-                           @reading_pool_2_new.exercise_uuids -
+                           @reading_pool_2_new.exercise_uuids +
+                           @reading_pool_3_new.exercise_uuids +
+                           @reading_pool_4_new.exercise_uuids -
                            @reading_2.assigned_exercise_uuids,
-            exercise_count: 1
+            exercise_count: 2
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
             assignment_uuid: @reading_2.uuid,
             history_type: 'student_driven',
             exercise_pool: @reading_pool_1_new.exercise_uuids +
-                           @reading_pool_2_new.exercise_uuids -
+                           @reading_pool_2_new.exercise_uuids +
+                           @reading_pool_3_new.exercise_uuids +
+                           @reading_pool_4_new.exercise_uuids -
                            @reading_2.assigned_exercise_uuids,
-            exercise_count: 1
+            exercise_count: 2
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
@@ -698,18 +702,21 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             assignment_uuid: @reading_2.uuid,
             history_type: 'instructor_driven',
             exercise_pool: @reading_pool_1_new.exercise_uuids +
-                           @reading_pool_2_new.exercise_uuids -
+                           @reading_pool_2_new.exercise_uuids +
+                           @reading_pool_3_new.exercise_uuids +
+                           @reading_pool_4_new.exercise_uuids -
                            @reading_2.assigned_exercise_uuids,
-            exercise_count: 1
+            exercise_count: 2
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
             assignment_uuid: @reading_2.uuid,
             history_type: 'student_driven',
-            exercise_pool: @reading_pool_4_new.exercise_uuids +
+            exercise_pool: @reading_pool_3_new.exercise_uuids +
+                           @reading_pool_4_new.exercise_uuids +
                            @reading_pool_5_new.exercise_uuids -
                            @reading_2.assigned_exercise_uuids,
-            exercise_count: 1
+            exercise_count: 2
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,

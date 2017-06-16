@@ -6,8 +6,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
   DEFAULT_NUM_SPES_PER_K_AGO = 1
 
   K_AGOS_TO_LOAD = [ 0, 1, 2, 3, 4, 5 ]
-  NON_RANDOM_K_AGOS = [ 1, 3 ]
-  RANDOM_K_AGOS = K_AGOS_TO_LOAD - NON_RANDOM_K_AGOS - [ 0 ]
+  NON_RANDOM_K_AGOS = [ 1, 3, 5 ]
   MAX_K_AGO = K_AGOS_TO_LOAD.max
 
   MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO = 5
@@ -605,8 +604,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     case num_spes
     when Integer
       # Tutor decides
-      # Subtract 1 for random-ago
-      num_spes -= 1 if include_random_ago
+      return [] if num_spes == 0
+
+      # Subtract 1 for random-ago/personalized
+      num_spes -= 1
       num_spes_per_k_ago, remainder = num_spes.divmod NON_RANDOM_K_AGOS.size
 
       [].tap do |k_ago_map|
@@ -616,14 +617,14 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           k_ago_map << [k_ago, num_k_ago_spes] if num_k_ago_spes > 0
         end
 
-        k_ago_map << [nil, 1] if include_random_ago
+        k_ago_map << [(include_random_ago ? nil : 0), 1]
       end
     when NilClass
       # Biglearn decides
       NON_RANDOM_K_AGOS.map do |k_ago|
         [k_ago, DEFAULT_NUM_SPES_PER_K_AGO]
       end.compact.tap do |k_ago_map|
-        k_ago_map << [nil, 1] if include_random_ago
+        k_ago_map << [(include_random_ago ? nil : 0), 1]
       end
     else
       raise ArgumentError, "Invalid assignment num_spes: #{num_spes.inspect}", caller
@@ -716,12 +717,14 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
     assignment_excluded_uuids = excluded_exercise_uuids
 
+    forbidden_random_k_agos = [ 0 ] + k_ago_map.map(&:first).compact
+    allowed_random_k_agos = K_AGOS_TO_LOAD - forbidden_random_k_agos
     num_remaining_exercises = 0
     exercises_spy_info = {}
     chosen_spe_uuids = k_ago_map.flat_map do |k_ago, num_exercises|
       num_remaining_exercises += num_exercises
 
-      k_agos = k_ago.nil? ? RANDOM_K_AGOS : [ k_ago ]
+      k_agos = k_ago.nil? ? allowed_random_k_agos : [ k_ago ]
       spaced_assignments = assignment_history.values_at(*k_agos).flatten.compact
       book_container_uuids = spaced_assignments.flat_map { |hash| hash[:book_container_uuids] }
                                                .uniq
