@@ -1,6 +1,5 @@
 class Services::UploadAssignmentExercises::Service < Services::ApplicationService
-  ALGORITHM_EXERCISE_CALCULATION_BATCH_SIZE = 10
-  ASSIGNMENT_BATCH_SIZE = 1000
+  BATCH_SIZE = 10
 
   DEFAULT_NUM_PES_PER_BOOK_CONTAINER = 3
   DEFAULT_NUM_SPES_PER_K_AGO = 1
@@ -24,41 +23,20 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     aec = AlgorithmExerciseCalculation.arel_table
 
     total_algorithm_exercise_calculations = 0
-    total_assignments = 0
     loop do
-      num_algorithm_exercise_calculations, num_assignments =
-        AlgorithmExerciseCalculation.transaction do
+      num_algorithm_exercise_calculations = AlgorithmExerciseCalculation.transaction do
         # Find algorithm_exercise_calculations with assignments that need PEs or SPEs
-        algorithm_exercise_calculation_uuids = AlgorithmExerciseCalculation
-          .joins(exercise_calculation: :assignments)
-          .merge(
-            Assignment.need_pes.where(
-              AssignmentPe.where(
-                ape[:assignment_uuid].eq(aa[:uuid]).and(
-                  ape[:algorithm_exercise_calculation_uuid].eq aec[:uuid]
-                )
-              ).exists.not
-            ).or Assignment.need_spes.where(
-              AssignmentSpe.where(
-                aspe[:assignment_uuid].eq(aa[:uuid]).and(
-                  aspe[:algorithm_exercise_calculation_uuid].eq aec[:uuid]
-                )
-              ).exists.not
-            )
-          )
-          .distinct
-          .limit(ALGORITHM_EXERCISE_CALCULATION_BATCH_SIZE)
-          .pluck(:uuid)
         algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
-          .where(uuid: algorithm_exercise_calculation_uuids)
+          .where(is_uploaded_for_assignments: false)
           .select([:uuid, :algorithm_name, :exercise_uuids])
           .lock('FOR UPDATE SKIP LOCKED')
+          .limit(BATCH_SIZE)
           .index_by(&:uuid)
-        # Reload the uuids since they may have changed between the first request and the lock
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
 
         pe_assignments = Assignment
           .need_pes
+          .select([ aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
           .joins(exercise_calculation: :algorithm_exercise_calculations)
           .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
           .where(
@@ -68,11 +46,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               )
             ).exists.not
           )
-          .select([aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid')])
-          .take(ASSIGNMENT_BATCH_SIZE)
 
         spe_assignments = Assignment
           .need_spes
+          .select([ aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
           .joins(exercise_calculation: :algorithm_exercise_calculations)
           .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
           .where(
@@ -82,8 +59,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               )
             ).exists.not
           )
-          .select([aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid')])
-          .take(ASSIGNMENT_BATCH_SIZE)
 
         assignments = (pe_assignments + spe_assignments).uniq
 
@@ -460,9 +435,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           assignment_pe_requests << pe_request
 
           exercise_uuids = pe_request[:exercise_uuids]
-          # If no PEs, record an AssignmentPe with nil exercise_uuid
-          # to denote that we already processed this assignment
-          exercise_uuids = [nil] if exercise_uuids.empty?
           pes = exercise_uuids.map do |exercise_uuid|
             AssignmentPe.new(
               uuid: SecureRandom.uuid,
@@ -542,9 +514,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           assignment_spe_requests << instructor_driven_spe_request
 
           instructor_driven_exercise_uuids = instructor_driven_spe_request[:exercise_uuids]
-          # If no SPEs, record an AssignmentSpe with nil exercise_uuid
-          # to denote that we already processed this assignment
-          instructor_driven_exercise_uuids = [nil] if instructor_driven_exercise_uuids.empty?
           instructor_driven_spes = instructor_driven_exercise_uuids.map do |exercise_uuid|
             AssignmentSpe.new(
               uuid: SecureRandom.uuid,
@@ -569,9 +538,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           assignment_spe_requests << student_driven_spe_request
 
           student_driven_exercise_uuids = student_driven_spe_request[:exercise_uuids]
-          # If no SPEs, record an AssignmentSpe with nil exercise_uuid
-          # to denote that we already processed this assignment
-          student_driven_exercise_uuids = [nil] if student_driven_exercise_uuids.empty?
           student_driven_spes = student_driven_exercise_uuids.map do |exercise_uuid|
             AssignmentSpe.new(
               uuid: SecureRandom.uuid,
@@ -590,20 +556,22 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
         AssignmentSpe.import assignment_spes, validate: false
 
-        [ algorithm_exercise_calculation_uuids.size, assignments.size ]
+        # Mark the AlgorithmExerciseCalculations as uploaded
+        AlgorithmExerciseCalculation.where(uuid: algorithm_exercise_calculation_uuids)
+                                    .update_all(is_uploaded_for_assignments: true)
+
+        algorithm_exercise_calculation_uuids.size
       end
 
       # If we got less records than both batch sizes, then this is the last batch
       total_algorithm_exercise_calculations += num_algorithm_exercise_calculations
-      total_assignments += num_assignments
-      break if num_algorithm_exercise_calculations < ALGORITHM_EXERCISE_CALCULATION_BATCH_SIZE &&
-               num_assignments < ASSIGNMENT_BATCH_SIZE
+      break if num_algorithm_exercise_calculations < BATCH_SIZE
     end
 
     Rails.logger.tagged 'UploadAssignmentExercises' do |logger|
       logger.debug do
-        "#{total_algorithm_exercise_calculations} algorithm exercise calculations(s) and #{
-          total_assignments} assignment(s) processed in #{Time.current - start_time} second(s)"
+        "#{total_algorithm_exercise_calculations} algorithm exercise calculations(s) processed in #{
+        Time.current - start_time} second(s)"
       end
     end
   end

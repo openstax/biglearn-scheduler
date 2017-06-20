@@ -422,7 +422,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
       @algorithm_exercise_calculation_1 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_1,
-        exercise_uuids: old_exercise_uuids.shuffle
+        exercise_uuids: old_exercise_uuids.shuffle,
+        is_uploaded_for_assignments: false
       )
 
       exercise_calculation_2 = FactoryGirl.create(
@@ -433,7 +434,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
       @algorithm_exercise_calculation_2 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_2,
-        exercise_uuids: new_exercise_uuids.shuffle
+        exercise_uuids: new_exercise_uuids.shuffle,
+        is_uploaded_for_assignments: false
       )
     end
 
@@ -513,14 +515,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
     let(:expected_num_spes) do
       expected_assignment_spes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
     end
-    let(:expected_num_spe_records) do
-      expected_assignment_spes.map { |calc| [calc[:exercise_count], 1].max }.reduce(0, :+)
-    end
     let(:expected_num_pes) do
       expected_assignment_pes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
-    end
-    let(:expected_num_pe_records) do
-      expected_assignment_pes.map { |calc| [calc[:exercise_count], 1].max }.reduce(0, :+)
     end
 
     before do
@@ -632,10 +628,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
 
       it 'creates the correct numbers of Biglearn requests, SPEs and PEs from the correct pools' do
         expect { subject.process }
-          .to  change { AssignmentSpe.count }.by(expected_num_spe_records)
-          .and change { AssignmentSpe.where.not(exercise_uuid: nil).count }.by(expected_num_spes)
-          .and change { AssignmentPe.count }.by(expected_num_pe_records)
-          .and change { AssignmentPe.where.not(exercise_uuid: nil).count  }.by(expected_num_pes)
+          .to  change { AssignmentSpe.count }.by(expected_num_spes)
+          .and change { AssignmentPe.count }.by(expected_num_pes)
 
         expected_assignment_spes.each do |expected_assignment_spe|
           assignment_spes = AssignmentSpe.where(
@@ -643,23 +637,13 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             history_type: expected_assignment_spe[:history_type]
           )
 
-          if expected_assignment_spe[:exercise_count] == 0
-            expect(assignment_spes.size).to eq 1
+          expect(assignment_spes.size).to eq expected_assignment_spe[:exercise_count]
 
-            assignment_spe = assignment_spes.first
+          assignment_spes.each do |assignment_spe|
             expect(assignment_spe.algorithm_exercise_calculation_uuid).to(
               eq expected_assignment_spe[:algorithm_exercise_calculation].uuid
             )
-            expect(assignment_spe.exercise_uuid).to be_nil
-          else
-            expect(assignment_spes.size).to eq expected_assignment_spe[:exercise_count]
-
-            assignment_spes.each do |assignment_spe|
-              expect(assignment_spe.algorithm_exercise_calculation_uuid).to(
-                eq expected_assignment_spe[:algorithm_exercise_calculation].uuid
-              )
-              expect(assignment_spe.exercise_uuid).to be_in expected_assignment_spe[:exercise_pool]
-            end
+            expect(assignment_spe.exercise_uuid).to be_in expected_assignment_spe[:exercise_pool]
           end
         end
 
@@ -668,23 +652,13 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             assignment_uuid: expected_assignment_pe[:assignment_uuid]
           )
 
-          if expected_assignment_pe[:exercise_count] == 0
-            expect(assignment_pes.size).to eq 1
+          expect(assignment_pes.size).to eq expected_assignment_pe[:exercise_count]
 
-            assignment_pe = assignment_pes.first
+          assignment_pes.each do |assignment_pe|
             expect(assignment_pe.algorithm_exercise_calculation_uuid).to(
               eq expected_assignment_pe[:algorithm_exercise_calculation].uuid
             )
-            expect(assignment_pe.exercise_uuid).to be_nil
-          else
-            expect(assignment_pes.size).to eq expected_assignment_pe[:exercise_count]
-
-            assignment_pes.each do |assignment_pe|
-              expect(assignment_pe.algorithm_exercise_calculation_uuid).to(
-                eq expected_assignment_pe[:algorithm_exercise_calculation].uuid
-              )
-              expect(assignment_pe.exercise_uuid).to be_in expected_assignment_pe[:exercise_pool]
-            end
+            expect(assignment_pe.exercise_uuid).to be_in expected_assignment_pe[:exercise_pool]
           end
         end
       end
@@ -788,10 +762,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
 
       it 'creates the correct numbers of Biglearn requests, SPEs and PEs from the correct pools' do
         expect { subject.process }
-          .to  change { AssignmentSpe.count }.by(expected_num_spe_records)
-          .and change { AssignmentSpe.where.not(exercise_uuid: nil).count }.by(expected_num_spes)
-          .and change { AssignmentPe.count }.by(expected_num_pe_records)
-          .and change { AssignmentPe.where.not(exercise_uuid: nil).count  }.by(expected_num_pes)
+          .to  change { AssignmentSpe.count }.by(expected_num_spes)
+          .and change { AssignmentPe.count }.by(expected_num_pes)
 
         expected_assignment_spes.each do |expected_assignment_spe|
           assignment_spes = AssignmentSpe.where(
@@ -799,23 +771,13 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             history_type: expected_assignment_spe[:history_type]
           )
 
-          if expected_assignment_spe[:exercise_count] == 0
-            expect(assignment_spes.size).to eq 1
+          expect(assignment_spes.size).to eq expected_assignment_spe[:exercise_count]
 
-            assignment_spe = assignment_spes.first
+          assignment_spes.each do |assignment_spe|
             expect(assignment_spe.algorithm_exercise_calculation_uuid).to(
               eq expected_assignment_spe[:algorithm_exercise_calculation].uuid
             )
-            expect(assignment_spe.exercise_uuid).to be_nil
-          else
-            expect(assignment_spes.size).to eq expected_assignment_spe[:exercise_count]
-
-            assignment_spes.each do |assignment_spe|
-              expect(assignment_spe.algorithm_exercise_calculation_uuid).to(
-                eq expected_assignment_spe[:algorithm_exercise_calculation].uuid
-              )
-              expect(assignment_spe.exercise_uuid).to be_in expected_assignment_spe[:exercise_pool]
-            end
+            expect(assignment_spe.exercise_uuid).to be_in expected_assignment_spe[:exercise_pool]
           end
         end
 
@@ -824,23 +786,13 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             assignment_uuid: expected_assignment_pe[:assignment_uuid]
           )
 
-          if expected_assignment_pe[:exercise_count] == 0
-            expect(assignment_pes.size).to eq 1
+          expect(assignment_pes.size).to eq expected_assignment_pe[:exercise_count]
 
-            assignment_pe = assignment_pes.first
+          assignment_pes.each do |assignment_pe|
             expect(assignment_pe.algorithm_exercise_calculation_uuid).to(
               eq expected_assignment_pe[:algorithm_exercise_calculation].uuid
             )
-            expect(assignment_pe.exercise_uuid).to be_nil
-          else
-            expect(assignment_pes.size).to eq expected_assignment_pe[:exercise_count]
-
-            assignment_pes.each do |assignment_pe|
-              expect(assignment_pe.algorithm_exercise_calculation_uuid).to(
-                eq expected_assignment_pe[:algorithm_exercise_calculation].uuid
-              )
-              expect(assignment_pe.exercise_uuid).to be_in expected_assignment_pe[:exercise_pool]
-            end
+            expect(assignment_pe.exercise_uuid).to be_in expected_assignment_pe[:exercise_pool]
           end
         end
       end

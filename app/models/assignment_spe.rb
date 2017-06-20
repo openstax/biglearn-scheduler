@@ -10,7 +10,7 @@ class AssignmentSpe < ApplicationRecord
                                               inverse_of: :assignment_spes
 
   validates :assignment_uuid, presence: true
-  validates :exercise_uuid, uniqueness: {
+  validates :exercise_uuid, presence: true, uniqueness: {
     scope: [ :assignment_uuid, :algorithm_exercise_calculation_uuid, :history_type ]
   }
   validates :history_type, presence: true

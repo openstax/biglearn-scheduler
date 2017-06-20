@@ -342,13 +342,15 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_1,
         algorithm_name: 'local_query',
-        exercise_uuids: old_exercise_uuids.shuffle
+        exercise_uuids: old_exercise_uuids.shuffle,
+        is_uploaded_for_student: false
       )
       @algorithm_exercise_calculation_2 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_1,
         algorithm_name: 'tesr',
-        exercise_uuids: old_exercise_uuids.shuffle
+        exercise_uuids: old_exercise_uuids.shuffle,
+        is_uploaded_for_student: false
       )
 
       exercise_calculation_2 = FactoryGirl.create(
@@ -360,13 +362,15 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_2,
         algorithm_name: 'local_query',
-        exercise_uuids: new_exercise_uuids.shuffle
+        exercise_uuids: new_exercise_uuids.shuffle,
+        is_uploaded_for_student: false
       )
       @algorithm_exercise_calculation_4 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_2,
         algorithm_name: 'tesr',
-        exercise_uuids: new_exercise_uuids.shuffle
+        exercise_uuids: new_exercise_uuids.shuffle,
+        is_uploaded_for_student: false
       )
     end
 
@@ -375,14 +379,8 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
     let(:expected_num_spes) do
       expected_student_pes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
     end
-    let(:expected_num_spe_records) do
-      expected_student_pes.map { |calc| [calc[:exercise_count], 1].max }.reduce(0, :+)
-    end
     let(:expected_num_pes) do
       expected_student_pes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
-    end
-    let(:expected_num_pe_records) do
-      expected_student_pes.map { |calc| [calc[:exercise_count], 1].max }.reduce(0, :+)
     end
 
     # There are no CLUes for local_query above, so there are no local_query StudentPes
@@ -412,9 +410,7 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
     end
 
     it 'creates the correct numbers of Biglearn requests and PEs from the correct pools' do
-      expect { subject.process }
-        .to  change { StudentPe.count }.by(expected_num_pe_records)
-        .and change { StudentPe.where.not(exercise_uuid: nil).count }.by(expected_num_pes)
+      expect { subject.process }.to  change { StudentPe.count }.by(expected_num_pes)
 
       expected_student_pes.each do |expected_student_pe|
         algorithm_exercise_calculation_uuid =
@@ -423,17 +419,10 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
           algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid
         )
 
-        if expected_student_pe[:exercise_count] == 0
-          expect(student_pes.size).to eq 1
+        expect(student_pes.size).to eq expected_student_pe[:exercise_count]
 
-          student_pe = student_pes.first
-          expect(student_pe.exercise_uuid).to be_nil
-        else
-          expect(student_pes.size).to eq expected_student_pe[:exercise_count]
-
-          student_pes.each do |student_pe|
-            expect(student_pe.exercise_uuid).to be_in expected_student_pe[:exercise_pool]
-          end
+        student_pes.each do |student_pe|
+          expect(student_pe.exercise_uuid).to be_in expected_student_pe[:exercise_pool]
         end
       end
     end

@@ -6,7 +6,8 @@ RSpec.describe AssignmentSpe, type: :model do
   it { is_expected.to belong_to :algorithm_exercise_calculation }
   it { is_expected.to belong_to :assignment }
 
-  it { is_expected.to validate_presence_of(:history_type) }
+  it { is_expected.to validate_presence_of :history_type  }
+  it { is_expected.to validate_presence_of :exercise_uuid }
 
   it do
     is_expected.to(

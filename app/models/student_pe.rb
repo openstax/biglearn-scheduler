@@ -7,7 +7,8 @@ class StudentPe < ApplicationRecord
                                               foreign_key: :algorithm_exercise_calculation_uuid,
                                               inverse_of: :student_pes
 
-  validates :exercise_uuid, uniqueness: { scope: :algorithm_exercise_calculation_uuid }
+  validates :exercise_uuid, presence: true,
+                            uniqueness: { scope: :algorithm_exercise_calculation_uuid }
 
   scope :with_student_uuids, -> do
     joins(algorithm_exercise_calculation: :exercise_calculation).select [
