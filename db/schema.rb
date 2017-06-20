@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170404212728) do
+ActiveRecord::Schema.define(version: 20170620220506) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -31,10 +31,10 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "exercise_calculation_uuid",   null: false
     t.citext   "algorithm_name",              null: false
     t.uuid     "exercise_uuids",              null: false, array: true
-    t.boolean  "is_uploaded_for_assignments", null: false
-    t.boolean  "is_uploaded_for_student",     null: false
     t.datetime "created_at",                  null: false
     t.datetime "updated_at",                  null: false
+    t.boolean  "is_uploaded_for_assignments"
+    t.boolean  "is_uploaded_for_student"
     t.index ["exercise_calculation_uuid", "algorithm_name"], name: "index_alg_ex_calc_on_ex_calc_uuid_and_alg_name", unique: true, using: :btree
     t.index ["is_uploaded_for_assignments"], name: "index_alg_ex_calc_on_is_uploaded_for_assignments", using: :btree
     t.index ["is_uploaded_for_student"], name: "index_alg_ex_calc_on_is_uploaded_for_student", using: :btree

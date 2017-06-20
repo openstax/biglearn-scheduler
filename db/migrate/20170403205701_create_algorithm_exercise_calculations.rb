@@ -3,18 +3,12 @@ class CreateAlgorithmExerciseCalculations < ActiveRecord::Migration[5.0]
     enable_extension :citext
 
     create_table :algorithm_exercise_calculations do |t|
-      t.uuid    :uuid,                        null: false, index: { unique: true }
-      t.uuid    :exercise_calculation_uuid,   null: false
-      t.citext  :algorithm_name,              null: false
-      t.uuid    :exercise_uuids,              null: false, array: true
-      t.boolean :is_uploaded_for_assignments, null: false, index: {
-        name: 'index_alg_ex_calc_on_is_uploaded_for_assignments'
-      }
-      t.boolean :is_uploaded_for_student,     null: false, index: {
-        name: 'index_alg_ex_calc_on_is_uploaded_for_student'
-      }
+      t.uuid    :uuid,                      null: false, index: { unique: true }
+      t.uuid    :exercise_calculation_uuid, null: false
+      t.citext  :algorithm_name,            null: false
+      t.uuid    :exercise_uuids,            null: false, array: true
 
-      t.timestamps                            null: false
+      t.timestamps                          null: false
     end
 
     add_index :algorithm_exercise_calculations,
