@@ -10,7 +10,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
   MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO = 5
 
-  # NOTE: We don't support partial PE/SPE assignments, we create all of them in one go
+  # NOTE: We don't support partial PE/SPE assignments,
+  # we create all of them for each assignment in one go
   def process
     start_time = Time.current
     Rails.logger.tagged 'UploadAssignmentExercises' do |logger|
@@ -62,78 +63,64 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
         assignments = (pe_assignments + spe_assignments).uniq
 
-        # TODO: Combine .with_instructor_and_student_driven_sequence_numbers queries into 1
         spe_student_uuids = spe_assignments.map(&:student_uuid)
         spe_assignment_types = spe_assignments.map(&:assignment_type)
         spe_assignment_uuids = spe_assignments.map(&:uuid)
         instructor_sequence_numbers_by_assignment_uuid = {}
         student_sequence_numbers_by_assignment_uuid = {}
-        Assignment
-          .with_instructor_and_student_driven_sequence_numbers(
-            student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
-          )
-          .where(uuid: spe_assignment_uuids)
-          .pluck(:uuid, :instructor_driven_sequence_number, :student_driven_sequence_number)
-          .each do |uuid, instructor_driven_sequence_number, student_driven_sequence_number|
-          instructor_sequence_numbers_by_assignment_uuid[uuid] = instructor_driven_sequence_number
-          student_sequence_numbers_by_assignment_uuid[uuid] = student_driven_sequence_number
-        end
-
-        # Build assignment histories so we can find SPE book_container_uuids
-        history_queries = spe_assignments.map do |spe_assignment|
-          uuid = spe_assignment.uuid
-
-          # Find the range of allowed k's for instructor SPEs
-          instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(uuid)
-          instructor_sequence_number_query =
-            aa[:instructor_driven_sequence_number].gteq(instructor_sequence_number - MAX_K_AGO).and(
-              aa[:instructor_driven_sequence_number].lt(instructor_sequence_number)
-            )
-
-          # Find the range of allowed k's for student SPEs
-          student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
-          student_sequence_number_query =
-            aa[:student_driven_sequence_number].gteq(student_sequence_number - MAX_K_AGO).and(
-              aa[:student_driven_sequence_number].lt(student_sequence_number)
-            )
-
-          sequence_number_query = instructor_sequence_number_query.or student_sequence_number_query
-
-          aa[:student_uuid].eq(spe_assignment.student_uuid).and(
-            aa[:assignment_type].eq(spe_assignment.assignment_type).and(sequence_number_query)
-          )
-        end.reduce(:or)
         instructor_histories = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = {} }
         end
         student_histories = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = {} }
         end
-        Assignment.with_instructor_and_student_driven_sequence_numbers(
-          student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
-        ).where(history_queries)
-        .pluck(
-          :uuid,
-          :student_uuid,
-          :assignment_type,
-          :instructor_driven_sequence_number,
-          :student_driven_sequence_number,
-          :ecosystem_uuid,
-          :assigned_book_container_uuids
-        ).each do |
-          assignment_uuid,
-          student_uuid,
-          assignment_type,
-          instructor_driven_sequence_number,
-          student_driven_sequence_number,
-          ecosystem_uuid,
-          assigned_book_container_uuids
-        |
+        subquery = Assignment
+          .where(uuid: spe_assignment_uuids)
+          .select(
+            :student_uuid,
+            :assignment_type,
+            :instructor_driven_sequence_number,
+            :student_driven_sequence_number
+          )
+        Assignment
+          .joins(
+            <<-SQL.strip_heredoc
+              INNER JOIN (#{subquery.to_sql}) "assignments_to_update"
+                ON "assignments"."student_uuid" = "assignments_to_update"."student_uuid"
+                  AND "assignments"."assignment_type" = "assignments_to_update"."assignment_type"
+                  AND (
+                    "assignments"."instructor_driven_sequence_number" <=
+                      "assignments_to_update"."instructor_driven_sequence_number"
+                      AND "assignments"."instructor_driven_sequence_number" >=
+                        "assignments_to_update"."instructor_driven_sequence_number" - #{MAX_K_AGO}
+                  ) OR (
+                    "assignments"."student_driven_sequence_number" <=
+                      "assignments_to_update"."student_driven_sequence_number"
+                      AND "assignments"."student_driven_sequence_number" >=
+                        "assignments_to_update"."student_driven_sequence_number" - #{MAX_K_AGO}
+                  )
+            SQL
+          )
+          .to_a_with_instructor_and_student_driven_sequence_numbers_cte(
+            student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
+          )
+          .each do |assignment|
+          uuid = assignment.uuid
+          student_uuid = assignment.student_uuid
+          assignment_type = assignment.assignment_type
+          ecosystem_uuid = assignment.ecosystem_uuid
+          assigned_book_container_uuids = assignment.assigned_book_container_uuids
+          instructor_driven_sequence_number = assignment.instructor_driven_sequence_number
+          student_driven_sequence_number = assignment.student_driven_sequence_number
+
+          instructor_sequence_numbers_by_assignment_uuid[uuid] = instructor_driven_sequence_number
+          student_sequence_numbers_by_assignment_uuid[uuid] = student_driven_sequence_number
+
           instructor_histories[student_uuid][assignment_type][instructor_driven_sequence_number] = \
-            [assignment_uuid, ecosystem_uuid, assigned_book_container_uuids]
+            [uuid, ecosystem_uuid, assigned_book_container_uuids]
           student_histories[student_uuid][assignment_type][student_driven_sequence_number] = \
-            [assignment_uuid, ecosystem_uuid, assigned_book_container_uuids]
-        end unless history_queries.nil?
+            [uuid, ecosystem_uuid, assigned_book_container_uuids]
+        end
 
         # Create a mapping of spaced practice book containers to each assignment's ecosystem
         bcm = BookContainerMapping.arel_table
