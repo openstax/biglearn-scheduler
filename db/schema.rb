@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170620220506) do
+ActiveRecord::Schema.define(version: 20170623151628) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -126,6 +126,7 @@ ActiveRecord::Schema.define(version: 20170620220506) do
     t.boolean  "pes_are_assigned",              null: false
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
+    t.datetime "student_history_at"
     t.index ["course_uuid"], name: "index_assignments_on_course_uuid", using: :btree
     t.index ["due_at", "opens_at", "created_at"], name: "index_assignments_on_due_at_and_opens_at_and_created_at", using: :btree
     t.index ["ecosystem_uuid"], name: "index_assignments_on_ecosystem_uuid", using: :btree
@@ -135,6 +136,7 @@ ActiveRecord::Schema.define(version: 20170620220506) do
     t.index ["opens_at"], name: "index_assignments_on_opens_at", using: :btree
     t.index ["pes_are_assigned"], name: "index_assignments_on_pes_are_assigned", using: :btree
     t.index ["spes_are_assigned"], name: "index_assignments_on_spes_are_assigned", using: :btree
+    t.index ["student_history_at"], name: "index_assignments_on_student_history_at", using: :btree
     t.index ["student_uuid"], name: "index_assignments_on_student_uuid", using: :btree
     t.index ["uuid"], name: "index_assignments_on_uuid", unique: true, using: :btree
   end

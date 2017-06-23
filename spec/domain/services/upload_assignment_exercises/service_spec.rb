@@ -520,6 +520,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
     end
 
     before do
+      # Update the student history
+      Services::UpdateStudentHistory::Service.process
+
       expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes).with(
         [a_kind_of(Hash)] * expected_assignment_pes.size
       )

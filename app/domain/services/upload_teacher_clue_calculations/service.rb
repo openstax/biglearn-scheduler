@@ -3,9 +3,7 @@ class Services::UploadTeacherClueCalculations::Service < Services::ApplicationSe
 
   def process
     start_time = Time.current
-    Rails.logger.tagged 'UploadTeacherClueCalculations' do |logger|
-      logger.debug { "Started at #{start_time}" }
-    end
+    log(:debug) { "Started at #{start_time}" }
 
     # Do all the processing in batches to not exceed the API limit
     total_calculations = 0
@@ -27,12 +25,10 @@ class Services::UploadTeacherClueCalculations::Service < Services::ApplicationSe
             calculation_uuid = algorithm_calculation.teacher_clue_calculation_uuid
             calculation = calculations_by_uuid[calculation_uuid]
             if calculation.nil?
-              Rails.logger.tagged 'UploadTeacherClueCalculations' do |logger|
-                logger.warn do
-                  "Teacher CLUe skipped due to no information about teacher CLUe calculation #{
-                    calculation_uuid
-                  }"
-                end
+              log(:warn) do
+                "Teacher CLUe skipped due to no information about teacher CLUe calculation #{
+                  calculation_uuid
+                }"
               end
 
               next
@@ -60,10 +56,8 @@ class Services::UploadTeacherClueCalculations::Service < Services::ApplicationSe
       break if num_calculations < BATCH_SIZE
     end
 
-    Rails.logger.tagged 'UploadTeacherClueCalculations' do |logger|
-      logger.debug do
-        "#{total_calculations} calculation(s) uploaded in #{Time.current - start_time} second(s)"
-      end
+    log(:debug) do
+      "#{total_calculations} calculation(s) uploaded in #{Time.current - start_time} second(s)"
     end
   end
 end

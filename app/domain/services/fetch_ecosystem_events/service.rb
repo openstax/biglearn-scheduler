@@ -5,9 +5,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
   def process
     start_time = Time.current
-    Rails.logger.tagged 'FetchEcosystemEvents' do |logger|
-      logger.debug { "Started at #{start_time}" }
-    end
+    log(:debug) { "Started at #{start_time}" }
 
     # Since create_ecosystem is our only event here right now,
     # we can ignore all ecosystems that already processed it (sequence_number > 0)
@@ -138,14 +136,12 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
       break if ecosystem_ids_to_query.empty?
     end
 
-    Rails.logger.tagged 'FetchEcosystemEvents' do |logger|
-      logger.debug do
-        conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-        time = Time.current - start_time
+    log(:debug) do
+      conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
+      time = Time.current - start_time
 
-        "Received #{total_events} event(s) from #{total_ecosystems} ecosystems(s)" +
-        " with #{conflicts} conflict(s) in #{time} second(s)"
-      end
+      "Received #{total_events} event(s) from #{total_ecosystems} ecosystems(s)" +
+      " with #{conflicts} conflict(s) in #{time} second(s)"
     end
   end
 end

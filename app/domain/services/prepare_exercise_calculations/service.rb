@@ -3,9 +3,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
 
   def process
     start_time = Time.current
-    Rails.logger.tagged 'PrepareExerciseCalculations' do |logger|
-      logger.debug { "Started at #{start_time}" }
-    end
+    log(:debug) { "Started at #{start_time}" }
 
     st = Student.arel_table
     co = Course.arel_table
@@ -84,10 +82,8 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
       break if num_students < BATCH_SIZE
     end
 
-    Rails.logger.tagged 'PrepareExerciseCalculations' do |logger|
-      logger.debug do
-        "#{total_students} student(s) processed in #{Time.current - start_time} second(s)"
-      end
+    log(:debug) do
+      "#{total_students} student(s) processed in #{Time.current - start_time} second(s)"
     end
   end
 end

@@ -16,9 +16,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
   def process
     start_time = Time.current
-    Rails.logger.tagged 'FetchCourseEvents' do |logger|
-      logger.debug { "Started at #{start_time}" }
-    end
+    log(:debug) { "Started at #{start_time}" }
 
     course_ids_to_query = Course.ids
     total_courses = course_ids_to_query.size
@@ -230,7 +228,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 goal_num_tutor_assigned_spes: data[:goal_num_tutor_assigned_spes],
                 spes_are_assigned: data.fetch(:spes_are_assigned),
                 goal_num_tutor_assigned_pes: data[:goal_num_tutor_assigned_pes],
-                pes_are_assigned: data.fetch(:pes_are_assigned)
+                pes_are_assigned: data.fetch(:pes_are_assigned),
+                student_history_at: nil
               )
               assignments << assignment
 
@@ -569,14 +568,12 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       break if course_ids_to_query.empty?
     end
 
-    Rails.logger.tagged 'FetchCourseEvents' do |logger|
-      logger.debug do
-        conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-        time = Time.current - start_time
+    log(:debug) do
+      conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
+      time = Time.current - start_time
 
-        "Received: #{total_events} event(s) from #{total_courses} course(s)" +
-        " with #{conflicts} conflict(s) in #{time} second(s)"
-      end
+      "Received: #{total_events} event(s) from #{total_courses} course(s)" +
+      " with #{conflicts} conflict(s) in #{time} second(s)"
     end
   end
 end
