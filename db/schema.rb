@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170404212728) do
+ActiveRecord::Schema.define(version: 20170620220506) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -27,13 +27,17 @@ ActiveRecord::Schema.define(version: 20170404212728) do
   end
 
   create_table "algorithm_exercise_calculations", force: :cascade do |t|
-    t.uuid     "uuid",                      null: false
-    t.uuid     "exercise_calculation_uuid", null: false
-    t.citext   "algorithm_name",            null: false
-    t.uuid     "exercise_uuids",            null: false, array: true
-    t.datetime "created_at",                null: false
-    t.datetime "updated_at",                null: false
+    t.uuid     "uuid",                        null: false
+    t.uuid     "exercise_calculation_uuid",   null: false
+    t.citext   "algorithm_name",              null: false
+    t.uuid     "exercise_uuids",              null: false, array: true
+    t.datetime "created_at",                  null: false
+    t.datetime "updated_at",                  null: false
+    t.boolean  "is_uploaded_for_assignments"
+    t.boolean  "is_uploaded_for_student"
     t.index ["exercise_calculation_uuid", "algorithm_name"], name: "index_alg_ex_calc_on_ex_calc_uuid_and_alg_name", unique: true, using: :btree
+    t.index ["is_uploaded_for_assignments"], name: "index_alg_ex_calc_on_is_uploaded_for_assignments", using: :btree
+    t.index ["is_uploaded_for_student"], name: "index_alg_ex_calc_on_is_uploaded_for_student", using: :btree
     t.index ["uuid"], name: "index_algorithm_exercise_calculations_on_uuid", unique: true, using: :btree
   end
 
@@ -81,12 +85,11 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "uuid",                                null: false
     t.uuid     "algorithm_exercise_calculation_uuid", null: false
     t.uuid     "assignment_uuid",                     null: false
-    t.uuid     "exercise_uuid"
+    t.uuid     "exercise_uuid",                       null: false
     t.datetime "created_at",                          null: false
     t.datetime "updated_at",                          null: false
     t.index ["algorithm_exercise_calculation_uuid"], name: "index_assignment_pes_on_algorithm_exercise_calculation_uuid", using: :btree
     t.index ["assignment_uuid", "algorithm_exercise_calculation_uuid", "exercise_uuid"], name: "index_a_pes_on_a_uuid_alg_ex_calc_uuid_and_ex_uuid", unique: true, using: :btree
-    t.index ["assignment_uuid", "algorithm_exercise_calculation_uuid"], name: "index_a_pes_on_a_uuid_and_alg_ex_calc_uuid", unique: true, where: "(exercise_uuid IS NULL)", using: :btree
     t.index ["exercise_uuid"], name: "index_assignment_pes_on_exercise_uuid", using: :btree
     t.index ["uuid"], name: "index_assignment_pes_on_uuid", unique: true, using: :btree
   end
@@ -95,13 +98,12 @@ ActiveRecord::Schema.define(version: 20170404212728) do
     t.uuid     "uuid",                                null: false
     t.uuid     "algorithm_exercise_calculation_uuid", null: false
     t.uuid     "assignment_uuid",                     null: false
-    t.uuid     "exercise_uuid"
+    t.uuid     "exercise_uuid",                       null: false
     t.integer  "history_type",                        null: false
     t.datetime "created_at",                          null: false
     t.datetime "updated_at",                          null: false
     t.index ["algorithm_exercise_calculation_uuid"], name: "index_assignment_spes_on_algorithm_exercise_calculation_uuid", using: :btree
     t.index ["assignment_uuid", "algorithm_exercise_calculation_uuid", "history_type", "exercise_uuid"], name: "index_a_spes_on_a_uuid_alg_ex_calc_uuid_h_type_and_ex_uuid", unique: true, using: :btree
-    t.index ["assignment_uuid", "algorithm_exercise_calculation_uuid", "history_type"], name: "index_a_spes_on_a_uuid_alg_ex_calc_uuid_and_h_type", unique: true, where: "(exercise_uuid IS NULL)", using: :btree
     t.index ["exercise_uuid"], name: "index_assignment_spes_on_exercise_uuid", using: :btree
     t.index ["history_type"], name: "index_assignment_spes_on_history_type", using: :btree
     t.index ["uuid"], name: "index_assignment_spes_on_uuid", unique: true, using: :btree
@@ -296,11 +298,10 @@ ActiveRecord::Schema.define(version: 20170404212728) do
   create_table "student_pes", force: :cascade do |t|
     t.uuid     "uuid",                                null: false
     t.uuid     "algorithm_exercise_calculation_uuid", null: false
-    t.uuid     "exercise_uuid"
+    t.uuid     "exercise_uuid",                       null: false
     t.datetime "created_at",                          null: false
     t.datetime "updated_at",                          null: false
     t.index ["algorithm_exercise_calculation_uuid", "exercise_uuid"], name: "index_s_pes_on_alg_ex_calc_uuid_and_ex_uuid", unique: true, using: :btree
-    t.index ["algorithm_exercise_calculation_uuid"], name: "index_student_pes_on_algorithm_exercise_calculation_uuid", unique: true, where: "(exercise_uuid IS NULL)", using: :btree
     t.index ["exercise_uuid"], name: "index_student_pes_on_exercise_uuid", using: :btree
     t.index ["uuid"], name: "index_student_pes_on_uuid", unique: true, using: :btree
   end

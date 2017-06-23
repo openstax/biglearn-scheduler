@@ -20,21 +20,25 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
     total_students = 0
     loop do
       num_students = Student.transaction do
-        # Find students that need PEs
-        students = Student
-          .select([
-            st[Arel.star],
-            aec[:uuid].as('algorithm_exercise_calculation_uuid'),
-            aec[:algorithm_name],
-            aec[:exercise_uuids]
-          ])
-          .joins(:course, exercise_calculations: :algorithm_exercise_calculations)
-          .where(ec[:ecosystem_uuid].eq(cc[:ecosystem_uuid]))
-          .where(
-            StudentPe.where(spe[:algorithm_exercise_calculation_uuid].eq aec[:uuid]).exists.not
-          )
+        # Find algorithm_exercise_calculations with students that need PEs
+        algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
+          .where(is_uploaded_for_student: false)
+          .select([:uuid, :algorithm_name, :exercise_uuids])
           .lock('FOR UPDATE SKIP LOCKED')
-          .take(BATCH_SIZE)
+          .limit(BATCH_SIZE)
+          .index_by(&:uuid)
+        algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
+
+        students = Student
+          .select([ st[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
+          .joins(:course, exercise_calculations: :algorithm_exercise_calculations)
+          .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
+          .where(ec[:ecosystem_uuid].eq(cc[:ecosystem_uuid]))
+          # Not necessary because whenever we flip is_uploaded_for_students back to false
+          # we also delete all the StudentPes for that algorithm_exercise_calculation
+          #.where(
+          #  StudentPe.where(spe[:algorithm_exercise_calculation_uuid].eq aec[:uuid]).exists.not
+          #)
         student_uuids = students.map(&:uuid)
 
         # Get the worst clues for each student
@@ -139,13 +143,16 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         student_pes = []
         students.each do |student|
           student_uuid = student.uuid
-          prioritized_exercise_uuids = student.exercise_uuids
+          algorithm_exercise_calculation_uuid = student.algorithm_exercise_calculation_uuid
+          algorithm_exercise_calculation = algorithm_exercise_calculations_by_uuid
+                                             .fetch(algorithm_exercise_calculation_uuid)
+          prioritized_exercise_uuids = algorithm_exercise_calculation.exercise_uuids
           student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[student_uuid]
 
           worst_clues_by_algorithm_name =
             worst_clues_by_student_uuid_and_algorithm_name[student_uuid]
 
-          exercise_algorithm_name = student.algorithm_name
+          exercise_algorithm_name = algorithm_exercise_calculation.algorithm_name
           clue_algorithm_name = StudentPe::EXERCISE_TO_CLUE_ALGORITHM_NAME[exercise_algorithm_name]
 
           worst_clues = worst_clues_by_algorithm_name[clue_algorithm_name] || []
@@ -166,7 +173,6 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           num_worst_clues = worst_clues.size
           worst_clue_num_pes_map = get_worst_clue_num_pes_map(num_worst_clues)
 
-          algorithm_exercise_calculation_uuid = student.algorithm_exercise_calculation_uuid
           # Assign the candidate exercises for each position in the worst_clue_pes_map
           # based on the priority of each CLUe
           chosen_pe_uuids = []
@@ -199,9 +205,6 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           student_pe_requests << student_pe_request
 
           exercise_uuids = student_pe_request[:exercise_uuids]
-          # If no PEs, record a StudentPe with nil exercise_uuid
-          # to denote that we already processed this student
-          exercise_uuids = [nil] if exercise_uuids.empty?
           pes = exercise_uuids.map do |exercise_uuid|
             StudentPe.new(
               uuid: SecureRandom.uuid,
@@ -217,6 +220,10 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           if student_pe_requests.any?
 
         StudentPe.import student_pes, validate: false
+
+        # Mark the AlgorithmExerciseCalculations as uploaded
+        AlgorithmExerciseCalculation.where(uuid: algorithm_exercise_calculation_uuids)
+                                    .update_all(is_uploaded_for_student: true)
 
         students.size
       end

@@ -445,6 +445,16 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                     .update_all(used_in_clue_calculations: false)
           end
 
+          aa = Assignment.arel_table
+          ec = ExerciseCalculation.arel_table
+          aec_query = assignments.group_by(&:ecosystem_uuid).map do |ecosystem_uuid, assignments|
+            student_uuids = assignments.map(&:student_uuid)
+
+            ec[:ecosystem_uuid].eq(ecosystem_uuid).and(ec[:student_uuid].in(student_uuids))
+          end.reduce(:or)
+          calc_uuids_to_recalculate_for_assignments = aec_query.nil? ? [] :
+            AlgorithmExerciseCalculation.joins(:exercise_calculation).where(aec_query).pluck(:uuid)
+
           # Group assigned exercises by student_uuids so exercises assigned to exactly
           # the same students (usually the core exercises) can become a single query
           assigned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
@@ -485,6 +495,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                          .distinct
                          .pluck(:algorithm_exercise_calculation_uuid, :assignment_uuid)
                          .each do |calc_uuid, assignment_uuid|
+              calc_uuids_to_recalculate_for_assignments << calc_uuid
               conflicting_spe_a_uuids_by_calc_uuid[calc_uuid] << assignment_uuid
             end
 
@@ -507,6 +518,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                         .distinct
                         .pluck(:algorithm_exercise_calculation_uuid, :assignment_uuid)
                         .each do |calc_uuid, assignment_uuid|
+              calc_uuids_to_recalculate_for_assignments << calc_uuid
               conflicting_pe_a_uuids_by_calc_uuid[calc_uuid] << assignment_uuid
             end
 
@@ -520,17 +532,22 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             AssignmentPe.where(delete_ape_query).delete_all unless delete_ape_query.nil?
           end
 
+          AlgorithmExerciseCalculation.where(uuid: calc_uuids_to_recalculate_for_assignments)
+                                      .update_all(is_uploaded_for_assignments: false)
+
           spe_query = spe_queries.reduce(:or)
           unless spe_query.nil?
-            conflicting_algorithm_exercise_calculation_uuids =
-              StudentPe.with_student_uuids
-                       .where(spe_query)
-                       .distinct
-                       .pluck(:algorithm_exercise_calculation_uuid)
+            conflicting_s_pe_calc_uuids = StudentPe.with_student_uuids
+                                                   .where(spe_query)
+                                                   .distinct
+                                                   .pluck(:algorithm_exercise_calculation_uuid)
 
             StudentPe.where(
-              algorithm_exercise_calculation_uuid: conflicting_algorithm_exercise_calculation_uuids
+              algorithm_exercise_calculation_uuid: conflicting_s_pe_calc_uuids
             ).delete_all
+
+            AlgorithmExerciseCalculation.where(uuid: conflicting_s_pe_calc_uuids)
+                                        .update_all(is_uploaded_for_student: false)
           end
 
           results << Course.import(

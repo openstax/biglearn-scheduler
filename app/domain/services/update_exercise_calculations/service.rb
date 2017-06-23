@@ -18,7 +18,9 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
           uuid: SecureRandom.uuid,
           exercise_calculation: exercise_calculation,
           algorithm_name: exercise_calculation_update.fetch(:algorithm_name),
-          exercise_uuids: exercise_calculation_update.fetch(:exercise_uuids)
+          exercise_uuids: exercise_calculation_update.fetch(:exercise_uuids),
+          is_uploaded_for_assignments: false,
+          is_uploaded_for_student: false
         )
 
         { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
@@ -28,7 +30,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
     AlgorithmExerciseCalculation.import(
       algorithm_exercise_calculations, validate: false, on_duplicate_key_update: {
         conflict_target: [ :exercise_calculation_uuid, :algorithm_name ],
-        columns: [ :uuid, :exercise_uuids ]
+        columns: [ :uuid, :exercise_uuids, :is_uploaded_for_assignments, :is_uploaded_for_student ]
       }
     )
 

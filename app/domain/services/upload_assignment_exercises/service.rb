@@ -1,6 +1,5 @@
 class Services::UploadAssignmentExercises::Service < Services::ApplicationService
-  ALGORITHM_EXERCISE_CALCULATION_BATCH_SIZE = 10
-  ASSIGNMENT_BATCH_SIZE = 1000
+  BATCH_SIZE = 10
 
   DEFAULT_NUM_PES_PER_BOOK_CONTAINER = 3
   DEFAULT_NUM_SPES_PER_K_AGO = 1
@@ -11,7 +10,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
   MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO = 5
 
-  # NOTE: We don't support partial PE/SPE assignments, we create all of them in one go
+  # NOTE: We don't support partial PE/SPE assignments,
+  # we create all of them for each assignment in one go
   def process
     start_time = Time.current
     Rails.logger.tagged 'UploadAssignmentExercises' do |logger|
@@ -24,41 +24,20 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     aec = AlgorithmExerciseCalculation.arel_table
 
     total_algorithm_exercise_calculations = 0
-    total_assignments = 0
     loop do
-      num_algorithm_exercise_calculations, num_assignments =
-        AlgorithmExerciseCalculation.transaction do
+      num_algorithm_exercise_calculations = AlgorithmExerciseCalculation.transaction do
         # Find algorithm_exercise_calculations with assignments that need PEs or SPEs
-        algorithm_exercise_calculation_uuids = AlgorithmExerciseCalculation
-          .joins(exercise_calculation: :assignments)
-          .merge(
-            Assignment.need_pes.where(
-              AssignmentPe.where(
-                ape[:assignment_uuid].eq(aa[:uuid]).and(
-                  ape[:algorithm_exercise_calculation_uuid].eq aec[:uuid]
-                )
-              ).exists.not
-            ).or Assignment.need_spes.where(
-              AssignmentSpe.where(
-                aspe[:assignment_uuid].eq(aa[:uuid]).and(
-                  aspe[:algorithm_exercise_calculation_uuid].eq aec[:uuid]
-                )
-              ).exists.not
-            )
-          )
-          .distinct
-          .limit(ALGORITHM_EXERCISE_CALCULATION_BATCH_SIZE)
-          .pluck(:uuid)
         algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
-          .where(uuid: algorithm_exercise_calculation_uuids)
+          .where(is_uploaded_for_assignments: false)
           .select([:uuid, :algorithm_name, :exercise_uuids])
           .lock('FOR UPDATE SKIP LOCKED')
+          .limit(BATCH_SIZE)
           .index_by(&:uuid)
-        # Reload the uuids since they may have changed between the first request and the lock
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
 
         pe_assignments = Assignment
           .need_pes
+          .select([ aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
           .joins(exercise_calculation: :algorithm_exercise_calculations)
           .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
           .where(
@@ -68,11 +47,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               )
             ).exists.not
           )
-          .select([aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid')])
-          .take(ASSIGNMENT_BATCH_SIZE)
 
         spe_assignments = Assignment
           .need_spes
+          .select([ aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
           .joins(exercise_calculation: :algorithm_exercise_calculations)
           .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
           .where(
@@ -82,83 +60,67 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               )
             ).exists.not
           )
-          .select([aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid')])
-          .take(ASSIGNMENT_BATCH_SIZE)
 
         assignments = (pe_assignments + spe_assignments).uniq
 
-        # TODO: Combine .with_instructor_and_student_driven_sequence_numbers queries into 1
         spe_student_uuids = spe_assignments.map(&:student_uuid)
         spe_assignment_types = spe_assignments.map(&:assignment_type)
         spe_assignment_uuids = spe_assignments.map(&:uuid)
         instructor_sequence_numbers_by_assignment_uuid = {}
         student_sequence_numbers_by_assignment_uuid = {}
-        Assignment
-          .with_instructor_and_student_driven_sequence_numbers(
-            student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
-          )
-          .where(uuid: spe_assignment_uuids)
-          .pluck(:uuid, :instructor_driven_sequence_number, :student_driven_sequence_number)
-          .each do |uuid, instructor_driven_sequence_number, student_driven_sequence_number|
-          instructor_sequence_numbers_by_assignment_uuid[uuid] = instructor_driven_sequence_number
-          student_sequence_numbers_by_assignment_uuid[uuid] = student_driven_sequence_number
-        end
-
-        # Build assignment histories so we can find SPE book_container_uuids
-        history_queries = spe_assignments.map do |spe_assignment|
-          uuid = spe_assignment.uuid
-
-          # Find the range of allowed k's for instructor SPEs
-          instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(uuid)
-          instructor_sequence_number_query =
-            aa[:instructor_driven_sequence_number].gteq(instructor_sequence_number - MAX_K_AGO).and(
-              aa[:instructor_driven_sequence_number].lt(instructor_sequence_number)
-            )
-
-          # Find the range of allowed k's for student SPEs
-          student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
-          student_sequence_number_query =
-            aa[:student_driven_sequence_number].gteq(student_sequence_number - MAX_K_AGO).and(
-              aa[:student_driven_sequence_number].lt(student_sequence_number)
-            )
-
-          sequence_number_query = instructor_sequence_number_query.or student_sequence_number_query
-
-          aa[:student_uuid].eq(spe_assignment.student_uuid).and(
-            aa[:assignment_type].eq(spe_assignment.assignment_type).and(sequence_number_query)
-          )
-        end.reduce(:or)
         instructor_histories = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = {} }
         end
         student_histories = Hash.new do |hash, key|
           hash[key] = Hash.new { |hash, key| hash[key] = {} }
         end
-        Assignment.with_instructor_and_student_driven_sequence_numbers(
-          student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
-        ).where(history_queries)
-        .pluck(
-          :uuid,
-          :student_uuid,
-          :assignment_type,
-          :instructor_driven_sequence_number,
-          :student_driven_sequence_number,
-          :ecosystem_uuid,
-          :assigned_book_container_uuids
-        ).each do |
-          assignment_uuid,
-          student_uuid,
-          assignment_type,
-          instructor_driven_sequence_number,
-          student_driven_sequence_number,
-          ecosystem_uuid,
-          assigned_book_container_uuids
-        |
+        subquery = Assignment
+          .where(uuid: spe_assignment_uuids)
+          .select(
+            :student_uuid,
+            :assignment_type,
+            :instructor_driven_sequence_number,
+            :student_driven_sequence_number
+          )
+        Assignment
+          .joins(
+            <<-SQL.strip_heredoc
+              INNER JOIN (#{subquery.to_sql}) "assignments_to_update"
+                ON "assignments"."student_uuid" = "assignments_to_update"."student_uuid"
+                  AND "assignments"."assignment_type" = "assignments_to_update"."assignment_type"
+                  AND (
+                    "assignments"."instructor_driven_sequence_number" <=
+                      "assignments_to_update"."instructor_driven_sequence_number"
+                      AND "assignments"."instructor_driven_sequence_number" >=
+                        "assignments_to_update"."instructor_driven_sequence_number" - #{MAX_K_AGO}
+                  ) OR (
+                    "assignments"."student_driven_sequence_number" <=
+                      "assignments_to_update"."student_driven_sequence_number"
+                      AND "assignments"."student_driven_sequence_number" >=
+                        "assignments_to_update"."student_driven_sequence_number" - #{MAX_K_AGO}
+                  )
+            SQL
+          )
+          .to_a_with_instructor_and_student_driven_sequence_numbers_cte(
+            student_uuids: spe_student_uuids, assignment_types: spe_assignment_types
+          )
+          .each do |assignment|
+          uuid = assignment.uuid
+          student_uuid = assignment.student_uuid
+          assignment_type = assignment.assignment_type
+          ecosystem_uuid = assignment.ecosystem_uuid
+          assigned_book_container_uuids = assignment.assigned_book_container_uuids
+          instructor_driven_sequence_number = assignment.instructor_driven_sequence_number
+          student_driven_sequence_number = assignment.student_driven_sequence_number
+
+          instructor_sequence_numbers_by_assignment_uuid[uuid] = instructor_driven_sequence_number
+          student_sequence_numbers_by_assignment_uuid[uuid] = student_driven_sequence_number
+
           instructor_histories[student_uuid][assignment_type][instructor_driven_sequence_number] = \
-            [assignment_uuid, ecosystem_uuid, assigned_book_container_uuids]
+            [uuid, ecosystem_uuid, assigned_book_container_uuids]
           student_histories[student_uuid][assignment_type][student_driven_sequence_number] = \
-            [assignment_uuid, ecosystem_uuid, assigned_book_container_uuids]
-        end unless history_queries.nil?
+            [uuid, ecosystem_uuid, assigned_book_container_uuids]
+        end
 
         # Create a mapping of spaced practice book containers to each assignment's ecosystem
         bcm = BookContainerMapping.arel_table
@@ -460,9 +422,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           assignment_pe_requests << pe_request
 
           exercise_uuids = pe_request[:exercise_uuids]
-          # If no PEs, record an AssignmentPe with nil exercise_uuid
-          # to denote that we already processed this assignment
-          exercise_uuids = [nil] if exercise_uuids.empty?
           pes = exercise_uuids.map do |exercise_uuid|
             AssignmentPe.new(
               uuid: SecureRandom.uuid,
@@ -542,9 +501,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           assignment_spe_requests << instructor_driven_spe_request
 
           instructor_driven_exercise_uuids = instructor_driven_spe_request[:exercise_uuids]
-          # If no SPEs, record an AssignmentSpe with nil exercise_uuid
-          # to denote that we already processed this assignment
-          instructor_driven_exercise_uuids = [nil] if instructor_driven_exercise_uuids.empty?
           instructor_driven_spes = instructor_driven_exercise_uuids.map do |exercise_uuid|
             AssignmentSpe.new(
               uuid: SecureRandom.uuid,
@@ -569,9 +525,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           assignment_spe_requests << student_driven_spe_request
 
           student_driven_exercise_uuids = student_driven_spe_request[:exercise_uuids]
-          # If no SPEs, record an AssignmentSpe with nil exercise_uuid
-          # to denote that we already processed this assignment
-          student_driven_exercise_uuids = [nil] if student_driven_exercise_uuids.empty?
           student_driven_spes = student_driven_exercise_uuids.map do |exercise_uuid|
             AssignmentSpe.new(
               uuid: SecureRandom.uuid,
@@ -590,20 +543,22 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
         AssignmentSpe.import assignment_spes, validate: false
 
-        [ algorithm_exercise_calculation_uuids.size, assignments.size ]
+        # Mark the AlgorithmExerciseCalculations as uploaded
+        AlgorithmExerciseCalculation.where(uuid: algorithm_exercise_calculation_uuids)
+                                    .update_all(is_uploaded_for_assignments: true)
+
+        algorithm_exercise_calculation_uuids.size
       end
 
       # If we got less records than both batch sizes, then this is the last batch
       total_algorithm_exercise_calculations += num_algorithm_exercise_calculations
-      total_assignments += num_assignments
-      break if num_algorithm_exercise_calculations < ALGORITHM_EXERCISE_CALCULATION_BATCH_SIZE &&
-               num_assignments < ASSIGNMENT_BATCH_SIZE
+      break if num_algorithm_exercise_calculations < BATCH_SIZE
     end
 
     Rails.logger.tagged 'UploadAssignmentExercises' do |logger|
       logger.debug do
-        "#{total_algorithm_exercise_calculations} algorithm exercise calculations(s) and #{
-          total_assignments} assignment(s) processed in #{Time.current - start_time} second(s)"
+        "#{total_algorithm_exercise_calculations} algorithm exercise calculations(s) processed in #{
+        Time.current - start_time} second(s)"
       end
     end
   end
