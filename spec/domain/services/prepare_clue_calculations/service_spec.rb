@@ -49,51 +49,61 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
 
       @response_1 = FactoryGirl.create :response,
                                        is_correct: true,
+                                       ecosystem_uuid: @ecosystem_2.uuid,
                                        student_uuid: @student_1.uuid,
                                        exercise_uuid: @exercise_1.uuid,
                                        used_in_clue_calculations: true
       @response_2 = FactoryGirl.create :response,
                                        is_correct: false,
+                                       ecosystem_uuid: @ecosystem_2.uuid,
                                        student_uuid: @student_1.uuid,
                                        exercise_uuid: @exercise_2.uuid,
                                        used_in_clue_calculations: true
       @response_3 = FactoryGirl.create :response,
                                        is_correct: true,
+                                       ecosystem_uuid: @ecosystem_2.uuid,
                                        student_uuid: @student_1.uuid,
                                        exercise_uuid: @exercise_3.uuid,
                                        used_in_clue_calculations: true
       @response_4 = FactoryGirl.create :response,
                                        is_correct: true,
+                                       ecosystem_uuid: @ecosystem_2.uuid,
                                        student_uuid: @student_1.uuid,
                                        exercise_uuid: @exercise_4.uuid,
                                        used_in_clue_calculations: false
       @response_5 = FactoryGirl.create :response,
                                        is_correct: true,
+                                       ecosystem_uuid: @ecosystem_2.uuid,
                                        student_uuid: @student_1.uuid,
                                        exercise_uuid: @exercise_5.uuid,
                                        used_in_clue_calculations: false
       @response_6 = FactoryGirl.create :response,
                                        is_correct: false,
+                                       ecosystem_uuid: @ecosystem_2.uuid,
                                        student_uuid: @student_2.uuid,
                                        exercise_uuid: @exercise_1.uuid,
                                        used_in_clue_calculations: true
       @response_7 = FactoryGirl.create :response,
                                        is_correct: true,
+                                       ecosystem_uuid: @ecosystem_2.uuid,
                                        student_uuid: @student_2.uuid,
                                        exercise_uuid: @exercise_2.uuid,
                                        used_in_clue_calculations: true
       @response_8 = FactoryGirl.create :response,
                                        is_correct: true,
+                                       ecosystem_uuid: @ecosystem_2.uuid,
                                        student_uuid: @student_2.uuid,
                                        exercise_uuid: @exercise_3.uuid,
                                        used_in_clue_calculations: false
       @response_9 = FactoryGirl.create :response,
                                        is_correct: true,
+                                       ecosystem_uuid: @ecosystem_2.uuid,
                                        student_uuid: @student_2.uuid,
                                        exercise_uuid: @exercise_4.uuid,
                                        used_in_clue_calculations: true
       @response_10 = FactoryGirl.create :response,
                                        is_correct: false,
+                                       ecosystem_uuid: @ecosystem_2.uuid,
                                        student_uuid: @student_2.uuid,
                                        exercise_uuid: @exercise_5.uuid,
                                        used_in_clue_calculations: false
@@ -204,7 +214,7 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
       expect do
         subject.process
       end.to  not_change { Response.count                        }
-         .and change     { StudentClueCalculation.count          }.by(3)
+         .and change     { StudentClueCalculation.count          }.by(2)
          .and change     { TeacherClueCalculation.count          }.by(1)
          .and not_change { AlgorithmStudentClueCalculation.count }
          .and change     { AlgorithmTeacherClueCalculation.count }.by(-1)
