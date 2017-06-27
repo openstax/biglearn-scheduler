@@ -11,10 +11,10 @@ http_interactions:
     headers:
       User-Agent:
       - Faraday v0.11.0
-      Biglearn-Api-Token:
-      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Content-Type:
       - application/json
+      Biglearn-Api-Token:
+      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
       Accept:
@@ -25,7 +25,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 27 Jun 2017 22:31:16 GMT
+      - Tue, 27 Jun 2017 23:16:57 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -37,17 +37,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"f661602afc2c61b1c7e7cf2fe9a508c3"
+      - W/"ddf74194c23d28da4ee72317e4b899af"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 5b502f6b-9f16-4a6f-abf0-76fa23255f1a
+      - 87e6979d-f3b8-4dfd-94b6-9570b58c959c
       X-Runtime:
-      - '0.053296'
+      - '0.047871'
     body:
       encoding: UTF-8
       string: '{"ecosystem_event_responses":[{"request_uuid":"<FETCH_ECOSYSTEM_EVENTS
         EXAMPLE 1 REQUEST 1 UUID>","ecosystem_uuid":"<ECOSYSTEM UUID>","events":[],"is_gap":false,"is_end":true}]}'
     http_version: 
-  recorded_at: Tue, 27 Jun 2017 22:31:16 GMT
+  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
 recorded_with: VCR 3.0.3

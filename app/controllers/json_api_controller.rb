@@ -2,7 +2,7 @@ require 'json-schema'
 
 class JsonApiController < ApplicationController
   API_TOKEN_HEADER = 'Biglearn-Scheduler-Token'
-  API_TOKEN = Rails.application.secrets.scheduler_token
+  API_TOKEN = Rails.application.secrets.openstax['biglearn']['scheduler']['token']
   VALIDATE_JSON = false
 
   # Skip verifying the CSRF token
@@ -36,7 +36,7 @@ class JsonApiController < ApplicationController
   end
 
   def _validate_and_parse_request(input_schema)
-    fail Errors::AppRequestAuthenticationError.new('request has an invalid Biglearn-Api-Token') \
+    fail Errors::AppRequestAuthenticationError.new("request has an invalid #{API_TOKEN_HEADER}") \
       unless request.headers[API_TOKEN_HEADER] == API_TOKEN
 
     return {} if input_schema.nil?

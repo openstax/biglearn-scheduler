@@ -9,10 +9,10 @@ http_interactions:
     headers:
       User-Agent:
       - Faraday v0.11.0
-      Biglearn-Api-Token:
-      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Content-Type:
       - application/json
+      Biglearn-Api-Token:
+      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Content-Length:
       - '0'
       Accept-Encoding:
@@ -25,7 +25,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 27 Jun 2017 22:31:16 GMT
+      - Tue, 27 Jun 2017 23:16:57 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -41,12 +41,12 @@ http_interactions:
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - abbce7b4-b2f3-402a-804a-5e8177a9292d
+      - eccfdb61-0082-4c80-ba91-7d0b11648169
       X-Runtime:
-      - '0.019989'
+      - '0.016208'
     body:
       encoding: UTF-8
       string: '{"ecosystem_responses":[]}'
     http_version: 
-  recorded_at: Tue, 27 Jun 2017 22:31:16 GMT
+  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
 recorded_with: VCR 3.0.3

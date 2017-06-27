@@ -7,15 +7,15 @@ http_interactions:
       encoding: UTF-8
       string: '{"student_clue_updates":[{"request_uuid":"<UPDATE_STUDENT_CLUES EXAMPLE
         1 REQUEST 1 UUID>","book_container_uuid":"<BOOK CONTAINER UUID>","student_uuid":"<STUDENT
-        UUID>","clue_data":{"minimum":0.108651141424901,"most_likely":0.347540190113329,"maximum":0.844993434207655,"is_real":true,"ecosystem_uuid":"<ECOSYSTEM
+        UUID>","clue_data":{"minimum":0.000230118152324321,"most_likely":0.00238430855610272,"maximum":0.758108043561826,"is_real":true,"ecosystem_uuid":"<ECOSYSTEM
         UUID>"},"algorithm_name":"local_query"}]}'
     headers:
       User-Agent:
       - Faraday v0.11.0
-      Biglearn-Api-Token:
-      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Content-Type:
       - application/json
+      Biglearn-Api-Token:
+      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
       Accept:
@@ -26,7 +26,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 27 Jun 2017 22:31:16 GMT
+      - Tue, 27 Jun 2017 23:16:57 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -38,17 +38,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"b231930b10c9b29d8fd3123697441cff"
+      - W/"9fd0c1dc78f890aaf983d42787c2b7c5"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - fd51b7b0-0605-42b0-a359-b5db51e654b0
+      - 24b1a22d-3e21-4d90-a753-76a7494d8a30
       X-Runtime:
-      - '0.045439'
+      - '0.062809'
     body:
       encoding: UTF-8
       string: '{"student_clue_update_responses":[{"request_uuid":"<UPDATE_STUDENT_CLUES
         EXAMPLE 1 REQUEST 1 UUID>","update_status":"accepted"}]}'
     http_version: 
-  recorded_at: Tue, 27 Jun 2017 22:31:16 GMT
+  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
 recorded_with: VCR 3.0.3

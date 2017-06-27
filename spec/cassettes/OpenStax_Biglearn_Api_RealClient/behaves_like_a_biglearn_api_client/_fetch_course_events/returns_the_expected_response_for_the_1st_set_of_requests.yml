@@ -11,10 +11,10 @@ http_interactions:
     headers:
       User-Agent:
       - Faraday v0.11.0
-      Biglearn-Api-Token:
-      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Content-Type:
       - application/json
+      Biglearn-Api-Token:
+      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
       Accept:
@@ -25,7 +25,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 27 Jun 2017 22:31:16 GMT
+      - Tue, 27 Jun 2017 23:16:57 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -37,17 +37,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"2233670f7b61e770296c5fe51ca40047"
+      - W/"ce1f5958892210d4a0ed8f75a8f73ba3"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 129e366c-bc55-4363-9e05-0190d009497c
+      - bce8bb1a-a5c0-4316-a48a-0fdfdb7e9060
       X-Runtime:
-      - '0.038052'
+      - '0.058166'
     body:
       encoding: UTF-8
       string: '{"course_event_responses":[{"request_uuid":"<FETCH_COURSE_EVENTS EXAMPLE
         1 REQUEST 1 UUID>","course_uuid":"<COURSE UUID>","events":[],"is_gap":false,"is_end":true}]}'
     http_version: 
-  recorded_at: Tue, 27 Jun 2017 22:31:16 GMT
+  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
 recorded_with: VCR 3.0.3

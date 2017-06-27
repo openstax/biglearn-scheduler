@@ -106,7 +106,9 @@ RSpec.configure do |config|
 end
 
 def make_post_request(route:, headers: {}, body: nil)
-  headers = headers.merge('Biglearn-Scheduler-Token': Rails.application.secrets.scheduler_token)
+  headers = headers.merge(
+    'Biglearn-Scheduler-Token': Rails.application.secrets.openstax['biglearn']['scheduler']['token']
+  )
 
   post route, params: body, headers: headers
 end
