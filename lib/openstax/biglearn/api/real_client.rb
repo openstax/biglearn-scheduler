@@ -1,6 +1,11 @@
 class OpenStax::Biglearn::Api::RealClient
 
-  HEADER_OPTIONS = { headers: { 'Content-Type' => 'application/json' } }.freeze
+  HEADER_OPTIONS = {
+    headers: {
+      'Biglearn-Api-Token' => Rails.application.secrets.api_token,
+      'Content-Type' => 'application/json'
+    }
+  }.freeze
 
   def initialize(biglearn_configuration)
     @server_url   = biglearn_configuration.server_url

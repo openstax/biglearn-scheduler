@@ -11,6 +11,8 @@ http_interactions:
     headers:
       User-Agent:
       - Faraday v0.11.0
+      Biglearn-Api-Token:
+      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Content-Type:
       - application/json
       Accept-Encoding:
@@ -23,7 +25,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Mon, 05 Jun 2017 03:47:57 GMT
+      - Tue, 27 Jun 2017 22:31:16 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -35,17 +37,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"d62e85d27237788cd935cbaba2b67232"
+      - W/"a420cc0e27d67f755f95852a7b8fc183"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - ff17c1a4-8ec1-4cd5-a734-fb10f782bc1b
+      - 916a6642-0763-40d5-a260-01f0c4b9d12c
       X-Runtime:
-      - '0.024571'
+      - '0.042960'
     body:
       encoding: UTF-8
       string: '{"practice_worst_areas_update_responses":[{"request_uuid":"<UPDATE_PRACTICE_WORST_AREAS
         EXAMPLE 1 REQUEST 1 UUID>","update_status":"accepted"}]}'
     http_version: 
-  recorded_at: Mon, 05 Jun 2017 03:47:57 GMT
+  recorded_at: Tue, 27 Jun 2017 22:31:16 GMT
 recorded_with: VCR 3.0.3
