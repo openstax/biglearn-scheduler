@@ -105,6 +105,8 @@ RSpec.configure do |config|
   config.include FactoryGirl::Syntax::Methods
 end
 
-def make_post_request(route:, headers: nil, body: nil)
+def make_post_request(route:, headers: {}, body: nil)
+  headers = headers.merge('Biglearn-Scheduler-Token': Rails.application.secrets.scheduler_token)
+
   post route, params: body, headers: headers
 end
