@@ -45,6 +45,8 @@ class Assignment < ApplicationRecord
   )
     # We use DENSE_RANK() for the student history because we want all assignments
     # not yet in the student history to receive SPEs as if they were next in line
+    # This is also why we return NULL for all the student_history tiebreakers
+    # if student_history_at is NULL
     rel = select(
       <<-SQL.strip_heredoc
         assignments.*,
@@ -54,7 +56,19 @@ class Assignment < ApplicationRecord
           ) AS instructor_driven_sequence_number,
           DENSE_RANK() OVER (
             PARTITION BY assignments.student_uuid, assignments.assignment_type
-            ORDER BY assignments.student_history_at ASC
+            ORDER BY assignments.student_history_at ASC,
+              CASE
+                WHEN assignments.student_history_at IS NULL THEN NULL
+                ELSE assignments.due_at
+              END ASC,
+              CASE
+                WHEN assignments.student_history_at IS NULL THEN NULL
+                ELSE assignments.opens_at
+              END ASC,
+              CASE
+                WHEN assignments.student_history_at IS NULL THEN NULL
+                ELSE assignments.created_at
+              END ASC
           ) AS student_driven_sequence_number
       SQL
     )

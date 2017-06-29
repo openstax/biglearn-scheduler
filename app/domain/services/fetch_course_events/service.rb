@@ -228,8 +228,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 goal_num_tutor_assigned_spes: data[:goal_num_tutor_assigned_spes],
                 spes_are_assigned: data.fetch(:spes_are_assigned),
                 goal_num_tutor_assigned_pes: data[:goal_num_tutor_assigned_pes],
-                pes_are_assigned: data.fetch(:pes_are_assigned),
-                student_history_at: nil
+                pes_are_assigned: data.fetch(:pes_are_assigned)
               )
               assignments << assignment
 

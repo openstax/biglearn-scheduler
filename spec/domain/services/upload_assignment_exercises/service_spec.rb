@@ -291,6 +291,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
       ].flat_map(&:exercise_uuids)
       new_exercise_uuids.each { |exercise_uuid| FactoryGirl.create :exercise, uuid: exercise_uuid }
 
+      current_time = Time.current
+
       # EO - Expected Order (Instructor-Driven and Student-Driven in the expected order)
       # RO - Student-Driven in the reverse order
 
@@ -300,6 +302,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         course_uuid: course.uuid,
         student_uuid: student.uuid,
         assignment_type: 'reading',
+        opens_at: current_time.yesterday - 5.days,
+        due_at: current_time.tomorrow,
+        feedback_at: current_time.yesterday - 5.days,
         ecosystem_uuid: ecosystem_1.uuid,
         assigned_exercise_uuids: @reading_pool_1_old.exercise_uuids.sample(5) +
                                  @reading_pool_2_old.exercise_uuids.sample(5),
@@ -320,6 +325,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         course_uuid: course.uuid,
         student_uuid: student.uuid,
         assignment_type: 'reading',
+        opens_at: current_time.yesterday - 3.days,
+        due_at: current_time.tomorrow + 2.days,
+        feedback_at: current_time.yesterday - 3.days,
         ecosystem_uuid: ecosystem_2.uuid,
         assigned_exercise_uuids: @reading_pool_3_new.exercise_uuids.sample(5) +
                                  @reading_pool_4_new.exercise_uuids.sample(5),
@@ -340,6 +348,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         course_uuid: course.uuid,
         student_uuid: student.uuid,
         assignment_type: 'reading',
+        opens_at: current_time.yesterday - 1.day,
+        due_at: current_time.tomorrow + 4.days,
+        feedback_at: current_time.yesterday - 1.day,
         ecosystem_uuid: ecosystem_2.uuid,
         assigned_exercise_uuids: @reading_pool_4_new.exercise_uuids.sample(5) +
                                  @reading_pool_5_new.exercise_uuids.sample(5),
@@ -362,6 +373,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         course_uuid: course.uuid,
         student_uuid: student.uuid,
         assignment_type: 'homework',
+        opens_at: current_time.yesterday - 4.days,
+        due_at: current_time.tomorrow + 1.day,
+        feedback_at: current_time.tomorrow + 1.day,
         ecosystem_uuid: ecosystem_1.uuid,
         assigned_exercise_uuids: @homework_pool_1_old.exercise_uuids +
                                  @homework_pool_2_old.exercise_uuids,
@@ -382,6 +396,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         course_uuid: course.uuid,
         student_uuid: student.uuid,
         assignment_type: 'homework',
+        opens_at: current_time.yesterday - 2.days,
+        due_at: current_time.tomorrow + 3.days,
+        feedback_at: current_time.tomorrow + 3.days,
         ecosystem_uuid: ecosystem_2.uuid,
         assigned_exercise_uuids: @homework_pool_3_new.exercise_uuids +
                                  @homework_pool_4_new.exercise_uuids,
@@ -402,6 +419,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         course_uuid: course.uuid,
         student_uuid: student.uuid,
         assignment_type: 'homework',
+        opens_at: current_time.yesterday,
+        due_at: current_time.tomorrow + 5.days,
+        feedback_at: current_time.tomorrow + 5.days,
         ecosystem_uuid: ecosystem_2.uuid,
         assigned_exercise_uuids: @homework_pool_4_new.exercise_uuids +
                                  @homework_pool_5_new.exercise_uuids,
