@@ -365,6 +365,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
 
       # These homeworks are taking all available exercises, so no PEs are possible
 
+      # Immediate feedback
       # 3 SPEs, 1 PE requested; PE cannot be filled
       # EO: No exercises available to fill anything
       # RO: Only 1-ago SPE can be filled from homework 2
@@ -375,7 +376,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         assignment_type: 'homework',
         opens_at: current_time.yesterday - 4.days,
         due_at: current_time.tomorrow + 1.day,
-        feedback_at: current_time.tomorrow + 1.day,
+        feedback_at: current_time.yesterday - 4.days,
         ecosystem_uuid: ecosystem_1.uuid,
         assigned_exercise_uuids: @homework_pool_1_old.exercise_uuids +
                                  @homework_pool_2_old.exercise_uuids,
@@ -388,9 +389,11 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
+      # Immediate feedback
       # 2 SPEs, 1 PE requested; PE cannot be filled
       # EO: Only 1-ago SPE can be filled from homework 1
-      # RO: Only 1-ago SPE can be filled from homework 3
+      # RO: No exercises available to fill anything
+      #     (1-ago SPE would be filled from homework 3 if homework 3 had immediate feedback)
       @homework_2 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -398,7 +401,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         assignment_type: 'homework',
         opens_at: current_time.yesterday - 2.days,
         due_at: current_time.tomorrow + 3.days,
-        feedback_at: current_time.tomorrow + 3.days,
+        feedback_at: current_time.yesterday - 2.days,
         ecosystem_uuid: ecosystem_2.uuid,
         assigned_exercise_uuids: @homework_pool_3_new.exercise_uuids +
                                  @homework_pool_4_new.exercise_uuids,
@@ -411,6 +414,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
+      # Feedback on due date
       # 3 SPEs, 1 PE requested; PE cannot be filled
       # EO: Only 1-ago SPE can be filled from homework 2
       # RO: No exercises available to fill anything
@@ -761,9 +765,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
             assignment_uuid: @homework_2.uuid,
             history_type: 'student_driven',
-            exercise_pool: @homework_pool_4_new.exercise_uuids +
-                           @homework_pool_5_new.exercise_uuids,
-            exercise_count: 1
+            exercise_pool: [],
+            exercise_count: 0
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,

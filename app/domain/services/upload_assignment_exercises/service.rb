@@ -81,6 +81,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             :student_driven_sequence_number
           )
         Assignment
+          .distinct
           .joins(
             <<-SQL.strip_heredoc
               INNER JOIN (#{subquery.to_sql}) "assignments_to_update"
