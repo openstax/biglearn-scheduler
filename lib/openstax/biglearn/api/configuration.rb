@@ -1,1 +1,1 @@
-OpenStax::Biglearn::Api::Configuration = Struct.new :server_url, :client_id, :secret
+OpenStax::Biglearn::Api::Configuration = Struct.new :server_url, :token, :client_id, :secret

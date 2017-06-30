@@ -7,13 +7,15 @@ http_interactions:
       encoding: UTF-8
       string: '{"teacher_clue_updates":[{"request_uuid":"<UPDATE_TEACHER_CLUES EXAMPLE
         1 REQUEST 1 UUID>","book_container_uuid":"<BOOK CONTAINER UUID>","course_container_uuid":"<COURSE
-        CONTAINER UUID>","clue_data":{"minimum":0.0004811711908467853,"most_likely":0.0460969196706682,"maximum":0.23904664943669496,"is_real":true,"ecosystem_uuid":"<ECOSYSTEM
+        CONTAINER UUID>","clue_data":{"minimum":0.000230118152324321,"most_likely":0.00238430855610272,"maximum":0.758108043561826,"is_real":true,"ecosystem_uuid":"<ECOSYSTEM
         UUID>"},"algorithm_name":"local_query"}]}'
     headers:
       User-Agent:
-      - Faraday v0.9.2
+      - Faraday v0.11.0
       Content-Type:
       - application/json
+      Biglearn-Api-Token:
+      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
       Accept:
@@ -24,7 +26,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Wed, 12 Apr 2017 00:06:07 GMT
+      - Tue, 27 Jun 2017 23:16:57 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -36,17 +38,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"0380848812333a230471867e803bec19"
+      - W/"46a16a422f73e2dfc7340cfa289a2437"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 6aa309e8-555b-4abd-b45f-acccc624765d
+      - 9ac14e0c-2d95-43d9-beac-5bb540128f8a
       X-Runtime:
-      - '0.066875'
+      - '0.043770'
     body:
       encoding: UTF-8
       string: '{"teacher_clue_update_responses":[{"request_uuid":"<UPDATE_TEACHER_CLUES
         EXAMPLE 1 REQUEST 1 UUID>","update_status":"accepted"}]}'
     http_version: 
-  recorded_at: Wed, 12 Apr 2017 00:06:07 GMT
+  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
 recorded_with: VCR 3.0.3

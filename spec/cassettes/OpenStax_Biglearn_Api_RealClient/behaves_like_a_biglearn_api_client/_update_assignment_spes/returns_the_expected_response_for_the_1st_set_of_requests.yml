@@ -15,6 +15,8 @@ http_interactions:
       - Faraday v0.11.0
       Content-Type:
       - application/json
+      Biglearn-Api-Token:
+      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
       Accept:
@@ -25,7 +27,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Mon, 05 Jun 2017 03:47:57 GMT
+      - Tue, 27 Jun 2017 23:16:57 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -37,18 +39,18 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"7fab419323d9db7f3200c3864a21abb6"
+      - W/"4150cd13490e0371247d1f5ba89d4da1"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 7d971827-a3f6-4993-8b23-a711fcdf664c
+      - 613dbb30-a9d7-4232-8b97-3d9424d0765a
       X-Runtime:
-      - '0.027077'
+      - '0.055405'
     body:
       encoding: UTF-8
       string: '{"spe_update_responses":[{"request_uuid":"<UPDATE_ASSIGNMENT_SPES EXAMPLE
         1 REQUEST 1 UUID>","update_status":"accepted"},{"request_uuid":"<UPDATE_ASSIGNMENT_SPES
         EXAMPLE 1 REQUEST 2 UUID>","update_status":"accepted"}]}'
     http_version: 
-  recorded_at: Mon, 05 Jun 2017 03:47:57 GMT
+  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
 recorded_with: VCR 3.0.3
