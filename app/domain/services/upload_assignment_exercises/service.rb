@@ -14,9 +14,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
   # we create all of them for each assignment in one go
   def process
     start_time = Time.current
-    Rails.logger.tagged 'UploadAssignmentExercises' do |logger|
-      logger.debug { "Started at #{start_time}" }
-    end
+    log(:debug) { "Started at #{start_time}" }
 
     aa = Assignment.arel_table
     aspe = AssignmentSpe.arel_table
@@ -83,6 +81,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             :student_driven_sequence_number
           )
         Assignment
+          .distinct
           .joins(
             <<-SQL.strip_heredoc
               INNER JOIN (#{subquery.to_sql}) "assignments_to_update"
@@ -555,11 +554,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       break if num_algorithm_exercise_calculations < BATCH_SIZE
     end
 
-    Rails.logger.tagged 'UploadAssignmentExercises' do |logger|
-      logger.debug do
-        "#{total_algorithm_exercise_calculations} algorithm exercise calculations(s) processed in #{
-        Time.current - start_time} second(s)"
-      end
+    log(:debug) do
+      "#{total_algorithm_exercise_calculations} algorithm exercise calculations(s) processed in #{
+      Time.current - start_time} second(s)"
     end
   end
 

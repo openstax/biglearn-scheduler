@@ -1,18 +1,16 @@
 require 'rails_helper'
 
-RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
+RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
   subject { described_class.new }
 
   context 'with no Assignments' do
-    it 'does not create any SPEs or PEs' do
-      expect { subject.process }.to  not_change { AssignmentSpe.count }
-                                .and not_change { AssignmentPe.count  }
+    it 'does not update anything' do
+      expect { subject.process }.to  not_change { Assignment.count }
+                                .and not_change { AssignmentSpe.count  }
     end
   end
 
-  context 'with existing Ecosystems, Course, ExercisePools, Exercises, BookContainerMappings,' +
-          ' Assignments, AssignedExercises, ExerciseCalculations' +
-          ' and AlgorithmExerciseCalculations' do
+  context 'with existing Students, Assignments, AssignedExercises, Responses and AssignmentSpes' do
     before(:all) do
       DatabaseCleaner.start
 
@@ -293,10 +291,6 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
 
       current_time = Time.current
 
-      # EO - Expected Order (Instructor-Driven and Student-Driven in the expected order)
-      # RO - Student-Driven in the reverse order
-
-      # 0 SPEs, 0 PEs requested
       @reading_1 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -317,9 +311,6 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # 2 SPEs (1 random-ago), 1 PEs requested; PE is filled
-      # EO: 1-ago SPE filled from reading 1, random-ago SPE filled as PE
-      # RO: 1-ago SPE filled from reading 3, random-ago SPE filled as PE
       @reading_2 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -340,9 +331,6 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # 3 SPEs (1 random-ago), 2 PEs requested; PEs are filled taking 2 out of 3 available exercises
-      # EO: 1-ago SPE filled from reading 2, 3-ago SPE filled as PE, random-ago SPE unfilled
-      # RO: Only 1-ago SPE filled as PE
       @reading_3 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -363,12 +351,6 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # These homeworks are taking all available exercises, so no PEs are possible
-
-      # Immediate feedback
-      # 3 SPEs, 1 PE requested; PE cannot be filled
-      # EO: No exercises available to fill anything
-      # RO: Only 1-ago SPE can be filled from homework 2
       @homework_1 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -389,11 +371,6 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # Immediate feedback
-      # 2 SPEs, 1 PE requested; PE cannot be filled
-      # EO: Only 1-ago SPE can be filled from homework 1
-      # RO: No exercises available to fill anything
-      #     (1-ago SPE would be filled from homework 3 if homework 3 had immediate feedback)
       @homework_2 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -414,10 +391,6 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      # Feedback on due date
-      # 3 SPEs, 1 PE requested; PE cannot be filled
-      # EO: Only 1-ago SPE can be filled from homework 2
-      # RO: No exercises available to fill anything
       @homework_3 = FactoryGirl.create(
         :assignment,
         course_uuid: course.uuid,
@@ -438,84 +411,16 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         pes_are_assigned: false
       )
 
-      exercise_calculation_1 = FactoryGirl.create(
-        :exercise_calculation,
-        ecosystem: ecosystem_1,
-        student: student
-      )
-      @algorithm_exercise_calculation_1 = FactoryGirl.create(
-        :algorithm_exercise_calculation,
-        exercise_calculation: exercise_calculation_1,
-        exercise_uuids: old_exercise_uuids.shuffle,
-        is_uploaded_for_assignments: false
-      )
-
-      exercise_calculation_2 = FactoryGirl.create(
-        :exercise_calculation,
-        ecosystem: ecosystem_2,
-        student: student
-      )
-      @algorithm_exercise_calculation_2 = FactoryGirl.create(
-        :algorithm_exercise_calculation,
-        exercise_calculation: exercise_calculation_2,
-        exercise_uuids: new_exercise_uuids.shuffle,
-        is_uploaded_for_assignments: false
-      )
+      [ @reading_1, @homework_1 ].each do |assignment|
+        FactoryGirl.create :assignment_spe, assignment: assignment
+      end
     end
 
     after(:all)  { DatabaseCleaner.clean }
 
-    let(:expected_assignment_pes) do
-      [
-        {
-          algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-          assignment_uuid: @reading_2.uuid,
-          exercise_pool: @reading_pool_3_new.exercise_uuids +
-                         @reading_pool_4_new.exercise_uuids -
-                         @reading_2.assigned_exercise_uuids,
-          exercise_count: 1
-        },
-        {
-          algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-          assignment_uuid: @reading_3.uuid,
-          exercise_pool: @reading_pool_4_new.exercise_uuids +
-                         @reading_pool_5_new.exercise_uuids -
-                         @reading_3.assigned_exercise_uuids,
-          exercise_count: 2
-        },
-        {
-          algorithm_exercise_calculation: @algorithm_exercise_calculation_1,
-          assignment_uuid: @homework_1.uuid,
-          exercise_pool: [],
-          exercise_count: 0
-        },
-        {
-          algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-          assignment_uuid: @homework_2.uuid,
-          exercise_pool: [],
-          exercise_count: 0
-        },
-        {
-          algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-          assignment_uuid: @homework_3.uuid,
-          exercise_pool: [],
-          exercise_count: 0
-        }
-      ]
+    let(:all_assignment_uuids)     do
+      [ @reading_1, @homework_1, @reading_2, @homework_2, @reading_3, @homework_3 ].map(&:uuid)
     end
-
-    let(:assignment_pes_by_assignment_uuid) do
-      expected_assignment_pes.index_by { |calc| calc[:assignment_uuid] }
-    end
-
-    let(:assignment_spes_by_assignment_uuid_and_history_type) do
-      Hash.new { |hash, key| hash[key] = {} }.tap do |hash|
-        expected_assignment_spes.each do |calc|
-          hash[calc[:assignment_uuid]][calc[:history_type]] = calc
-        end
-      end
-    end
-
     let(:ordered_assignment_uuids) { ordered_assignments.map(&:uuid) }
 
     let(:assigned_exercises_by_assignment_uuid) do
@@ -536,158 +441,21 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
       end
     end
 
-    let(:expected_num_spes) do
-      expected_assignment_spes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
-    end
-    let(:expected_num_pes) do
-      expected_assignment_pes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
-    end
-
-    before do
-      # Update the student history
-      Services::UpdateStudentHistory::Service.process
-
-      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes).with(
-        [a_kind_of(Hash)] * expected_assignment_pes.size
-      )
-      expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes).with(
-        [a_kind_of(Hash)] * expected_assignment_spes.size
-      )
-    end
-
     context 'with assignments completed in the expected order' do
       let(:ordered_assignments) do
         [ @reading_1, @homework_1, @reading_2, @homework_2, @reading_3, @homework_3 ]
       end
 
-      let(:expected_assignment_spes) do
-        [
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @reading_2.uuid,
-            history_type: 'instructor_driven',
-            exercise_pool: @reading_pool_1_new.exercise_uuids +
-                           @reading_pool_2_new.exercise_uuids +
-                           @reading_pool_3_new.exercise_uuids +
-                           @reading_pool_4_new.exercise_uuids -
-                           @reading_2.assigned_exercise_uuids,
-            exercise_count: 2
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @reading_2.uuid,
-            history_type: 'student_driven',
-            exercise_pool: @reading_pool_1_new.exercise_uuids +
-                           @reading_pool_2_new.exercise_uuids +
-                           @reading_pool_3_new.exercise_uuids +
-                           @reading_pool_4_new.exercise_uuids -
-                           @reading_2.assigned_exercise_uuids,
-            exercise_count: 2
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @reading_3.uuid,
-            history_type: 'instructor_driven',
-            exercise_pool: @reading_pool_3_new.exercise_uuids +
-                           @reading_pool_4_new.exercise_uuids +
-                           @reading_pool_5_new.exercise_uuids -
-                           @reading_3.assigned_exercise_uuids,
-            exercise_count: 2
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @reading_3.uuid,
-            history_type: 'student_driven',
-            exercise_pool: @reading_pool_3_new.exercise_uuids +
-                           @reading_pool_4_new.exercise_uuids +
-                           @reading_pool_5_new.exercise_uuids -
-                           @reading_3.assigned_exercise_uuids,
-            exercise_count: 2
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_1,
-            assignment_uuid: @homework_1.uuid,
-            history_type: 'instructor_driven',
-            exercise_pool: [],
-            exercise_count: 0
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_1,
-            assignment_uuid: @homework_1.uuid,
-            history_type: 'student_driven',
-            exercise_pool: [],
-            exercise_count: 0
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @homework_2.uuid,
-            history_type: 'instructor_driven',
-            exercise_pool: @homework_pool_1_new.exercise_uuids +
-                           @homework_pool_2_new.exercise_uuids,
-            exercise_count: 1
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @homework_2.uuid,
-            history_type: 'student_driven',
-            exercise_pool: @homework_pool_1_new.exercise_uuids +
-                           @homework_pool_2_new.exercise_uuids,
-            exercise_count: 1
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @homework_3.uuid,
-            history_type: 'instructor_driven',
-            exercise_pool: @homework_pool_3_new.exercise_uuids +
-                           @homework_pool_4_new.exercise_uuids,
-            exercise_count: 1
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @homework_3.uuid,
-            history_type: 'student_driven',
-            exercise_pool: @homework_pool_3_new.exercise_uuids +
-                           @homework_pool_4_new.exercise_uuids,
-            exercise_count: 1
-          }
-        ]
-      end
+      it 'adds the assignments to the student history in the correct order' do
+        expect { subject.process }.to  not_change { Assignment.count }
+                                  .and change     { AssignmentSpe.count }.by(-2)
 
-      it 'creates the correct numbers of Biglearn requests, SPEs and PEs from the correct pools' do
-        expect { subject.process }
-          .to  change { AssignmentSpe.count }.by(expected_num_spes)
-          .and change { AssignmentPe.count }.by(expected_num_pes)
+        student_history_assignments = Assignment
+          .where(uuid: all_assignment_uuids)
+          .where.not(student_history_at: nil)
+          .order(:student_history_at)
 
-        expected_assignment_spes.each do |expected_assignment_spe|
-          assignment_spes = AssignmentSpe.where(
-            assignment_uuid: expected_assignment_spe[:assignment_uuid],
-            history_type: expected_assignment_spe[:history_type]
-          )
-
-          expect(assignment_spes.size).to eq expected_assignment_spe[:exercise_count]
-
-          assignment_spes.each do |assignment_spe|
-            expect(assignment_spe.algorithm_exercise_calculation_uuid).to(
-              eq expected_assignment_spe[:algorithm_exercise_calculation].uuid
-            )
-            expect(assignment_spe.exercise_uuid).to be_in expected_assignment_spe[:exercise_pool]
-          end
-        end
-
-        expected_assignment_pes.each do |expected_assignment_pe|
-          assignment_pes = AssignmentPe.where(
-            assignment_uuid: expected_assignment_pe[:assignment_uuid]
-          )
-
-          expect(assignment_pes.size).to eq expected_assignment_pe[:exercise_count]
-
-          assignment_pes.each do |assignment_pe|
-            expect(assignment_pe.algorithm_exercise_calculation_uuid).to(
-              eq expected_assignment_pe[:algorithm_exercise_calculation].uuid
-            )
-            expect(assignment_pe.exercise_uuid).to be_in expected_assignment_pe[:exercise_pool]
-          end
-        end
+        expect(student_history_assignments).to eq ordered_assignments
       end
     end
 
@@ -696,131 +464,60 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         [ @reading_1, @homework_1, @reading_2, @homework_2, @reading_3, @homework_3 ].reverse
       end
 
-      let(:expected_assignment_spes) do
-        [
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @reading_2.uuid,
-            history_type: 'instructor_driven',
-            exercise_pool: @reading_pool_1_new.exercise_uuids +
-                           @reading_pool_2_new.exercise_uuids +
-                           @reading_pool_3_new.exercise_uuids +
-                           @reading_pool_4_new.exercise_uuids -
-                           @reading_2.assigned_exercise_uuids,
-            exercise_count: 2
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @reading_2.uuid,
-            history_type: 'student_driven',
-            exercise_pool: @reading_pool_3_new.exercise_uuids +
-                           @reading_pool_4_new.exercise_uuids +
-                           @reading_pool_5_new.exercise_uuids -
-                           @reading_2.assigned_exercise_uuids,
-            exercise_count: 2
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @reading_3.uuid,
-            history_type: 'instructor_driven',
-            exercise_pool: @reading_pool_3_new.exercise_uuids +
-                           @reading_pool_4_new.exercise_uuids +
-                           @reading_pool_5_new.exercise_uuids -
-                           @reading_3.assigned_exercise_uuids,
-            exercise_count: 2
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @reading_3.uuid,
-            history_type: 'student_driven',
-            exercise_pool: @reading_pool_4_new.exercise_uuids +
-                           @reading_pool_5_new.exercise_uuids -
-                           @reading_3.assigned_exercise_uuids,
-            exercise_count: 1
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_1,
-            assignment_uuid: @homework_1.uuid,
-            history_type: 'instructor_driven',
-            exercise_pool: [],
-            exercise_count: 0
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_1,
-            assignment_uuid: @homework_1.uuid,
-            history_type: 'student_driven',
-            exercise_pool: @homework_pool_3_old.exercise_uuids +
-                           @homework_pool_4_old.exercise_uuids,
-            exercise_count: 1
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @homework_2.uuid,
-            history_type: 'instructor_driven',
-            exercise_pool: @homework_pool_1_new.exercise_uuids +
-                           @homework_pool_2_new.exercise_uuids,
-            exercise_count: 1
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @homework_2.uuid,
-            history_type: 'student_driven',
-            exercise_pool: [],
-            exercise_count: 0
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @homework_3.uuid,
-            history_type: 'instructor_driven',
-            exercise_pool: @homework_pool_3_new.exercise_uuids +
-                           @homework_pool_4_new.exercise_uuids,
-            exercise_count: 1
-          },
-          {
-            algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
-            assignment_uuid: @homework_3.uuid,
-            history_type: 'student_driven',
-            exercise_pool: [],
-            exercise_count: 0
-          }
-        ]
+      it 'adds the assignments to the student history in the correct order' do
+        expect { subject.process }.to  not_change { Assignment.count }
+                                  .and change     { AssignmentSpe.count }.by(-2)
+
+        student_history_assignments = Assignment
+          .where(uuid: all_assignment_uuids)
+          .where.not(student_history_at: nil)
+          .order(:student_history_at)
+
+        expect(student_history_assignments).to eq ordered_assignments
+      end
+    end
+
+    context 'with incomplete assignments' do
+      let(:ordered_assignments) do
+        [ @reading_2, @homework_2, @reading_3, @homework_3 ]
       end
 
-      it 'creates the correct numbers of Biglearn requests, SPEs and PEs from the correct pools' do
-        expect { subject.process }
-          .to  change { AssignmentSpe.count }.by(expected_num_spes)
-          .and change { AssignmentPe.count }.by(expected_num_pes)
+      it 'adds the assignments to the student history in the correct order' do
+        expect { subject.process }.to  not_change { Assignment.count }
+                                  .and change { AssignmentSpe.count }.by(-2)
 
-        expected_assignment_spes.each do |expected_assignment_spe|
-          assignment_spes = AssignmentSpe.where(
-            assignment_uuid: expected_assignment_spe[:assignment_uuid],
-            history_type: expected_assignment_spe[:history_type]
-          )
+        student_history_assignments = Assignment
+          .where(uuid: all_assignment_uuids)
+          .where.not(student_history_at: nil)
+          .order(:student_history_at)
 
-          expect(assignment_spes.size).to eq expected_assignment_spe[:exercise_count]
+        expect(student_history_assignments).to eq ordered_assignments
+      end
+    end
 
-          assignment_spes.each do |assignment_spe|
-            expect(assignment_spe.algorithm_exercise_calculation_uuid).to(
-              eq expected_assignment_spe[:algorithm_exercise_calculation].uuid
-            )
-            expect(assignment_spe.exercise_uuid).to be_in expected_assignment_spe[:exercise_pool]
-          end
-        end
+    context 'with incomplete past-due assignments' do
+      let(:ordered_assignments) do
+        [ @reading_2, @homework_2, @reading_3, @homework_3 ]
+      end
 
-        expected_assignment_pes.each do |expected_assignment_pe|
-          assignment_pes = AssignmentPe.where(
-            assignment_uuid: expected_assignment_pe[:assignment_uuid]
-          )
+      let(:current_time)        { Time.current }
 
-          expect(assignment_pes.size).to eq expected_assignment_pe[:exercise_count]
+      before do
+        @reading_1.update_attribute :due_at, current_time.yesterday
 
-          assignment_pes.each do |assignment_pe|
-            expect(assignment_pe.algorithm_exercise_calculation_uuid).to(
-              eq expected_assignment_pe[:algorithm_exercise_calculation].uuid
-            )
-            expect(assignment_pe.exercise_uuid).to be_in expected_assignment_pe[:exercise_pool]
-          end
-        end
+        @homework_1.update_attribute :due_at, current_time.yesterday
+      end
+
+      it 'adds the assignments to the student history in the correct order' do
+        expect { subject.process }.to  not_change { Assignment.count }
+                                  .and change     { AssignmentSpe.count }.by(-2)
+
+        student_history_assignments = Assignment
+          .where(uuid: all_assignment_uuids)
+          .where.not(student_history_at: nil)
+          .order(:student_history_at)
+
+        expect(student_history_assignments).to eq [ @reading_1, @homework_1 ] + ordered_assignments
       end
     end
   end

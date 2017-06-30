@@ -4,9 +4,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
 
   def process
     start_time = Time.current
-    Rails.logger.tagged 'PrepareEcosystemMatrixUpdates' do |logger|
-      logger.debug { "Started at #{start_time}" }
-    end
+    log(:debug) { "Started at #{start_time}" }
 
     # Do all the processing in batches to avoid OOM problems
     total_ecosystems = 0
@@ -55,10 +53,8 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
       break if num_ecosystems < BATCH_SIZE
     end
 
-    Rails.logger.tagged 'PrepareEcosystemMatrixUpdates' do |logger|
-      logger.debug do
-        "#{total_ecosystems} ecosystem(s) processed in #{Time.current - start_time} second(s)"
-      end
+    log(:debug) do
+      "#{total_ecosystems} ecosystem(s) processed in #{Time.current - start_time} second(s)"
     end
   end
 end

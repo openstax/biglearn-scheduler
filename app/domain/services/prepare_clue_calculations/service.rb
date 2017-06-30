@@ -3,9 +3,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
   def process
     start_time = Time.current
-    Rails.logger.tagged 'PrepareClueCalculations' do |logger|
-      logger.debug { "Started at #{start_time}" }
-    end
+    log(:debug) { "Started at #{start_time}" }
 
     rr = Response.arel_table
     ex = Exercise.arel_table
@@ -156,12 +154,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           student_clues_to_update.flat_map do |book_container_uuid, student_uuids|
           ecosystem_uuid = ecosystem_uuid_by_book_container_uuid[book_container_uuid]
           if ecosystem_uuid.nil?
-            Rails.logger.tagged 'PrepareClueCalculations' do |logger|
-              logger.warn do
-                "Student CLUe skipped due to no information about book container #{
-                  book_container_uuid
-                }"
-              end
+            log(:warn) do
+              "Student CLUe skipped due to no information about book container #{
+                book_container_uuid
+              }"
             end
 
             next
@@ -193,12 +189,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           teacher_clues_to_update.flat_map do |book_container_uuid, course_container_uuids|
           ecosystem_uuid = ecosystem_uuid_by_book_container_uuid[book_container_uuid]
           if ecosystem_uuid.nil?
-            Rails.logger.tagged 'PrepareClueCalculations' do |logger|
-              logger.warn do
-                "Teacher CLUe skipped due to no information about book container #{
-                  book_container_uuid
-                }"
-              end
+            log(:warn) do
+              "Teacher CLUe skipped due to no information about book container #{
+                book_container_uuid
+              }"
             end
 
             next
@@ -212,14 +206,12 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           course_container_uuids.uniq.map do |course_container_uuid|
             student_uuids = student_uuids_by_course_container_uuids[course_container_uuid]
             if student_uuids.nil?
-              Rails.logger.tagged 'PrepareClueCalculations' do |logger|
-                logger.warn do
-                  container_uuid = course_container_uuid
+              log(:warn) do
+                container_uuid = course_container_uuid
 
-                  "Teacher CLUe skipped due to no information about course container #{
-                    container_uuid
-                  }"
-                end
+                "Teacher CLUe skipped due to no information about course container #{
+                  container_uuid
+                }"
               end
 
               next
@@ -281,10 +273,8 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
       break if num_responses < BATCH_SIZE
     end
 
-    Rails.logger.tagged 'PrepareClueCalculations' do |logger|
-      logger.debug do
-        "#{total_responses} response(s) processed in #{Time.current - start_time} second(s)"
-      end
+    log(:debug) do
+      "#{total_responses} response(s) processed in #{Time.current - start_time} second(s)"
     end
   end
 end

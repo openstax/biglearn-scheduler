@@ -41,86 +41,58 @@ class Assignment < ApplicationRecord
 
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
   def self.with_instructor_and_student_driven_sequence_numbers_subquery(
-    student_uuids: nil, assignment_types: nil, current_time: nil
+    student_uuids: nil, assignment_types: nil, current_time: Time.current
   )
-    wheres = []
-    unless student_uuids.nil?
-      wheres << if student_uuids.empty?
-        'FALSE'
-      else
-        "assignments.student_uuid IN (#{
-          student_uuids.map { |uuid| "'#{uuid}'" }.join(', ')
-        })"
-      end
-    end
-    unless assignment_types.nil?
-      wheres << if assignment_types.empty?
-        'FALSE'
-      else
-        "assignments.assignment_type IN (#{
-          assignment_types.map { |type| "'#{type}'" }.join(', ')
-        })"
-      end
-    end
-    current_time ||= Time.current
-
     # We use DENSE_RANK() for the student history because we want all assignments
     # not yet in the student history to receive SPEs as if they were next in line
-    # One of the conditions for adding an assignment to the student history is answering questions
-    # and we do recalculate all outstanding SPEs for that student after every question answered
-    # Unfortunately, we don't yet recalculate all SPEs for a student after an incomplete assignment
-    # becomes due (the other condition for adding assignments to the student history)
-    # Avoiding stale SPEs when incomplete assignments become due would probably require
-    # a background job checking that condition periodically
-    <<-SQL.strip_heredoc
-      (
-        SELECT assignments.*,
-          assignment_core_step_responses.student_history_at,
+    # This is also why we return NULL for all the student_history tiebreakers
+    # if student_history_at is NULL
+    rel = select(
+      <<-SQL.strip_heredoc
+        assignments.*,
           ROW_NUMBER() OVER (
             PARTITION BY assignments.student_uuid, assignments.assignment_type
             ORDER BY assignments.due_at ASC, assignments.opens_at ASC, assignments.created_at ASC
           ) AS instructor_driven_sequence_number,
           DENSE_RANK() OVER (
             PARTITION BY assignments.student_uuid, assignments.assignment_type
-            ORDER BY assignment_core_step_responses.student_history_at ASC
+            ORDER BY assignments.student_history_at ASC,
+              CASE
+                WHEN assignments.student_history_at IS NULL THEN NULL
+                ELSE assignments.due_at
+              END ASC,
+              CASE
+                WHEN assignments.student_history_at IS NULL THEN NULL
+                ELSE assignments.opens_at
+              END ASC,
+              CASE
+                WHEN assignments.student_history_at IS NULL THEN NULL
+                ELSE assignments.created_at
+              END ASC
           ) AS student_driven_sequence_number
-        FROM assignments
-          LEFT OUTER JOIN LATERAL (
-            SELECT CASE
-              WHEN EVERY(responses.id IS NOT NULL)
-                THEN MAX(responses.first_responded_at)
-              WHEN assignments.due_at <= '#{current_time.to_s(:db)}'
-                THEN assignments.due_at
-              END AS student_history_at
-            FROM assigned_exercises
-            LEFT OUTER JOIN responses
-              ON responses.trial_uuid = assigned_exercises.uuid
-                AND (
-                  assignments.due_at IS NULL
-                    OR responses.first_responded_at <= assignments.due_at
-                )
-            WHERE assigned_exercises.assignment_uuid = assignments.uuid
-              AND assigned_exercises.is_spe = FALSE
-            GROUP BY assigned_exercises.assignment_uuid
-          ) AS assignment_core_step_responses
-            ON TRUE
-        #{"WHERE #{wheres.join(' AND ')}" unless wheres.empty?}
-      )
-    SQL
+      SQL
+    )
+
+    rel = rel.where(student_uuid: student_uuids) unless student_uuids.nil?
+    rel = rel.where(assignment_type: assignment_types) unless assignment_types.nil?
+
+    rel
   end
 
   def self.to_a_with_instructor_and_student_driven_sequence_numbers_cte(
-    student_uuids: nil, assignment_types: nil, current_time: nil
+    student_uuids: nil, assignment_types: nil, current_time: Time.current
   )
     find_by_sql(
       <<-SQL.strip_heredoc
-        WITH "assignments" AS #{
-          with_instructor_and_student_driven_sequence_numbers_subquery(
-            student_uuids: student_uuids,
-            assignment_types: assignment_types,
-            current_time: current_time
-          )
-        } #{all.to_sql}
+        WITH "assignments" AS (
+          #{
+            unscoped.with_instructor_and_student_driven_sequence_numbers_subquery(
+              student_uuids: student_uuids,
+              assignment_types: assignment_types,
+              current_time: current_time
+            ).to_sql
+          }
+        ) #{all.to_sql}
       SQL
     )
   end
