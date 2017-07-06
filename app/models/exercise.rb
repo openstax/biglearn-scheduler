@@ -18,7 +18,17 @@ class Exercise < ApplicationRecord
       <<-FROM_SQL.strip_heredoc
         (
           #{
-            left_outer_joins(:responses)
+            joins(:responses)
+              .where(
+                <<-WHERE_SQL.strip_heredoc
+                  EXISTS (
+                    SELECT "responses".*
+                    FROM "responses"
+                    WHERE "responses"."exercise_uuid" = "exercises"."uuid"
+                      AND "responses"."used_in_ecosystem_matrix_updates" = FALSE
+                  )
+                WHERE_SQL
+              )
               .group(:id)
               .having(
                 <<-HAVING_SQL.strip_heredoc

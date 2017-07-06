@@ -1,6 +1,6 @@
 class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationService
   UPDATE_THRESHOLD = 0.1
-  BATCH_SIZE = 1000
+  BATCH_SIZE = 100
 
   def process
     start_time = Time.current

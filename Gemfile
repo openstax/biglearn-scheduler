@@ -51,8 +51,8 @@ gem 'activerecord-import'
 # Daemonize our custom background tasks
 gem 'daemons'
 
-# Entity-relationship diagram gem
-gem 'rails-erd'
+# Retry REPEATABLE READ isolation level transactions on serialization failure
+gem 'transaction_retry'
 
 # Faster JSON serialization
 gem 'oj'
@@ -60,6 +60,9 @@ gem 'oj_mimic_json'
 
 # Silence logs for certain actions
 gem 'silencer'
+
+# Entity-relationship diagram gem
+gem 'rails-erd'
 
 group :development, :test do
   # Call 'byebug' anywhere in the code to stop execution and get a debugger console

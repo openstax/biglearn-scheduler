@@ -1,5 +1,5 @@
 class Services::PrepareClueCalculations::Service < Services::ApplicationService
-  BATCH_SIZE = 1000
+  BATCH_SIZE = 100
 
   def process
     start_time = Time.current
@@ -12,14 +12,20 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
     # Do all the processing in batches to avoid OOM problems
     total_responses = 0
     loop do
-      num_responses = Response.transaction do
+      # We use REPEATABLE READ isolation here to reduce useless work
+      # if 2 workers happen to lock conflicting sets of responses
+      # since we cannot use SKIP LOCKED in this case
+      # The REPEATABLE READ isolation level will cause the second transaction to retry
+      # once the first one releases the FOR UPDATE lock
+      args = Response.connection.open_transactions == 0 ? { isolation: :repeatable_read } : {}
+      num_responses = Response.transaction(args) do
         # Get Responses that have not yet been used in CLUes
         # Responses with no Exercise or AssignedExercise are completely ignored
         responses = Response.joins(:exercise, assigned_exercise: :assignment)
                             .where(used_in_clue_calculations: false)
                             .select([rr[Arel.star], ex[:group_uuid]])
-                            .lock('FOR NO KEY UPDATE OF "responses" SKIP LOCKED')
                             .take(BATCH_SIZE)
+        response_uuids = responses.map(&:uuid)
 
         # Build some hashes to minimize the number of queries
 
@@ -134,8 +140,13 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           .joins(:exercise, assigned_exercise: :assignment)
           .where(response_query)
           .order(:last_responded_at)
-          .pluck(:uuid, :trial_uuid, :student_uuid, :group_uuid, :is_correct, :feedback_at)
-          .each do |response_uuid, trial_uuid, student_uuid, group_uuid, is_correct, feedback_at|
+          .lock('FOR UPDATE OF "responses"')
+          .pluck(:uuid, :trial_uuid, :student_uuid, :used_in_clue_calculations,
+                 :group_uuid, :is_correct, :feedback_at)
+          .each do |response_uuid, trial_uuid, student_uuid, used_in_clue_calculations,
+                    group_uuid, is_correct, feedback_at|
+          response_uuids << response_uuid unless used_in_clue_calculations
+
           response_hash = {
             response_uuid: response_uuid,
             trial_uuid: trial_uuid,
@@ -262,7 +273,6 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         AlgorithmTeacherClueCalculation.unassociated.delete_all
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
-        response_uuids = responses.map(&:uuid)
         Response.where(uuid: response_uuids).update_all(used_in_clue_calculations: true)
 
         responses.size
