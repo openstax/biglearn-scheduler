@@ -12,14 +12,14 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
       num_ecosystems = Ecosystem.transaction do
         # Get Ecosystems with Exercises whose number of Responses that have not yet
         # been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
-        # The subquery is needed because FOR UPDATE
+        # The subquery is needed because explicit locks
         # cannot be used in the same query as GROUP BY or DISTINCT
         subquery = Exercise
           .with_new_response_ratio_above_threshold(threshold: UPDATE_THRESHOLD, limit: BATCH_SIZE)
           .joins(:ecosystem_exercises)
           .select('"ecosystem_exercises"."ecosystem_uuid"')
         ecosystem_uuids = Ecosystem.where(uuid: subquery)
-                                   .lock('FOR UPDATE SKIP LOCKED')
+                                   .lock('FOR NO KEY UPDATE SKIP LOCKED')
                                    .pluck(:uuid)
 
         ecosystem_matrix_updates = ecosystem_uuids.map do |ecosystem_uuid|

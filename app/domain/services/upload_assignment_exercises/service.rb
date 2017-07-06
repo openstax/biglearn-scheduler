@@ -28,7 +28,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
           .where(is_uploaded_for_assignments: false)
           .select([:uuid, :algorithm_name, :exercise_uuids])
-          .lock('FOR UPDATE SKIP LOCKED')
+          .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .limit(BATCH_SIZE)
           .index_by(&:uuid)
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys

@@ -22,7 +22,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         Ecosystem.transaction do
           ecosystem_event_requests = []
           ecosystems_by_ecosystem_uuid = Ecosystem.where(id: ecosystem_ids)
-                                                  .lock('FOR UPDATE SKIP LOCKED')
+                                                  .lock('FOR NO KEY UPDATE SKIP LOCKED')
                                                   .map do |ecosystem|
             ecosystem_event_requests << { ecosystem: ecosystem, event_types: RELEVANT_EVENT_TYPES }
 

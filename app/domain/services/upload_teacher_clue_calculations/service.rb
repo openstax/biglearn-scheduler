@@ -10,9 +10,10 @@ class Services::UploadTeacherClueCalculations::Service < Services::ApplicationSe
     loop do
       num_calculations = AlgorithmTeacherClueCalculation.transaction do
         # is_uploaded tracks the status of each calculation
-        algorithm_calculations = AlgorithmTeacherClueCalculation.where(is_uploaded: false)
-                                                                .lock('FOR UPDATE SKIP LOCKED')
-                                                                .take(BATCH_SIZE)
+        algorithm_calculations = AlgorithmTeacherClueCalculation
+          .where(is_uploaded: false)
+          .lock('FOR NO KEY UPDATE SKIP LOCKED')
+          .take(BATCH_SIZE)
 
         algorithm_calculations.size.tap do |num_calculations|
           next if num_calculations == 0

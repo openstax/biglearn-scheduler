@@ -31,7 +31,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         Course.transaction do
           course_event_requests = []
           courses_by_course_uuid = Course.where(id: course_ids)
-                                         .lock('FOR UPDATE SKIP LOCKED')
+                                         .lock('FOR NO KEY UPDATE SKIP LOCKED')
                                          .map do |course|
             course_event_requests << { course: course, event_types: RELEVANT_EVENT_TYPES }
 

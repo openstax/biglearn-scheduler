@@ -31,14 +31,14 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
           )
           .joins(:course)
           .limit(BATCH_SIZE)
-          .lock('FOR UPDATE SKIP LOCKED')
+          .lock('FOR NO KEY UPDATE OF "students" SKIP LOCKED')
           .pluck(:uuid, :ecosystem_uuid)
         student_uuids = student_uuid_ecosystem_uuid_pairs.map(&:first)
 
         # We lock the Responses here to avoid deadlocks when updating them later
         response_uuids = Response
           .where(student_uuid: student_uuids, used_in_exercise_calculations: false)
-          .lock('FOR UPDATE SKIP LOCKED')
+          .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .pluck(:uuid)
 
         # For each student, the ecosystems that need calculations are the course's latest
