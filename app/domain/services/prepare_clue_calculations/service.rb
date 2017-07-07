@@ -1,5 +1,5 @@
 class Services::PrepareClueCalculations::Service < Services::ApplicationService
-  BATCH_SIZE = 100
+  BATCH_SIZE = 10
 
   def process
     start_time = Time.current
