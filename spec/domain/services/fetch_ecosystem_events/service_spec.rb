@@ -1,6 +1,8 @@
 require 'rails_helper'
 
 RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
+  ASSIGNMENT_TYPES = [ 'reading', 'homework', 'practice', 'concept-coach' ]
+
   subject { described_class.new }
 
   context 'with no events' do
