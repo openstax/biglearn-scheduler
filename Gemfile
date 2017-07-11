@@ -51,9 +51,6 @@ gem 'activerecord-import'
 # Daemonize our custom background tasks
 gem 'daemons'
 
-# Retry REPEATABLE READ isolation level transactions on serialization failure
-gem 'transaction_retry'
-
 # Faster JSON serialization
 gem 'oj'
 gem 'oj_mimic_json'
