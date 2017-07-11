@@ -4,6 +4,13 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
     log(:debug) { "Started at #{start_time}" }
 
     num_assignments = Assignment.transaction do
+      assignment_uuids = Assignment.where(student_history_at: nil)
+                                   .where.not(due_at: nil)
+                                   .lock('FOR NO KEY UPDATE SKIP LOCKED')
+                                   .pluck(:uuid)
+
+      next 0 if assignment_uuids.empty?
+
       student_uuids = Assignment.connection.execute(
         <<-SQL.strip_heredoc
           UPDATE "assignments" SET "student_history_at" = (
@@ -21,8 +28,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
               AND "assigned_exercises"."is_spe" = FALSE
             GROUP BY "assigned_exercises"."assignment_uuid"
           )
-          WHERE "assignments"."due_at" IS NOT NULL
-            AND "assignments"."student_history_at" IS NULL
+          WHERE "assignments"."uuid" IN (#{assignment_uuids.map { |uuid| "'#{uuid}'" }.join(', ')})
           RETURNING "assignments"."student_uuid", "assignments"."student_history_at"
         SQL
       ).reject { |row| row['student_history_at'].nil? }.map { |row| row['student_uuid'] }
