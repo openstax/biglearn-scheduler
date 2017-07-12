@@ -68,18 +68,18 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           bcm = BookContainerMapping.arel_table
           forward_mapping_queries = responses_by_ecosystem_uuid
             .map do |from_ecosystem_uuid, responses|
-            eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
+            from_eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
 
             or_queries = responses.group_by do |response|
               student_uuid = response.student_uuid
               course_uuid = course_uuid_by_student_uuid[student_uuid]
               to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
             end.map do |to_ecosystem_uuid, responses|
-              next if to_ecosystem_uuid.nil?
+              next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
 
               exercise_uuids = responses.map(&:exercise_uuid)
-              from_book_container_uuids = eco_book_container_uuids_map.values_at(*exercise_uuids)
-                                                                      .flatten
+              from_book_container_uuids = from_eco_book_container_uuids_map
+                .values_at(*exercise_uuids).flatten
 
               bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
                 bcm[:from_book_container_uuid].in(from_book_container_uuids)
@@ -118,15 +118,17 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
               course_uuid = course_uuid_by_student_uuid[student_uuid]
               to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
-              from_book_container_uuid =
+              from_book_container_uuids =
                 from_book_container_uuids_map[from_ecosystem_uuid][exercise_uuid]
 
-              to_book_container_uuid = from_ecosystem_mappings[from_book_container_uuid].fetch(
-                to_ecosystem_uuid, from_book_container_uuid
-              )
+              to_book_container_uuids = from_book_container_uuids.map do |from_book_container_uuid|
+                from_ecosystem_mappings[from_book_container_uuid].fetch(
+                  to_ecosystem_uuid, from_book_container_uuid
+                )
+              end
 
               bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
-                bcm[:to_book_container_uuid].eq(to_book_container_uuid)
+                bcm[:to_book_container_uuid].in(to_book_container_uuids)
               )
             end
           end.reduce(:or)
@@ -149,8 +151,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               from_book_container_uuid
           end unless reverse_mapping_queries.nil?
 
-          # Map the found book_container_uuids to ecosystem_uuids
-          # and exercise_uuids that should be used for CLUes
+          # Map the found book_container_uuids to exercise_uuids that should be used for CLUes
           from_book_container_uuids = reverse_mappings.values.map do |val|
             val.values.map(&:values)
           end.flatten + from_book_container_uuids_map.values.map(&:values).flatten
@@ -160,6 +161,12 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                       .each do |book_container_uuid, exercise_uuids|
             clue_exercise_uuids_by_book_container_uuids[book_container_uuid].concat exercise_uuids
           end
+
+          # Map the exercise_uuids above to group_uuids
+          all_exercise_uuids = clue_exercise_uuids_by_book_container_uuids.values.flatten
+          exercise_group_uuids_by_exercise_uuids = Exercise.where(uuid: all_exercise_uuids)
+                                                           .pluck(:uuid, :group_uuid)
+                                                           .to_h
 
           # Collect the CLUes that need to be updated and build the final Response query
           student_clues_to_update = Hash.new do |hash, key|
@@ -198,7 +205,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               end
 
               # We will update the student and teacher CLUes
-              # to which the responses above are relevant
+              # for which the responses above are relevant
               to_book_container_uuids.each do |to_book_container_uuid|
                 student_clues_to_update[to_ecosystem_uuid][to_book_container_uuid] << student_uuid
                 teacher_clues_to_update[to_ecosystem_uuid][to_book_container_uuid].concat(
@@ -240,29 +247,40 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                       used_in_clue_calculations, is_correct, feedback_at|
             response_uuids << response_uuid unless used_in_clue_calculations
 
+            # We can safely skip Responses whose exercise_uuid is absent from this hash
+            # Because that means their exercises only appear in pools not used for CLUes
+            group_uuid = exercise_group_uuids_by_exercise_uuids[exercise_uuid]
+            next if group_uuid.nil?
+
             response_hash = {
               response_uuid: response_uuid,
               trial_uuid: trial_uuid,
               is_correct: is_correct
             }
 
-            teacher_responses_map[student_uuid][exercise_uuid] = response_hash
+            teacher_responses_map[student_uuid][group_uuid] = response_hash
 
             next unless feedback_at.nil? || feedback_at <= start_time
 
-            student_responses_map[student_uuid][exercise_uuid] = response_hash
+            student_responses_map[student_uuid][group_uuid] = response_hash
           end unless response_query.nil?
 
           # Calculate student CLUes
           student_clue_calculations = student_clues_to_update
             .flat_map do |ecosystem_uuid, ecosystem_student_clues_to_update|
             ecosystem_student_clues_to_update.flat_map do |book_container_uuid, student_uuids|
-              exercise_uuids = clue_exercise_uuids_by_book_container_uuids[book_container_uuid]
-              next [] if exercise_uuids.empty?
+              from_book_container_uuids =
+                reverse_mappings[ecosystem_uuid][book_container_uuid].values + [book_container_uuid]
+              exercise_uuids = clue_exercise_uuids_by_book_container_uuids
+                .values_at(*from_book_container_uuids).flatten.uniq
+              group_uuids = exercise_group_uuids_by_exercise_uuids.values_at(*exercise_uuids)
+                                                                  .compact
+                                                                  .uniq
+              next [] if group_uuids.empty?
 
               student_uuids.uniq.map do |student_uuid|
                 responses_map = student_responses_map[student_uuid]
-                response_hashes = responses_map.values_at(*exercise_uuids).compact
+                response_hashes = responses_map.values_at(*group_uuids).compact
                 next if response_hashes.empty?
 
                 StudentClueCalculation.new(
@@ -282,8 +300,14 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             .flat_map do |ecosystem_uuid, ecosystem_teacher_clues_to_update|
             ecosystem_teacher_clues_to_update
               .flat_map do |book_container_uuid, course_container_uuids|
-              exercise_uuids = clue_exercise_uuids_by_book_container_uuids[book_container_uuid]
-              next [] if exercise_uuids.empty?
+              from_book_container_uuids =
+                reverse_mappings[ecosystem_uuid][book_container_uuid].values + [book_container_uuid]
+              exercise_uuids = clue_exercise_uuids_by_book_container_uuids
+                .values_at(*from_book_container_uuids).flatten.uniq
+              group_uuids = exercise_group_uuids_by_exercise_uuids.values_at(*exercise_uuids)
+                                                                  .compact
+                                                                  .uniq
+              next [] if group_uuids.empty?
 
               course_container_uuids.uniq.map do |course_container_uuid|
                 student_uuids = student_uuids_by_course_container_uuids[course_container_uuid]
@@ -304,7 +328,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
                 responses_maps = teacher_responses_map.values_at(*student_uuids).compact
                 response_hashes = responses_maps.flat_map do |responses_map|
-                  responses_map.values_at(*exercise_uuids)
+                  responses_map.values_at(*group_uuids)
                 end.compact
                 next if response_hashes.empty?
 
