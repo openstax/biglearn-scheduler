@@ -22,9 +22,17 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                               .lock('FOR NO KEY UPDATE OF "responses" SKIP LOCKED')
                               .take(BATCH_SIZE)
           response_uuids = responses.map(&:uuid)
+          responses_by_ecosystem_uuid = responses.group_by(&:ecosystem_uuid)
+
+          # Also get any StudentClueCalculations that need to be recalculated
+          sccs = StudentClueCalculation
+            .where("recalculate_at <= '#{start_time.to_s(:db)}'")
+            .lock('FOR UPDATE SKIP LOCKED')
+            .pluck(:ecosystem_uuid, :book_container_uuid, :student_uuid)
+          student_uuids = responses.map(&:student_uuid) + sccs.map(&:third)
+          sccs_by_ecosystem_uuid = sccs.group_by(&:first)
 
           # Map the students to courses and course containers (for teacher CLUes)
-          student_uuids = responses.map(&:student_uuid)
           course_uuid_by_student_uuid = {}
           course_container_uuids_by_student_uuids = {}
           Student.where(uuid: student_uuids).each do |student|
@@ -39,9 +47,6 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             CourseContainer.where(uuid: course_container_uuids)
                            .pluck(:uuid, :student_uuids)
                            .to_h
-
-          # Group the new responses by their ecosystem_uuids
-          responses_by_ecosystem_uuid = responses.group_by(&:ecosystem_uuid)
 
           # Build a query to obtain the book_container_uuids for the grouped Responses
           ee_query = responses_by_ecosystem_uuid.map do |ecosystem_uuid, responses|
@@ -63,31 +68,51 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                                                        .pluck(:uuid, :ecosystem_uuid)
                                                        .to_h
 
-          # Create queries to map the responses' book_container_uuids to
+          # Create queries to map the book_container_uuids to
           # book_container_uuids in the courses' latest ecosystems
           bcm = BookContainerMapping.arel_table
-          forward_mapping_queries = responses_by_ecosystem_uuid
-            .map do |from_ecosystem_uuid, responses|
-            from_eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
+          forward_mapping_queries = (
+            responses_by_ecosystem_uuid.map do |from_ecosystem_uuid, responses|
+              from_eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
 
-            or_queries = responses.group_by do |response|
-              student_uuid = response.student_uuid
-              course_uuid = course_uuid_by_student_uuid[student_uuid]
-              to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
-            end.map do |to_ecosystem_uuid, responses|
-              next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
+              or_queries = responses.group_by do |response|
+                student_uuid = response.student_uuid
+                course_uuid = course_uuid_by_student_uuid[student_uuid]
+                to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
+              end.map do |to_ecosystem_uuid, responses|
+                next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
 
-              exercise_uuids = responses.map(&:exercise_uuid)
-              from_book_container_uuids = from_eco_book_container_uuids_map
-                .values_at(*exercise_uuids).flatten
+                exercise_uuids = responses.map(&:exercise_uuid)
+                from_book_container_uuids = from_eco_book_container_uuids_map
+                  .values_at(*exercise_uuids).flatten
 
-              bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
-                bcm[:from_book_container_uuid].in(from_book_container_uuids)
-              )
-            end.compact.reduce(:or)
+                bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
+                  bcm[:from_book_container_uuid].in(from_book_container_uuids)
+                )
+              end.compact.reduce(:or)
 
-            bcm[:from_ecosystem_uuid].eq(from_ecosystem_uuid).and(or_queries) unless or_queries.nil?
-          end.compact.reduce(:or)
+              bcm[:from_ecosystem_uuid].eq(from_ecosystem_uuid).and(or_queries) \
+                unless or_queries.nil?
+            end.compact + sccs_by_ecosystem_uuid.map do |from_ecosystem_uuid, sccs|
+              from_eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
+
+              or_queries = sccs.group_by do |_, _, student_uuid|
+                course_uuid = course_uuid_by_student_uuid[student_uuid]
+                to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
+              end.map do |to_ecosystem_uuid, sccs|
+                next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
+
+                from_book_container_uuids = sccs.map(&:second)
+
+                bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
+                  bcm[:from_book_container_uuid].in(from_book_container_uuids)
+                )
+              end.compact.reduce(:or)
+
+              bcm[:from_ecosystem_uuid].eq(from_ecosystem_uuid).and(or_queries) \
+                unless or_queries.nil?
+            end.compact
+          ).reduce(:or)
           forward_mappings = Hash.new do |hash, key|
             hash[key] = Hash.new { |hash, key| hash[key] = {} }
           end
@@ -107,30 +132,81 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               to_book_container_uuid
           end unless forward_mapping_queries.nil?
 
-          # Find all book_container_uuids that map to the book_container_uuids found above
-          reverse_mapping_queries = responses_by_ecosystem_uuid
-            .flat_map do |from_ecosystem_uuid, responses|
+          # Collect all the CLUes to update from the forward mapping of the Responses
+          student_clues_to_update = Hash.new do |hash, key|
+            hash[key] = Hash.new { |hash, key| hash[key] = [] }
+          end
+          teacher_clues_to_update = Hash.new do |hash, key|
+            hash[key] = Hash.new { |hash, key| hash[key] = [] }
+          end
+          responses_by_ecosystem_uuid.each do |from_ecosystem_uuid, responses|
             from_ecosystem_mappings = forward_mappings[from_ecosystem_uuid]
 
             responses.map do |response|
               student_uuid = response.student_uuid
               exercise_uuid = response.exercise_uuid
 
+              # Find all course containers that contain the given student
+              course_container_uuids = course_container_uuids_by_student_uuids.fetch(
+                student_uuid, []
+              )
+
+              # Teacher clues use all students in the same course container
+              student_uuids = student_uuids_by_course_container_uuids
+                .values_at(*course_container_uuids).compact.flatten
+
+              # Find which is the response's book_container_uuid
+              # and which ecosystem it must map to
               course_uuid = course_uuid_by_student_uuid[student_uuid]
               to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
               from_book_container_uuids =
                 from_book_container_uuids_map[from_ecosystem_uuid][exercise_uuid]
 
+              # Forward map the response to find which book_container_uuid it maps to
               to_book_container_uuids = from_book_container_uuids.map do |from_book_container_uuid|
                 from_ecosystem_mappings[from_book_container_uuid].fetch(
                   to_ecosystem_uuid, from_book_container_uuid
                 )
               end
 
-              bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
-                bcm[:to_book_container_uuid].in(to_book_container_uuids)
-              )
+              # We will update the student and teacher CLUes
+              # for which the responses above are relevant
+              to_book_container_uuids.each do |to_book_container_uuid|
+                student_clues_to_update[to_ecosystem_uuid][to_book_container_uuid] << student_uuid
+                teacher_clues_to_update[to_ecosystem_uuid][to_book_container_uuid].concat(
+                  course_container_uuids
+                )
+              end
             end
+          end
+
+          # Also add the StudentClueCalculations that need to be recalculated to the list
+          sccs_by_ecosystem_uuid.each do |from_ecosystem_uuid, scc|
+            from_ecosystem_mappings = forward_mappings[from_ecosystem_uuid]
+
+            sccs.each do |_, from_book_container_uuid, student_uuid|
+              # Find the student's course and its latest ecosystem
+              course_uuid = course_uuid_by_student_uuid[student_uuid]
+              to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
+
+              # Forward map the from_book_container_uuid to find the to_book_container_uuid
+              to_book_container_uuid = from_ecosystem_mappings[from_book_container_uuid].fetch(
+                to_ecosystem_uuid, from_book_container_uuid
+              )
+
+              # Add it to the list of CLUes to update
+              student_clues_to_update[to_ecosystem_uuid][to_book_container_uuid] << student_uuid
+            end
+          end
+
+          # Find all book_container_uuids that map to the book_container_uuids found above
+          reverse_mapping_queries = student_clues_to_update
+            .map do |to_ecosystem_uuid, to_ecosystem_student_clues|
+            to_book_container_uuids = to_ecosystem_student_clues.keys
+
+            bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
+              bcm[:to_book_container_uuid].in(to_book_container_uuids)
+            )
           end.reduce(:or)
           reverse_mappings = Hash.new do |hash, key|
             hash[key] = Hash.new { |hash, key| hash[key] = {} }
@@ -168,73 +244,52 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                                                            .pluck(:uuid, :group_uuid)
                                                            .to_h
 
-          # Collect the CLUes that need to be updated and build the final Response query
-          student_clues_to_update = Hash.new do |hash, key|
-            hash[key] = Hash.new { |hash, key| hash[key] = [] }
-          end
-          teacher_clues_to_update = Hash.new do |hash, key|
-            hash[key] = Hash.new { |hash, key| hash[key] = [] }
-          end
-          response_query = responses_by_ecosystem_uuid.flat_map do |from_ecosystem_uuid, responses|
-            from_ecosystem_mappings = forward_mappings[from_ecosystem_uuid]
+          # Build the final Response query
+          response_query = (
+            student_clues_to_update.flat_map do |to_ecosystem_uuid, to_ecosystem_student_clues|
+              to_ecosystem_student_clues.map do |to_book_container_uuid, student_uuids|
+                # Reverse map to find book_container_uuids that map to the to_book_container_uuid
+                same_mapping_book_container_uuids = [ to_book_container_uuid ] +
+                  reverse_mappings[to_ecosystem_uuid][to_book_container_uuid].values
 
-            responses.map do |response|
-              student_uuid = response.student_uuid
-              exercise_uuid = response.exercise_uuid
+                # Find all exercises in the above book_container_uuids
+                exercise_uuids = clue_exercise_uuids_by_book_container_uuids
+                  .values_at(*same_mapping_book_container_uuids).flatten
 
-              # Find all course containers that contain the given student
-              course_container_uuids = course_container_uuids_by_student_uuids.fetch(
-                student_uuid, []
-              )
-
-              # Teacher clues use all students in the same course container
-              student_uuids = student_uuids_by_course_container_uuids
-                .values_at(*course_container_uuids).compact.flatten
-
-              # Find which is the response's book_container_uuid and which ecosystem it maps to
-              course_uuid = course_uuid_by_student_uuid[student_uuid]
-              to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
-              from_book_container_uuids =
-                from_book_container_uuids_map[from_ecosystem_uuid][exercise_uuid]
-
-              # Forward map the response to find which book_container_uuid it maps to
-              to_book_container_uuids = from_book_container_uuids.map do |from_book_container_uuid|
-                from_ecosystem_mappings[from_book_container_uuid].fetch(
-                  to_ecosystem_uuid, from_book_container_uuid
-                )
+                # Load all responses from the students
+                # that refer to any exercise in the same_mapping_book_container_uuids
+                rr[:student_uuid].in(student_uuids).and rr[:exercise_uuid].in(exercise_uuids)
               end
+            end + teacher_clues_to_update
+              .flat_map do |to_ecosystem_uuid, to_ecosystem_teacher_clues|
+              to_ecosystem_teacher_clues.map do |to_book_container_uuid, course_container_uuids|
+                # Reverse map to find book_container_uuids that map to the to_book_container_uuid
+                same_mapping_book_container_uuids = [ to_book_container_uuid ] +
+                  reverse_mappings[to_ecosystem_uuid][to_book_container_uuid].values
 
-              # We will update the student and teacher CLUes
-              # for which the responses above are relevant
-              to_book_container_uuids.each do |to_book_container_uuid|
-                student_clues_to_update[to_ecosystem_uuid][to_book_container_uuid] << student_uuid
-                teacher_clues_to_update[to_ecosystem_uuid][to_book_container_uuid].concat(
-                  course_container_uuids
-                )
+                # Find all exercises in the above book_container_uuids
+                exercise_uuids = clue_exercise_uuids_by_book_container_uuids
+                  .values_at(*same_mapping_book_container_uuids).flatten
+
+                # Teacher clues use all students in the same course container
+                student_uuids = student_uuids_by_course_container_uuids
+                  .values_at(*course_container_uuids).compact.flatten
+
+                # Load all responses from students in the same course containers
+                # that refer to any exercise in the same_mapping_book_container_uuids
+                rr[:student_uuid].in(student_uuids).and rr[:exercise_uuid].in(exercise_uuids)
               end
-
-              # Reverse map to find book_container_uuids that map to the same book_container_uuid
-              same_mapping_book_container_uuids =
-                reverse_mappings[to_ecosystem_uuid]
-                  .values_at(*to_book_container_uuids)
-                  .map(&:values)
-                  .flatten + to_book_container_uuids
-
-              # Find all exercises in the above book_container_uuids
-              exercise_uuids = clue_exercise_uuids_by_book_container_uuids
-                .values_at(*same_mapping_book_container_uuids).flatten
-
-              # Load all responses from students in the same course containers
-              # that refer to any exercise in the same_mapping_book_container_uuids
-              rr[:student_uuid].in(student_uuids).and rr[:exercise_uuid].in(exercise_uuids)
             end
-          end.reduce(:or)
+          ).reduce(:or)
 
           # Map student_uuids and exercise_group_uuids to correctness information
           # Take only the latest answer for each exercise_group_uuid
           # Mark responses found here as used in CLUe calculations
           # Don't use SKIP LOCKED here because we need all responses that match the queries
           student_responses_map = Hash.new { |hash, key| hash[key] = {} }
+          student_recalculate_ats_map = Hash.new do |hash, key|
+            hash[key] = Hash.new { |hash, key| hash[key] = [] }
+          end
           teacher_responses_map = Hash.new { |hash, key| hash[key] = {} }
           Response
             .joins(assigned_exercise: :assignment)
@@ -260,17 +315,19 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
             teacher_responses_map[student_uuid][group_uuid] = response_hash
 
-            next unless feedback_at.nil? || feedback_at <= start_time
-
-            student_responses_map[student_uuid][group_uuid] = response_hash
+            if feedback_at.nil? || feedback_at <= start_time
+              student_responses_map[student_uuid][group_uuid] = response_hash
+            else
+              student_recalculate_ats_map[student_uuid][group_uuid] << feedback_at
+            end
           end unless response_query.nil?
 
           # Calculate student CLUes
           student_clue_calculations = student_clues_to_update
             .flat_map do |ecosystem_uuid, ecosystem_student_clues_to_update|
             ecosystem_student_clues_to_update.flat_map do |book_container_uuid, student_uuids|
-              from_book_container_uuids =
-                reverse_mappings[ecosystem_uuid][book_container_uuid].values + [book_container_uuid]
+              from_book_container_uuids = [ book_container_uuid ] +
+                reverse_mappings[ecosystem_uuid][book_container_uuid].values
               exercise_uuids = clue_exercise_uuids_by_book_container_uuids
                 .values_at(*from_book_container_uuids).flatten.uniq
               group_uuids = exercise_group_uuids_by_exercise_uuids.values_at(*exercise_uuids)
@@ -283,13 +340,17 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                 response_hashes = responses_map.values_at(*group_uuids).compact
                 next if response_hashes.empty?
 
+                recalculate_at = student_recalculate_ats_map[student_uuid]
+                  .values_at(*group_uuids).flatten.min
+
                 StudentClueCalculation.new(
                   uuid: SecureRandom.uuid,
                   ecosystem_uuid: ecosystem_uuid,
                   book_container_uuid: book_container_uuid,
                   student_uuid: student_uuid,
                   exercise_uuids: exercise_uuids,
-                  responses: response_hashes
+                  responses: response_hashes,
+                  recalculate_at: recalculate_at
                 )
               end.compact
             end
@@ -300,8 +361,8 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             .flat_map do |ecosystem_uuid, ecosystem_teacher_clues_to_update|
             ecosystem_teacher_clues_to_update
               .flat_map do |book_container_uuid, course_container_uuids|
-              from_book_container_uuids =
-                reverse_mappings[ecosystem_uuid][book_container_uuid].values + [book_container_uuid]
+              from_book_container_uuids = [ book_container_uuid ] +
+                reverse_mappings[ecosystem_uuid][book_container_uuid].values
               exercise_uuids = clue_exercise_uuids_by_book_container_uuids
                 .values_at(*from_book_container_uuids).flatten.uniq
               group_uuids = exercise_group_uuids_by_exercise_uuids.values_at(*exercise_uuids)
@@ -349,7 +410,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           StudentClueCalculation.import(
             student_clue_calculations, validate: false, on_duplicate_key_update: {
               conflict_target: [ :student_uuid, :book_container_uuid ],
-              columns: [ :uuid, :exercise_uuids, :responses ]
+              columns: [ :uuid, :exercise_uuids, :responses, :recalculate_at ]
             }
           )
 
