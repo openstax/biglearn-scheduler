@@ -167,13 +167,14 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                                 exercise: @exercise_5,
                                                 book_container_uuids: book_container_uuids_2
 
-        # Will not be updated due to no new responses
+        # Will be updated due to recalculate_at
         @scc = FactoryGirl.create :student_clue_calculation,
                                   student_uuid: @student_1.uuid,
-                                  book_container_uuid: @ep_1.book_container_uuid
+                                  book_container_uuid: @ep_1.book_container_uuid,
+                                  recalculate_at: Time.current - 1.second
         FactoryGirl.create :algorithm_student_clue_calculation, student_clue_calculation: @scc
 
-        # Will be updated
+        # Will be updated due to new responses
         @tcc = FactoryGirl.create :teacher_clue_calculation,
                                   book_container_uuid: @ep_2.book_container_uuid,
                                   course_container_uuid: @cc_1.uuid,
@@ -193,12 +194,21 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
         end.to  not_change { Response.count                        }
            .and change     { StudentClueCalculation.count          }.by(2)
            .and change     { TeacherClueCalculation.count          }.by(1)
-           .and not_change { AlgorithmStudentClueCalculation.count }
+           .and change     { AlgorithmStudentClueCalculation.count }.by(-1)
            .and change     { AlgorithmTeacherClueCalculation.count }.by(-1)
+           .and change     { @scc.reload.uuid                      }
+           .and change     { @tcc.reload.uuid                      }
 
         @unprocessed_responses.each do |response|
           expect(response.reload.used_in_clue_calculations).to eq true
         end
+
+        expected_exercise_uuids = [ @exercise_1, @exercise_2, @exercise_3 ].map(&:uuid)
+        expect(@scc.exercise_uuids).to match_array expected_exercise_uuids
+
+        scc_response_uuids = @scc.responses.map { |response| response['response_uuid'] }
+        expected_response_uuids = [ @response_1, @response_2, @response_3 ].map(&:uuid)
+        expect(scc_response_uuids).to match_array expected_response_uuids
 
         new_student_clue_calculations = StudentClueCalculation.order(:created_at).last(3)
 
@@ -209,33 +219,25 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
           expect(student_clue_calculation_response_uuids).not_to include(@response_10.uuid)
         end
 
-        updated_teacher_clue_calculation = @tcc.reload
-
         expected_exercise_uuids = [ @exercise_4, @exercise_5 ].map(&:uuid)
-        expect(updated_teacher_clue_calculation.exercise_uuids).to(
-          match_array expected_exercise_uuids
-        )
+        expect(@tcc.exercise_uuids).to match_array expected_exercise_uuids
 
-        updated_teacher_clue_calculation_response_uuids =
-          updated_teacher_clue_calculation.responses.map { |response| response['response_uuid'] }
+        tcc_response_uuids = @tcc.responses.map { |response| response['response_uuid'] }
         expected_response_uuids = [
           @response_4, @response_5, @response_9, @response_10
         ].map(&:uuid)
-        expect(updated_teacher_clue_calculation_response_uuids).to(
-          match_array expected_response_uuids
-        )
+        expect(tcc_response_uuids).to match_array expected_response_uuids
 
-        new_teacher_clue_calculation = TeacherClueCalculation.order(:created_at).last
+        new_tcc = TeacherClueCalculation.order(:created_at).last
 
         expected_exercise_uuids = [ @exercise_1, @exercise_2, @exercise_3 ].map(&:uuid)
-        expect(new_teacher_clue_calculation.exercise_uuids).to match_array expected_exercise_uuids
+        expect(new_tcc.exercise_uuids).to match_array expected_exercise_uuids
 
-        new_teacher_clue_calculation_response_uuids =
-          new_teacher_clue_calculation.responses.map { |response| response['response_uuid'] }
+        new_tcc_response_uuids = new_tcc.responses.map { |response| response['response_uuid'] }
         expected_response_uuids = [
           @response_1, @response_2, @response_3, @response_6, @response_7, @response_8
         ].map(&:uuid)
-        expect(new_teacher_clue_calculation_response_uuids).to match_array expected_response_uuids
+        expect(new_tcc_response_uuids).to match_array expected_response_uuids
       end
     end
 
@@ -462,13 +464,14 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                                 exercise: @exercise_10,
                                                 book_container_uuids: new_book_container_uuids_2
 
-        # Will not be updated due to no new responses
+        # Will be updated due to recalculate_at
         @scc = FactoryGirl.create :student_clue_calculation,
                                   student_uuid: @student_1.uuid,
-                                  book_container_uuid: @ep_3.book_container_uuid
+                                  book_container_uuid: @ep_3.book_container_uuid,
+                                  recalculate_at: Time.current - 1.second
         FactoryGirl.create :algorithm_student_clue_calculation, student_clue_calculation: @scc
 
-        # Will be updated
+        # Will be updated due to new responses
         @tcc = FactoryGirl.create :teacher_clue_calculation,
                                   book_container_uuid: @ep_4.book_container_uuid,
                                   course_container_uuid: @cc_1.uuid,
@@ -488,12 +491,23 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
         end.to  not_change { Response.count                        }
            .and change     { StudentClueCalculation.count          }.by(2)
            .and change     { TeacherClueCalculation.count          }.by(1)
-           .and not_change { AlgorithmStudentClueCalculation.count }
+           .and change     { AlgorithmStudentClueCalculation.count }.by(-1)
            .and change     { AlgorithmTeacherClueCalculation.count }.by(-1)
+           .and change     { @scc.reload.uuid                      }
+           .and change     { @tcc.reload.uuid                      }
 
         @unprocessed_responses.each do |response|
           expect(response.reload.used_in_clue_calculations).to eq true
         end
+
+        expected_exercise_uuids = [
+          @exercise_1, @exercise_2, @exercise_3, @exercise_6, @exercise_7, @exercise_8
+        ].map(&:uuid)
+        expect(@scc.exercise_uuids).to match_array expected_exercise_uuids
+
+        scc_response_uuids = @scc.responses.map { |response| response['response_uuid'] }
+        expected_response_uuids = [ @response_1, @response_2, @response_3 ].map(&:uuid)
+        expect(scc_response_uuids).to match_array expected_response_uuids
 
         new_student_clue_calculations = StudentClueCalculation.order(:created_at).last(3)
 
@@ -504,37 +518,29 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
           expect(student_clue_calculation_response_uuids).not_to include(@response_10.uuid)
         end
 
-        updated_teacher_clue_calculation = @tcc.reload
-
         expected_exercise_uuids = [
           @exercise_4, @exercise_5, @exercise_9, @exercise_10
         ].map(&:uuid)
-        expect(updated_teacher_clue_calculation.exercise_uuids).to(
-          match_array expected_exercise_uuids
-        )
+        expect(@tcc.exercise_uuids).to match_array expected_exercise_uuids
 
-        updated_teacher_clue_calculation_response_uuids =
-          updated_teacher_clue_calculation.responses.map { |response| response['response_uuid'] }
+        tcc_response_uuids = @tcc.responses.map { |response| response['response_uuid'] }
         expected_response_uuids = [
           @response_4, @response_5, @response_9, @response_10
         ].map(&:uuid)
-        expect(updated_teacher_clue_calculation_response_uuids).to(
-          match_array expected_response_uuids
-        )
+        expect(tcc_response_uuids).to match_array expected_response_uuids
 
-        new_teacher_clue_calculation = TeacherClueCalculation.order(:created_at).last
+        new_tcc = TeacherClueCalculation.order(:created_at).last
 
         expected_exercise_uuids = [
           @exercise_1, @exercise_2, @exercise_3, @exercise_6, @exercise_7, @exercise_8
         ].map(&:uuid)
-        expect(new_teacher_clue_calculation.exercise_uuids).to match_array expected_exercise_uuids
+        expect(new_tcc.exercise_uuids).to match_array expected_exercise_uuids
 
-        new_teacher_clue_calculation_response_uuids =
-          new_teacher_clue_calculation.responses.map { |response| response['response_uuid'] }
+        new_tcc_response_uuids = new_tcc.responses.map { |response| response['response_uuid'] }
         expected_response_uuids = [
           @response_1, @response_2, @response_3, @response_6, @response_7, @response_8
         ].map(&:uuid)
-        expect(new_teacher_clue_calculation_response_uuids).to match_array expected_response_uuids
+        expect(new_tcc_response_uuids).to match_array expected_response_uuids
       end
     end
   end
