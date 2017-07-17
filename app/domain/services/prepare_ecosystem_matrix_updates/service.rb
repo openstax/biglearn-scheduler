@@ -1,6 +1,6 @@
 class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationService
   UPDATE_THRESHOLD = 0.1
-  BATCH_SIZE = 100
+  BATCH_SIZE = 10
 
   def process
     start_time = Time.current
@@ -42,7 +42,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         AlgorithmEcosystemMatrixUpdate.unassociated.delete_all
 
         # Record the fact that the EcosystemMatrixUpdates are up-to-date with the latest Responses
-        Response.where(ecosystem_uuid: ecosystem_uuids)
+        Response.where(ecosystem_uuid: ecosystem_uuids, used_in_ecosystem_matrix_updates: false)
                 .update_all(used_in_ecosystem_matrix_updates: true)
 
         ecosystem_uuids.size
