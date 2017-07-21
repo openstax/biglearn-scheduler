@@ -8,39 +8,28 @@ class Exercise < ApplicationRecord
                        foreign_key: :exercise_uuid,
                        inverse_of: :exercise
 
-  # This query uses a PostgreSQL 9.1 feature (Group by can guess some missing columns)
-  # but could be rewritten to not depend on it if needed
-  # https://wiki.postgresql.org/wiki/What%27s_new_in_PostgreSQL_9.1#SQL_and_PL.2FPgSQL_features
-  scope :with_new_response_ratio_above_threshold, ->(threshold:, limit: nil) do
-    # The limit clause is written in raw SQL because Rails generates invalid SQL otherwise
-    # (it adds a bind parameter to the SQL but fails to supply it at the end of the query)
-    from(
-      <<-FROM_SQL.strip_heredoc
-        (
-          #{
-            joins(:responses)
-              .where(
-                <<-WHERE_SQL.strip_heredoc
-                  EXISTS (
-                    SELECT "responses".*
-                    FROM "responses"
-                    WHERE "responses"."exercise_uuid" = "exercises"."uuid"
-                      AND "responses"."used_in_ecosystem_matrix_updates" = FALSE
-                  )
-                WHERE_SQL
-              )
-              .group(:id)
-              .having(
-                <<-HAVING_SQL.strip_heredoc
-                  COUNT("responses"."id") FILTER (
-                    WHERE "responses"."used_in_ecosystem_matrix_updates" = FALSE
-                  ) > #{threshold} * COUNT("responses"."id")
-                HAVING_SQL
-              ).to_sql
-          } #{"LIMIT #{limit}" unless limit.nil?}
-        ) AS "exercises"
-      FROM_SQL
-    )
+  def self.group_uuids_with_new_response_ratio_above_threshold(threshold:, limit: nil)
+    joins(:responses)
+      .where(
+        <<-WHERE_SQL.strip_heredoc
+          EXISTS (
+            SELECT "responses".*
+            FROM "responses"
+            WHERE "responses"."exercise_uuid" = "exercises"."uuid"
+              AND "responses"."used_in_ecosystem_matrix_updates" = FALSE
+          )
+        WHERE_SQL
+      )
+      .group(:group_uuid)
+      .having(
+        <<-HAVING_SQL.strip_heredoc
+          COUNT("responses"."id") FILTER (
+            WHERE "responses"."used_in_ecosystem_matrix_updates" = FALSE
+          ) > #{threshold} * COUNT("responses"."id")
+        HAVING_SQL
+      )
+      .limit(limit)
+      .pluck(:group_uuid)
   end
 
   validates :group_uuid, presence: true

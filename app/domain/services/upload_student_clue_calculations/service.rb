@@ -10,46 +10,35 @@ class Services::UploadStudentClueCalculations::Service < Services::ApplicationSe
     loop do
       num_calculations = AlgorithmStudentClueCalculation.transaction do
         # is_uploaded tracks the status of each calculation
+        # join is used so AlgorithmStudentClueCalculations
+        # with no StudentClueCalculation are not returned
+        # eager_load is used because it's basically free with the join
         algorithm_calculations = AlgorithmStudentClueCalculation
+          .joins(:student_clue_calculation)
+          .eager_load(:student_clue_calculation)
           .where(is_uploaded: false)
-          .lock('FOR NO KEY UPDATE SKIP LOCKED')
+          .lock('FOR NO KEY UPDATE OF "algorithm_student_clue_calculations" SKIP LOCKED')
           .take(BATCH_SIZE)
 
-        algorithm_calculations.size.tap do |num_calculations|
-          next if num_calculations == 0
+        student_clue_requests = algorithm_calculations.map do |algorithm_calculation|
+          calculation = algorithm_calculation.student_clue_calculation
 
-          calculation_uuids = algorithm_calculations.map(&:student_clue_calculation_uuid)
-          calculations_by_uuid = StudentClueCalculation.where(uuid: calculation_uuids)
-                                                       .index_by(&:uuid)
+          {
+            algorithm_name: algorithm_calculation.algorithm_name,
+            student_uuid: calculation.student_uuid,
+            book_container_uuid: calculation.book_container_uuid,
+            clue_data: algorithm_calculation.clue_data
+          }
+        end.compact
 
-          student_clue_requests = algorithm_calculations.map do |algorithm_calculation|
-            calculation_uuid = algorithm_calculation.student_clue_calculation_uuid
-            calculation = calculations_by_uuid[calculation_uuid]
-            if calculation.nil?
-              log(:warn) do
-                "Student CLUe skipped due to no information about student CLUe calculation #{
-                  calculation_uuid
-                }"
-              end
+        OpenStax::Biglearn::Api.update_student_clues(student_clue_requests) \
+          unless student_clue_requests.empty?
 
-              next
-            end
+        algorithm_calculation_uuids = algorithm_calculations.map(&:uuid)
+        AlgorithmStudentClueCalculation.where(uuid: algorithm_calculation_uuids)
+                                       .update_all(is_uploaded: true)
 
-            {
-              algorithm_name: algorithm_calculation.algorithm_name,
-              student_uuid: calculation.student_uuid,
-              book_container_uuid: calculation.book_container_uuid,
-              clue_data: algorithm_calculation.clue_data
-            }
-          end.compact
-
-          OpenStax::Biglearn::Api.update_student_clues(student_clue_requests) \
-            if student_clue_requests.any?
-
-          algorithm_calculation_uuids = algorithm_calculations.map(&:uuid)
-          AlgorithmStudentClueCalculation.where(uuid: algorithm_calculation_uuids)
-                                         .update_all(is_uploaded: true)
-        end
+        algorithm_calculations.size
       end
 
       # If we got less calculations than the batch size, then this is the last batch

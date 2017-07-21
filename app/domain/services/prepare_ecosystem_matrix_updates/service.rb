@@ -1,6 +1,6 @@
 class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationService
   UPDATE_THRESHOLD = 0.1
-  BATCH_SIZE = 100
+  BATCH_SIZE = 1
 
   def process
     start_time = Time.current
@@ -12,14 +12,13 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
       num_ecosystems = Ecosystem.transaction do
         # Get Ecosystems with Exercises whose number of Responses that have not yet
         # been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
-        # The subquery is needed because explicit locks
-        # cannot be used in the same query as GROUP BY or DISTINCT
-        subquery = Exercise
-          .with_new_response_ratio_above_threshold(threshold: UPDATE_THRESHOLD, limit: BATCH_SIZE)
-          .joins(:ecosystem_exercises)
-          .select('"ecosystem_exercises"."ecosystem_uuid"')
-        ecosystem_uuids = Ecosystem.where(uuid: subquery)
-                                   .lock('FOR NO KEY UPDATE SKIP LOCKED')
+        group_uuids = Exercise.group_uuids_with_new_response_ratio_above_threshold(
+          threshold: UPDATE_THRESHOLD, limit: BATCH_SIZE
+        )
+
+        ecosystem_uuids = Ecosystem.joins(ecosystem_exercises: :exercise)
+                                   .where(exercises: { group_uuid: group_uuids })
+                                   .lock('FOR NO KEY UPDATE OF "ecosystems" SKIP LOCKED')
                                    .pluck(:uuid)
 
         ecosystem_matrix_updates = ecosystem_uuids.map do |ecosystem_uuid|
@@ -42,7 +41,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         AlgorithmEcosystemMatrixUpdate.unassociated.delete_all
 
         # Record the fact that the EcosystemMatrixUpdates are up-to-date with the latest Responses
-        Response.where(ecosystem_uuid: ecosystem_uuids)
+        Response.where(ecosystem_uuid: ecosystem_uuids, used_in_ecosystem_matrix_updates: false)
                 .update_all(used_in_ecosystem_matrix_updates: true)
 
         ecosystem_uuids.size

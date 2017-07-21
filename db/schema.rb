@@ -291,8 +291,10 @@ ActiveRecord::Schema.define(version: 20170721170824) do
     t.text     "responses",           null: false
     t.datetime "created_at",          null: false
     t.datetime "updated_at",          null: false
+    t.datetime "recalculate_at"
     t.index ["book_container_uuid"], name: "index_student_clue_calculations_on_book_container_uuid", using: :btree
     t.index ["ecosystem_uuid"], name: "index_student_clue_calculations_on_ecosystem_uuid", using: :btree
+    t.index ["recalculate_at"], name: "index_student_clue_calculations_on_recalculate_at", using: :btree
     t.index ["student_uuid", "book_container_uuid"], name: "index_s_clue_calc_on_s_uuid_and_bc_uuid", unique: true, using: :btree
     t.index ["uuid"], name: "index_student_clue_calculations_on_uuid", unique: true, using: :btree
   end
