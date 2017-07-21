@@ -3,9 +3,15 @@ class Services::FetchCourseMetadatas::Service < Services::ApplicationService
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
-    courses = OpenStax::Biglearn::Api.fetch_course_metadatas
-                                     .fetch(:course_responses)
-                                     .map do |course_hash|
+    course_responses = OpenStax::Biglearn::Api.fetch_course_metadatas.fetch(:course_responses)
+    course_uuids = course_responses.map { |course_hash| course_hash.fetch(:uuid) }
+
+    existing_course_uuids = Set.new Course.where(uuid: course_uuids).pluck(:uuid)
+
+    courses = course_responses.map do |course_hash|
+      course_uuid = course_hash.fetch(:uuid)
+      next if existing_course_uuids.include? course_uuid
+
       Course.new uuid: course_hash.fetch(:uuid),
                  ecosystem_uuid: course_hash.fetch(:initial_ecosystem_uuid),
                  sequence_number: 0,
@@ -13,7 +19,7 @@ class Services::FetchCourseMetadatas::Service < Services::ApplicationService
                  course_excluded_exercise_group_uuids: [],
                  global_excluded_exercise_uuids: [],
                  global_excluded_exercise_group_uuids: []
-    end
+    end.compact
 
     result = Course.import courses, validate: false,
                                     on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
