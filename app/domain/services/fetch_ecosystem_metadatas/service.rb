@@ -6,27 +6,22 @@ class Services::FetchEcosystemMetadatas::Service < Services::ApplicationService
     ecosystem_responses = OpenStax::Biglearn::Api.fetch_ecosystem_metadatas
                                                  .fetch(:ecosystem_responses)
     ecosystem_uuids = ecosystem_responses.map { |ecosystem_hash| ecosystem_hash.fetch(:uuid) }
+    existing_ecosystem_uuids = Ecosystem.where(uuid: ecosystem_uuids).pluck(:uuid)
 
-    existing_ecosystem_uuids = Set.new Ecosystem.where(uuid: ecosystem_uuids).pluck(:uuid)
-
-    ecosystems = ecosystem_responses.map do |ecosystem_hash|
-      ecosystem_uuid = ecosystem_hash.fetch(:uuid)
-      next if existing_ecosystem_uuids.include? ecosystem_uuid
-
+    ecosystems = ( ecosystem_uuids - existing_ecosystem_uuids ).map do |ecosystem_uuid|
       Ecosystem.new uuid: ecosystem_uuid, sequence_number: 0, exercise_uuids: []
-    end.compact
+    end
 
     result = Ecosystem.import ecosystems, validate: false,
                                           on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
     log(:debug) do
-      metadatas = ecosystems.size
-      conflicts = result.failed_instances.size
-      successes = metadatas - conflicts
-      total = Ecosystem.count
+      responses_count = ecosystem_responses.size
+      existing_count = existing_ecosystem_uuids.size
+      new_count = responses_count - existing_count
       time = Time.current - start_time
 
-      "Received: #{metadatas} - Existing: #{conflicts} - New: #{successes}" +
-      " - Total: #{total} - Took: #{time} second(s)"
+      "Received: #{responses_count} - Existing: #{existing_count}" +
+      " - New: #{new_count} - - Took: #{time} second(s)"
     end
   end
 end
