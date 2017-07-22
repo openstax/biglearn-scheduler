@@ -445,11 +445,13 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
           aa = Assignment.arel_table
           ec = ExerciseCalculation.arel_table
-          aec_query = assignments.group_by(&:ecosystem_uuid).map do |ecosystem_uuid, assignments|
-            student_uuids = assignments.map(&:student_uuid)
+          aec_query = ArelTrees.or_tree(
+            assignments.group_by(&:ecosystem_uuid).map do |ecosystem_uuid, assignments|
+              student_uuids = assignments.map(&:student_uuid)
 
-            ec[:ecosystem_uuid].eq(ecosystem_uuid).and(ec[:student_uuid].in(student_uuids))
-          end.reduce(:or)
+              ec[:ecosystem_uuid].eq(ecosystem_uuid).and(ec[:student_uuid].in(student_uuids))
+            end
+          )
           calc_uuids_to_recalculate_for_assignments = aec_query.nil? ? [] :
             AlgorithmExerciseCalculation.joins(:exercise_calculation).where(aec_query).pluck(:uuid)
 
@@ -484,7 +486,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                            )
           end
 
-          aspe_query = aspe_queries.reduce(:or)
+          aspe_query = ArelTrees.or_tree(aspe_queries)
           unless aspe_query.nil?
             # Group by algorithm_exercise_calculation_uuid to try to improve query performance
             conflicting_spe_a_uuids_by_calc_uuid = Hash.new { |hash, key| hash[key] = [] }
@@ -497,17 +499,18 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
               conflicting_spe_a_uuids_by_calc_uuid[calc_uuid] << assignment_uuid
             end
 
-            delete_aspe_query = conflicting_spe_a_uuids_by_calc_uuid
-                                  .map do |calc_uuid, assignment_uuids|
-              aspe[:algorithm_exercise_calculation_uuid].eq(calc_uuid).and(
-                aspe[:assignment_uuid].in(assignment_uuids)
-              )
-            end.reduce(:or)
+            delete_aspe_query = ArelTrees.or_tree(
+              conflicting_spe_a_uuids_by_calc_uuid.map do |calc_uuid, assignment_uuids|
+                aspe[:algorithm_exercise_calculation_uuid].eq(calc_uuid).and(
+                  aspe[:assignment_uuid].in(assignment_uuids)
+                )
+              end
+            )
 
             AssignmentSpe.where(delete_aspe_query).delete_all unless delete_aspe_query.nil?
           end
 
-          ape_query = ape_queries.reduce(:or)
+          ape_query = ArelTrees.or_tree(ape_queries)
           unless ape_query.nil?
             # Group by algorithm_exercise_calculation_uuid to try to improve query performance
             conflicting_pe_a_uuids_by_calc_uuid = Hash.new { |hash, key| hash[key] = [] }
@@ -520,12 +523,13 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
               conflicting_pe_a_uuids_by_calc_uuid[calc_uuid] << assignment_uuid
             end
 
-            delete_ape_query = conflicting_pe_a_uuids_by_calc_uuid
-                                 .map do |calc_uuid, assignment_uuids|
-              ape[:algorithm_exercise_calculation_uuid].eq(calc_uuid).and(
-                ape[:assignment_uuid].in(assignment_uuids)
-              )
-            end.reduce(:or)
+            delete_ape_query = ArelTrees.or_tree(
+              conflicting_pe_a_uuids_by_calc_uuid.map do |calc_uuid, assignment_uuids|
+                ape[:algorithm_exercise_calculation_uuid].eq(calc_uuid).and(
+                  ape[:assignment_uuid].in(assignment_uuids)
+                )
+              end
+            )
 
             AssignmentPe.where(delete_ape_query).delete_all unless delete_ape_query.nil?
           end
@@ -533,7 +537,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           AlgorithmExerciseCalculation.where(uuid: calc_uuids_to_recalculate_for_assignments)
                                       .update_all(is_uploaded_for_assignments: false)
 
-          spe_query = spe_queries.reduce(:or)
+          spe_query = ArelTrees.or_tree(spe_queries)
           unless spe_query.nil?
             conflicting_s_pe_calc_uuids = StudentPe.with_student_uuids
                                                    .where(spe_query)

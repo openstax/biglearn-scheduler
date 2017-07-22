@@ -1,6 +1,7 @@
 # Load the Rails application.
 require_relative 'application'
 
+require 'arel_trees'
 require 'errors'
 require 'worker'
 require 'openstax/biglearn'

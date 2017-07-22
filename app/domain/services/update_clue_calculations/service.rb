@@ -72,7 +72,7 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
 
       aec[:algorithm_name].eq(exercise_algorithm_name).and ec[:student_uuid].eq(student_uuid)
     end
-    aec_query = aec_queries.reduce(:or)
+    aec_query = ArelTrees.or_tree(aec_queries)
     unless aec_query.nil?
       affected_algorithm_exercise_calculation_uuids = AlgorithmExerciseCalculation
         .joins(:exercise_calculation)

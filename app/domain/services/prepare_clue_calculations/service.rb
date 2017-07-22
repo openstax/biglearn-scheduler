@@ -49,11 +49,13 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                            .to_h
 
           # Build a query to obtain the book_container_uuids for the grouped Responses
-          ee_query = responses_by_ecosystem_uuid.map do |ecosystem_uuid, responses|
-            exercise_uuids = responses.map(&:exercise_uuid)
+          ee_query = ArelTrees.or_tree(
+            responses_by_ecosystem_uuid.map do |ecosystem_uuid, responses|
+              exercise_uuids = responses.map(&:exercise_uuid)
 
-            ee[:ecosystem_uuid].eq(ecosystem_uuid).and ee[:exercise_uuid].in(exercise_uuids)
-          end.reduce(:or)
+              ee[:ecosystem_uuid].eq(ecosystem_uuid).and ee[:exercise_uuid].in(exercise_uuids)
+            end
+          )
           from_book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
           EcosystemExercise
             .where(ee_query)
@@ -71,48 +73,52 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           # Create queries to map the book_container_uuids to
           # book_container_uuids in the courses' latest ecosystems
           bcm = BookContainerMapping.arel_table
-          forward_mapping_queries = (
+          forward_mapping_queries = ArelTrees.or_tree(
             responses_by_ecosystem_uuid.map do |from_ecosystem_uuid, responses|
               from_eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
 
-              or_queries = responses.group_by do |response|
-                student_uuid = response.student_uuid
-                course_uuid = course_uuid_by_student_uuid[student_uuid]
-                to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
-              end.map do |to_ecosystem_uuid, responses|
-                next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
+              or_queries = ArelTrees.or_tree(
+                responses.group_by do |response|
+                  student_uuid = response.student_uuid
+                  course_uuid = course_uuid_by_student_uuid[student_uuid]
+                  to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
+                end.map do |to_ecosystem_uuid, responses|
+                  next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
 
-                exercise_uuids = responses.map(&:exercise_uuid)
-                from_book_container_uuids = from_eco_book_container_uuids_map
-                  .values_at(*exercise_uuids).flatten
+                  exercise_uuids = responses.map(&:exercise_uuid)
+                  from_book_container_uuids = from_eco_book_container_uuids_map
+                    .values_at(*exercise_uuids).flatten
 
-                bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
-                  bcm[:from_book_container_uuid].in(from_book_container_uuids)
-                )
-              end.compact.reduce(:or)
+                  bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
+                    bcm[:from_book_container_uuid].in(from_book_container_uuids)
+                  )
+                end.compact
+              )
 
               bcm[:from_ecosystem_uuid].eq(from_ecosystem_uuid).and(or_queries) \
                 unless or_queries.nil?
             end.compact + sccs_by_ecosystem_uuid.map do |from_ecosystem_uuid, sccs|
               from_eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
 
-              or_queries = sccs.group_by do |_, _, student_uuid|
-                course_uuid = course_uuid_by_student_uuid[student_uuid]
-                to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
-              end.map do |to_ecosystem_uuid, sccs|
-                next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
+              or_queries = ArelTrees.or_tree(
+                sccs.group_by do |_, _, student_uuid|
+                  course_uuid = course_uuid_by_student_uuid[student_uuid]
+                  to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
+                end.map do |to_ecosystem_uuid, sccs|
+                  next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
 
-                from_book_container_uuids = sccs.map(&:second)
+                  from_book_container_uuids = sccs.map(&:second)
 
-                bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
-                  bcm[:from_book_container_uuid].in(from_book_container_uuids)
-                )
-              end.compact.reduce(:or)
+                  bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
+                    bcm[:from_book_container_uuid].in(from_book_container_uuids)
+                  )
+                end.compact
+              )
 
               bcm[:from_ecosystem_uuid].eq(from_ecosystem_uuid).and(or_queries) \
                 unless or_queries.nil?
             end.compact
-          ).reduce(:or)
+          )
           forward_mappings = Hash.new do |hash, key|
             hash[key] = Hash.new { |hash, key| hash[key] = {} }
           end
@@ -200,14 +206,15 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           end
 
           # Find all book_container_uuids that map to the book_container_uuids found above
-          reverse_mapping_queries = student_clues_to_update
-            .map do |to_ecosystem_uuid, to_ecosystem_student_clues|
-            to_book_container_uuids = to_ecosystem_student_clues.keys
+          reverse_mapping_queries = ArelTrees.or_tree(
+            student_clues_to_update.map do |to_ecosystem_uuid, to_ecosystem_student_clues|
+              to_book_container_uuids = to_ecosystem_student_clues.keys
 
-            bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
-              bcm[:to_book_container_uuid].in(to_book_container_uuids)
-            )
-          end.reduce(:or)
+              bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
+                bcm[:to_book_container_uuid].in(to_book_container_uuids)
+              )
+            end
+          )
           reverse_mappings = Hash.new do |hash, key|
             hash[key] = Hash.new { |hash, key| hash[key] = {} }
           end
@@ -245,7 +252,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                                                            .to_h
 
           # Build the final Response query
-          response_query = (
+          response_query = ArelTrees.or_tree(
             student_clues_to_update.flat_map do |to_ecosystem_uuid, to_ecosystem_student_clues|
               to_ecosystem_student_clues.map do |to_book_container_uuid, student_uuids|
                 # Reverse map to find book_container_uuids that map to the to_book_container_uuid
@@ -280,7 +287,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                 rr[:student_uuid].in(student_uuids).and rr[:exercise_uuid].in(exercise_uuids)
               end
             end
-          ).reduce(:or)
+          )
 
           # Map student_uuids and exercise_group_uuids to correctness information
           # Take only the latest answer for each exercise_group_uuid

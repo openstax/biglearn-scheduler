@@ -123,38 +123,42 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
         # Create a mapping of spaced practice book containers to each assignment's ecosystem
         bcm = BookContainerMapping.arel_table
-        mapping_queries = spe_assignments.map do |spe_assignment|
-          uuid = spe_assignment.uuid
-          student_uuid = spe_assignment.student_uuid
-          assignment_type = spe_assignment.assignment_type
-          instructor_history = instructor_histories[student_uuid][assignment_type]
-          student_history = student_histories[student_uuid][assignment_type]
+        mapping_queries = ArelTrees.or_tree(
+          spe_assignments.map do |spe_assignment|
+            uuid = spe_assignment.uuid
+            student_uuid = spe_assignment.student_uuid
+            assignment_type = spe_assignment.assignment_type
+            instructor_history = instructor_histories[student_uuid][assignment_type]
+            student_history = student_histories[student_uuid][assignment_type]
 
-          instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(uuid)
-          student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
-          to_ecosystem_uuid = spe_assignment.ecosystem_uuid
+            instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(uuid)
+            student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
+            to_ecosystem_uuid = spe_assignment.ecosystem_uuid
 
-          instructor_spaced_assignments = K_AGOS_TO_LOAD.map do |k_ago|
-            instructor_spaced_sequence_number = instructor_sequence_number - k_ago
-            instructor_history[instructor_spaced_sequence_number]
-          end.compact
-          student_spaced_assignments = K_AGOS_TO_LOAD.map do |k_ago|
-            student_spaced_sequence_number = student_sequence_number - k_ago
-            student_history[student_spaced_sequence_number]
-          end.compact
+            instructor_spaced_assignments = K_AGOS_TO_LOAD.map do |k_ago|
+              instructor_spaced_sequence_number = instructor_sequence_number - k_ago
+              instructor_history[instructor_spaced_sequence_number]
+            end.compact
+            student_spaced_assignments = K_AGOS_TO_LOAD.map do |k_ago|
+              student_spaced_sequence_number = student_sequence_number - k_ago
+              student_history[student_spaced_sequence_number]
+            end.compact
 
-          from_queries = (instructor_spaced_assignments + student_spaced_assignments)
-                           .uniq
-                           .map do |assignment_uuid, from_ecosystem_uuid, from_book_container_uuids|
-            next if from_ecosystem_uuid == to_ecosystem_uuid
+            from_queries = ArelTrees.or_tree(
+              (instructor_spaced_assignments + student_spaced_assignments)
+                .uniq
+                .map do |assignment_uuid, from_ecosystem_uuid, from_book_container_uuids|
+                next if from_ecosystem_uuid == to_ecosystem_uuid
 
-            bcm[:from_ecosystem_uuid].eq(from_ecosystem_uuid).and(
-              bcm[:from_book_container_uuid].in(from_book_container_uuids)
+                bcm[:from_ecosystem_uuid].eq(from_ecosystem_uuid).and(
+                  bcm[:from_book_container_uuid].in(from_book_container_uuids)
+                )
+              end.compact
             )
-          end.compact.reduce(:or)
 
-          bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(from_queries) unless from_queries.nil?
-        end.compact.reduce(:or)
+            bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(from_queries) unless from_queries.nil?
+          end.compact
+        )
         ecosystems_map = Hash.new { |hash, key| hash[key] = {} }
         BookContainerMapping.where(mapping_queries)
                             .pluck(
@@ -440,11 +444,13 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
         # Remove SPEs for any assignments that are using the PEs above (PEs have priority over SPEs)
         unless assignment_pe_requests.empty?
-          aspe_query = assignment_pe_requests.map do |assignment_pe_request|
-            aspe[:assignment_uuid].eq(assignment_pe_request[:assignment_uuid]).and(
-              aspe[:exercise_uuid].in(assignment_pe_request[:exercise_uuids])
-            )
-          end.reduce(:or)
+          aspe_query = ArelTrees.or_tree(
+            assignment_pe_requests.map do |assignment_pe_request|
+              aspe[:assignment_uuid].eq(assignment_pe_request[:assignment_uuid]).and(
+                aspe[:exercise_uuid].in(assignment_pe_request[:exercise_uuids])
+              )
+            end
+          )
           conflicting_assignment_uuids = AssignmentSpe.where(aspe_query).pluck(:assignment_uuid)
           AssignmentSpe.where(assignment_uuid: conflicting_assignment_uuids).delete_all
         end
