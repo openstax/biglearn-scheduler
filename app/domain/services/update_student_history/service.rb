@@ -64,6 +64,11 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
 
     loop do
       num_due_assignments = Assignment.transaction do
+        # Postgres < 10 cannot properly handle correlated columns
+        # (such as due_at and student_history_at)
+        # So we disable sequential scans for this query
+        Assignment.connection.execute 'SET LOCAL enable_seqscan = OFF'
+
         due_assignments = Assignment
           .select(:uuid, :student_uuid)
           .where(student_history_at: nil)
@@ -73,6 +78,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
           .to_a
 
         next 0 if due_assignments.empty?
+
+        Assignment.connection.execute 'SET LOCAL enable_seqscan = ON'
 
         due_assignment_uuids = due_assignments.map(&:uuid)
         Assignment.where(uuid: due_assignment_uuids).update_all('"student_history_at" = "due_at"')
