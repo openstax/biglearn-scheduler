@@ -7,6 +7,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
 
     total_completed_assignments = 0
     total_due_assignments = 0
+
+    # Add assignments that have been completed to the student history
     loop do
       num_completed_assignments = Assignment.transaction do
         completed_assignments = Assignment
@@ -31,7 +33,6 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
           .limit(BATCH_SIZE)
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .to_a
-
         next 0 if completed_assignments.empty?
 
         completed_assignment_uuids = completed_assignments.map(&:uuid)
@@ -62,6 +63,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
       break if num_completed_assignments < BATCH_SIZE
     end
 
+    # Add past-due assignments to the student history
     loop do
       num_due_assignments = Assignment.transaction do
         # Postgres < 10 cannot properly handle correlated columns
@@ -76,7 +78,6 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
           .limit(BATCH_SIZE)
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .to_a
-
         next 0 if due_assignments.empty?
 
         Assignment.connection.execute 'SET LOCAL enable_seqscan = ON'
