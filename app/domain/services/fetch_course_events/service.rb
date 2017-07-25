@@ -29,10 +29,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     loop do
       num_courses = Course.transaction do
         course_relation = Course.order(:id)
-                                .limit(BATCH_SIZE)
                                 .lock('FOR NO KEY UPDATE SKIP LOCKED')
         course_relation = course_relation.where(co[:id].gt(last_id)) unless last_id.nil?
-        courses = course_relation.to_a
+        courses = course_relation.take(BATCH_SIZE)
         next 0 if courses.empty?
 
         last_id = courses.last.id

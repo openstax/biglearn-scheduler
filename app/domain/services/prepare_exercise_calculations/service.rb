@@ -33,6 +33,8 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
           .limit(BATCH_SIZE)
           .lock('FOR NO KEY UPDATE OF "students" SKIP LOCKED')
           .pluck(:uuid, :ecosystem_uuid)
+        next 0 if student_uuid_ecosystem_uuid_pairs.empty?
+
         student_uuids = student_uuid_ecosystem_uuid_pairs.map(&:first)
 
         # We lock the Responses here to avoid deadlocks when updating them later

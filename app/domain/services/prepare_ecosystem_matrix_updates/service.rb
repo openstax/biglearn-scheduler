@@ -15,11 +15,13 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         group_uuids = Exercise.group_uuids_with_new_response_ratio_above_threshold(
           threshold: UPDATE_THRESHOLD, limit: BATCH_SIZE
         )
+        next 0 if group_uuids.empty?
 
         ecosystem_uuids = Ecosystem.joins(ecosystem_exercises: :exercise)
                                    .where(exercises: { group_uuid: group_uuids })
                                    .lock('FOR NO KEY UPDATE OF "ecosystems" SKIP LOCKED')
                                    .pluck(:uuid)
+        next 0 if ecosystem_uuids.empty?
 
         ecosystem_matrix_updates = ecosystem_uuids.map do |ecosystem_uuid|
           EcosystemMatrixUpdate.new(

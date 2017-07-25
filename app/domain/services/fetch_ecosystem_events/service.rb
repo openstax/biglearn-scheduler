@@ -21,10 +21,9 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         # we can ignore all ecosystems that already processed it (sequence_number > 0)
         ecosystem_relation = Ecosystem.where(sequence_number: 0)
                                       .order(:id)
-                                      .limit(BATCH_SIZE)
                                       .lock('FOR NO KEY UPDATE SKIP LOCKED')
         ecosystem_relation = ecosystem_relation.where(ec[:id].gt(last_id)) unless last_id.nil?
-        ecosystems = ecosystem_relation.to_a
+        ecosystems = ecosystem_relation.take(BATCH_SIZE)
         next 0 if ecosystems.empty?
 
         last_id = ecosystems.last.id

@@ -21,14 +21,16 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                               .where(used_in_clue_calculations: false)
                               .lock('FOR NO KEY UPDATE OF "responses" SKIP LOCKED')
                               .take(BATCH_SIZE)
-          response_uuids = responses.map(&:uuid)
-          responses_by_ecosystem_uuid = responses.group_by(&:ecosystem_uuid)
-
           # Also get any StudentClueCalculations that need to be recalculated
           sccs = StudentClueCalculation
             .where("recalculate_at <= '#{start_time.to_s(:db)}'")
+            .limit(BATCH_SIZE)
             .lock('FOR UPDATE SKIP LOCKED')
             .pluck(:ecosystem_uuid, :book_container_uuid, :student_uuid)
+          next 0 if responses.empty? && sccs.empty?
+
+          response_uuids = responses.map(&:uuid)
+          responses_by_ecosystem_uuid = responses.group_by(&:ecosystem_uuid)
           student_uuids = responses.map(&:student_uuid) + sccs.map(&:third)
           sccs_by_ecosystem_uuid = sccs.group_by(&:first)
 
