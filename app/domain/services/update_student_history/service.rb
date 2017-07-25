@@ -1,47 +1,99 @@
 class Services::UpdateStudentHistory::Service < Services::ApplicationService
+  BATCH_SIZE = 1000
+
   def process
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
-    num_assignments = Assignment.transaction do
-      assignment_uuids = Assignment.where(student_history_at: nil)
-                                   .where.not(due_at: nil)
-                                   .lock('FOR NO KEY UPDATE SKIP LOCKED')
-                                   .pluck(:uuid)
-
-      next 0 if assignment_uuids.empty?
-
-      student_uuids = Assignment.connection.execute(
-        <<-SQL.strip_heredoc
-          UPDATE "assignments" SET "student_history_at" = (
-            SELECT CASE
-              WHEN EVERY("responses"."id" IS NOT NULL)
-                THEN MAX("responses"."first_responded_at")
-              WHEN "assignments"."due_at" <= '#{start_time.to_s(:db)}'
-                THEN "assignments"."due_at"
-              END AS "student_history_at"
-            FROM "assigned_exercises"
-              LEFT OUTER JOIN "responses"
-                ON "responses"."trial_uuid" = "assigned_exercises"."uuid"
-                  AND "responses"."first_responded_at" <= "assignments"."due_at"
-            WHERE "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
-              AND "assigned_exercises"."is_spe" = FALSE
-            GROUP BY "assigned_exercises"."assignment_uuid"
+    total_completed_assignments = 0
+    total_due_assignments = 0
+    loop do
+      num_completed_assignments = Assignment.transaction do
+        completed_assignments = Assignment
+          .select(:uuid, :student_uuid)
+          .where(student_history_at: nil)
+          .where(
+            <<-WHERE_SQL.strip_heredoc
+              NOT EXISTS (
+                SELECT *
+                  FROM "assigned_exercises"
+                  WHERE "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
+                    AND "assigned_exercises"."is_spe" = FALSE
+                    AND NOT EXISTS (
+                      SELECT *
+                        FROM "responses"
+                        WHERE "responses"."trial_uuid" = "assigned_exercises"."uuid"
+                          AND "responses"."first_responded_at" <= "assignments"."due_at"
+                    )
+              )
+            WHERE_SQL
           )
-          WHERE "assignments"."uuid" IN (#{assignment_uuids.map { |uuid| "'#{uuid}'" }.join(', ')})
-          RETURNING "assignments"."student_uuid", "assignments"."student_history_at"
-        SQL
-      ).reject { |row| row['student_history_at'].nil? }.map { |row| row['student_uuid'] }
+          .limit(BATCH_SIZE)
+          .lock('FOR NO KEY UPDATE SKIP LOCKED')
+          .to_a
 
-      AssignmentSpe.joins(:assignment)
-                   .where(assignments: { student_uuid: student_uuids })
-                   .delete_all
+        next 0 if completed_assignments.empty?
 
-      student_uuids.size
+        completed_assignment_uuids = completed_assignments.map(&:uuid)
+        Assignment.where(uuid: completed_assignment_uuids).update_all(
+          <<-SQL.strip_heredoc
+            "student_history_at" = (
+              SELECT MAX("responses"."first_responded_at")
+                FROM "assigned_exercises"
+                  INNER JOIN "responses"
+                    ON "responses"."trial_uuid" = "assigned_exercises"."uuid"
+                WHERE "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
+                  AND "assigned_exercises"."is_spe" = FALSE
+                  AND "responses"."first_responded_at" <= "assignments"."due_at"
+                GROUP BY "assigned_exercises"."assignment_uuid"
+            )
+          SQL
+        )
+
+        completed_assignment_student_uuids = completed_assignments.map(&:student_uuid)
+        AssignmentSpe.joins(:assignment)
+                     .where(assignments: { student_uuid: completed_assignment_student_uuids })
+                     .delete_all
+
+        completed_assignments.size
+      end
+
+      total_completed_assignments += num_completed_assignments
+      break if num_completed_assignments < BATCH_SIZE
+    end
+
+    loop do
+      num_due_assignments = Assignment.transaction do
+        due_assignments = Assignment
+          .select(:uuid, :student_uuid)
+          .where(student_history_at: nil)
+          .where("\"due_at\" <= '#{start_time.to_s(:db)}'")
+          .limit(BATCH_SIZE)
+          .lock('FOR NO KEY UPDATE SKIP LOCKED')
+          .to_a
+
+        next 0 if due_assignments.empty?
+
+        due_assignment_uuids = due_assignments.map(&:uuid)
+        Assignment.where(uuid: due_assignment_uuids).update_all('"student_history_at" = "due_at"')
+
+        due_assignment_student_uuids = due_assignments.map(&:student_uuid)
+        AssignmentSpe.joins(:assignment)
+                     .where(assignments: { student_uuid: due_assignment_student_uuids })
+                     .delete_all
+
+        due_assignments.size
+      end
+
+      total_due_assignments += num_due_assignments
+      break if num_due_assignments < BATCH_SIZE
     end
 
     log(:debug) do
-      "#{num_assignments} assignment(s) added to the student history in #{
+      total_assignments = total_completed_assignments + total_due_assignments
+
+      "#{total_assignments} assignment(s) (#{total_completed_assignments} completed and #{
+      total_due_assignments} past due) added to the student history in #{
       Time.current - start_time} second(s)"
     end
   end
