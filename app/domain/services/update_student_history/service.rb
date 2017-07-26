@@ -30,9 +30,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
               )
             WHERE_SQL
           )
-          .limit(BATCH_SIZE)
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
-          .to_a
+          .take(BATCH_SIZE)
         next 0 if completed_assignments.empty?
 
         completed_assignment_uuids = completed_assignments.map(&:uuid)
@@ -75,9 +74,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
           .select(:uuid, :student_uuid)
           .where(student_history_at: nil)
           .where("\"due_at\" <= '#{start_time.to_s(:db)}'")
-          .limit(BATCH_SIZE)
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
-          .to_a
+          .take(BATCH_SIZE)
         next 0 if due_assignments.empty?
 
         Assignment.connection.execute 'SET LOCAL enable_seqscan = ON'

@@ -1,6 +1,6 @@
 class Services::PrepareClueCalculations::Service < Services::ApplicationService
-  MAX_RETRIES = 3
   BATCH_SIZE = 10
+  MAX_RETRIES = 3
 
   def process
     start_time = Time.current
