@@ -48,15 +48,15 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
     end
 
     context 'create_ecosystem events' do
-      let(:event_type)              { 'create_ecosystem' }
+      let(:event_type)               { 'create_ecosystem' }
 
-      let(:num_los)                 { rand(5)  + 1 }
-      let(:los)                     do
+      let(:num_los)                  { rand(5)  + 1 }
+      let(:los)                      do
         num_los.times.map { Faker::Name.name.downcase.gsub('. ', ':').gsub(' ', '-') }
       end
 
-      let(:num_exercises)           { rand(10) + 1 }
-      let(:exercises)               do
+      let(:num_exercises)            { rand(10) + 1 }
+      let(:exercises)                do
         num_exercises.times.map do
           {
             exercise_uuid: SecureRandom.uuid,
@@ -66,15 +66,19 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
           }
         end
       end
-      let!(:existing_exercise)      do
-        FactoryGirl.create :exercise, uuid: exercises.first.fetch(:exercise_uuid)
+      let!(:existing_exercise_group) do
+        FactoryGirl.create :exercise_group, uuid: exercises.first.fetch(:group_uuid)
+      end
+      let!(:existing_exercise)       do
+        FactoryGirl.create :exercise, uuid: exercises.first.fetch(:exercise_uuid),
+                                      exercise_group: existing_exercise_group
       end
 
-      let(:num_chapters)            { rand(10) + 1 }
-      let(:num_pages_per_chapter)   { rand(6)  + 2 }
-      let(:num_pools_per_container) { rand(5)  + 1 }
-      let(:book_containers)         do
-        num_chapters.times.flat_map do
+      let(:num_chapters)             { rand(10) + 1 }
+      let(:num_pages_per_chapter)    { rand(6)  + 2 }
+      let(:num_pools_per_container)  { rand(5)  + 1 }
+      let(:book_containers)          do
+        num_chapters.times.flat_map  do
           container_uuid = SecureRandom.uuid
 
           [
@@ -127,13 +131,14 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
         }
       end
 
-      it 'creates ExercisePools and Exercises for the Ecosystem' do
+      it 'creates ExercisePools, ExerciseGroups, Exercises and EcosystemExercises' do
         num_pages = num_chapters * num_pages_per_chapter
         num_book_containers = num_chapters + num_pages
         num_pools = num_pools_per_container * num_book_containers
 
         expect { subject.process }.to  not_change { Ecosystem.count }
                                   .and change { ExercisePool.count }.by(num_pools)
+                                  .and change { ExerciseGroup.count }.by(num_exercises - 1)
                                   .and change { Exercise.count }.by(num_exercises - 1)
                                   .and change { EcosystemExercise.count }.by(num_exercises)
                                   .and change { ecosystem.reload.sequence_number }

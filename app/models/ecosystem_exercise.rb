@@ -9,6 +9,9 @@ class EcosystemExercise < ApplicationRecord
 
   validates :book_container_uuids, presence: true
 
+  validates :next_ecosystem_matrix_update_response_count,
+            numericality: { only_integer: true, allow_nil: true }
+
   scope :with_group_uuids, -> do
     joins(:exercise).select [arel_table[Arel.star], Exercise.arel_table[:group_uuid]]
   end

@@ -23,13 +23,13 @@ class Services::FetchCourseMetadatas::Service < Services::ApplicationService
     result = Course.import courses, validate: false,
                                     on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
     log(:debug) do
-      responses_count = course_responses.size
+      response_count = course_responses.size
       existing_count = existing_course_uuids.size
-      new_count = responses_count - existing_count
+      new_count = response_count - existing_count
       time = Time.current - start_time
 
-      "Received: #{responses_count} - Existing: #{existing_count}" +
-      " - New: #{new_count} - - Took: #{time} second(s)"
+      "Received: #{response_count} - Existing: #{existing_count}" +
+      " - New: #{new_count} - Took: #{time} second(s)"
     end
   end
 end

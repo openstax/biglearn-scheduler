@@ -15,13 +15,13 @@ class Services::FetchEcosystemMetadatas::Service < Services::ApplicationService
     result = Ecosystem.import ecosystems, validate: false,
                                           on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
     log(:debug) do
-      responses_count = ecosystem_responses.size
+      response_count = ecosystem_responses.size
       existing_count = existing_ecosystem_uuids.size
-      new_count = responses_count - existing_count
+      new_count = response_count - existing_count
       time = Time.current - start_time
 
-      "Received: #{responses_count} - Existing: #{existing_count}" +
-      " - New: #{new_count} - - Took: #{time} second(s)"
+      "Received: #{response_count} - Existing: #{existing_count}" +
+      " - New: #{new_count} - Took: #{time} second(s)"
     end
   end
 end

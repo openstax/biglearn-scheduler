@@ -92,8 +92,9 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
       .map(&:deep_symbolize_keys)
 
     exercise_pools = []
-    ecosystem_exercises = []
+    exercise_groups = []
     exercises = []
+    ecosystem_exercises = []
     ecosystems = ecosystem_event_responses.map do |ecosystem_event_response|
       events = ecosystem_event_response.fetch :events
       num_events = events.size
@@ -141,18 +142,21 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
           end
         end
 
-        ecosystem.exercise_uuids = data.fetch(:exercises)
-                                       .uniq { |exercise| exercise.fetch(:exercise_uuid) }
-                                       .map do |exercise|
-          exercise.fetch(:exercise_uuid).tap do |exercise_uuid|
-            book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid].uniq
+        exercise_hashes = data.fetch(:exercises).uniq { |ex_hash| ex_hash.fetch(:exercise_uuid) }
 
+        exercise_hashes.map { |ex_hash| ex_hash.fetch(:group_uuid) }.uniq.map do |group_uuid|
+          exercise_groups << ExerciseGroup.new(uuid: group_uuid, response_count: 0)
+        end
+
+        ecosystem.exercise_uuids = exercise_hashes.map do |ex_hash|
+          ex_hash.fetch(:exercise_uuid).tap do |exercise_uuid|
             exercises << Exercise.new(
               uuid: exercise_uuid,
-              group_uuid: exercise.fetch(:group_uuid),
-              version: exercise.fetch(:version)
+              group_uuid: ex_hash.fetch(:group_uuid),
+              version: ex_hash.fetch(:version)
             )
 
+            book_container_uuids = book_container_uuids_by_exercise_uuids[exercise_uuid].uniq
             ecosystem_exercises << EcosystemExercise.new(
               uuid: SecureRandom.uuid,
               ecosystem_uuid: ecosystem_uuid,
@@ -167,6 +171,10 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
       ecosystem
     end.compact
+
+    results << ExerciseGroup.import(
+      exercise_groups, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+    )
 
     results << Exercise.import(
       exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }

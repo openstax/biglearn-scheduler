@@ -324,11 +324,11 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           is_correct: data.fetch(:is_correct),
           used_in_clue_calculations: false,
           used_in_exercise_calculations: false,
-          used_in_ecosystem_matrix_updates: false
+          used_in_response_count: false
         )
       end
 
-      course.sequence_number = events.map{ |event| event.fetch(:sequence_number) }.max + 1
+      course.sequence_number = events.map { |event| event.fetch(:sequence_number) }.max + 1
 
       course
     end.compact

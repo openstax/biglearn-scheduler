@@ -9,10 +9,10 @@ class Response < ApplicationRecord
                                  optional: true,
                                  inverse_of: :responses
 
-  validates :ecosystem_uuid, presence: true
-  validates :trial_uuid,     presence: true
-  validates :student_uuid,   presence: true
-  validates :exercise_uuid,  presence: true
-  validates :first_responded_at,   presence: true
-  validates :last_responded_at,   presence: true
+  validates :ecosystem_uuid,     presence: true
+  validates :trial_uuid,         presence: true
+  validates :student_uuid,       presence: true
+  validates :exercise_uuid,      presence: true
+  validates :first_responded_at, presence: true
+  validates :last_responded_at,  presence: true
 end

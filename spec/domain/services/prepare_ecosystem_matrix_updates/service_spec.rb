@@ -17,39 +17,50 @@ RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service 
 
       @ecosystem_1 = FactoryGirl.create :ecosystem
       @ecosystem_2 = FactoryGirl.create :ecosystem
+      @ecosystem_3 = FactoryGirl.create :ecosystem
+      @ecosystem_4 = FactoryGirl.create :ecosystem
 
       @ecosystem_exercise_1 = FactoryGirl.create :ecosystem_exercise,
-                                                 ecosystem_uuid: @ecosystem_1.uuid
+                                                 ecosystem_uuid: @ecosystem_1.uuid,
+                                                 next_ecosystem_matrix_update_response_count: 1
       @ecosystem_exercise_2 = FactoryGirl.create :ecosystem_exercise,
-                                                 ecosystem_uuid: @ecosystem_2.uuid
+                                                 ecosystem_uuid: @ecosystem_2.uuid,
+                                                 next_ecosystem_matrix_update_response_count: 2
+      @ecosystem_exercise_3 = FactoryGirl.create :ecosystem_exercise,
+                                                 ecosystem_uuid: @ecosystem_3.uuid,
+                                                 next_ecosystem_matrix_update_response_count: 1
+      @ecosystem_exercise_4 = FactoryGirl.create :ecosystem_exercise,
+                                                 ecosystem_uuid: @ecosystem_4.uuid
 
       @response_1 = FactoryGirl.create :response,
                                        ecosystem_uuid: @ecosystem_exercise_1.ecosystem_uuid,
                                        exercise_uuid: @ecosystem_exercise_1.exercise_uuid,
-                                       used_in_ecosystem_matrix_updates: false
+                                       used_in_response_count: false
       @response_2 = FactoryGirl.create :response,
-                                       ecosystem_uuid: @ecosystem_exercise_1.ecosystem_uuid,
-                                       exercise_uuid: @ecosystem_exercise_1.exercise_uuid,
-                                       used_in_ecosystem_matrix_updates: false
+                                       ecosystem_uuid: @ecosystem_exercise_2.ecosystem_uuid,
+                                       exercise_uuid: @ecosystem_exercise_2.exercise_uuid,
+                                       used_in_response_count: false
 
       @response_3 = FactoryGirl.create :response,
                                        ecosystem_uuid: @ecosystem_exercise_2.ecosystem_uuid,
                                        exercise_uuid: @ecosystem_exercise_2.exercise_uuid,
-                                       used_in_ecosystem_matrix_updates: true
-
-      @unprocessed_responses = [ @response_1, @response_2 ]
+                                       used_in_response_count: true
     end
 
     after(:all)  { DatabaseCleaner.clean }
 
-    it 'creates the EcosystemMatrixUpdate records and marks the Response objects as processed' do
-      expect { subject.process }.to  not_change { Response.count                       }
-                                .and change     { EcosystemMatrixUpdate.count          }.by(1)
-                                .and not_change { AlgorithmEcosystemMatrixUpdate.count }
+    it 'marks the Response objects as processed' do
+      expect do
+        subject.process
+      end.to  change     { @response_1.reload.used_in_response_count }.from(false).to(true)
+         .and change     { @response_2.reload.used_in_response_count }.from(false).to(true)
+         .and not_change { @response_3.reload.used_in_response_count }
+    end
 
-      @unprocessed_responses.each do |response|
-        expect(response.reload.used_in_ecosystem_matrix_updates).to eq true
-      end
+    it 'creates EcosystemMatrixUpdate records when the next update response counts are reached' do
+      expect { subject.process }.to  not_change { Response.count                       }
+                                .and change     { EcosystemMatrixUpdate.count          }.by(3)
+                                .and not_change { AlgorithmEcosystemMatrixUpdate.count }
     end
 
     context 'with existing EcosystemMatrixUpdates and AlgorithmEcosystemMatrixUpdates' do
@@ -60,6 +71,8 @@ RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service 
                                                         ecosystem_uuid: @ecosystem_1.uuid
         @ecosystem_matrix_update_2 = FactoryGirl.create :ecosystem_matrix_update,
                                                         ecosystem_uuid: @ecosystem_2.uuid
+        @ecosystem_matrix_update_3 = FactoryGirl.create :ecosystem_matrix_update,
+                                                        ecosystem_uuid: @ecosystem_3.uuid
 
         @algorithm_ecosystem_matrix_update_1 =
           FactoryGirl.create :algorithm_ecosystem_matrix_update,
@@ -67,19 +80,17 @@ RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service 
         @algorithm_ecosystem_matrix_update_2 =
           FactoryGirl.create :algorithm_ecosystem_matrix_update,
                              ecosystem_matrix_update: @ecosystem_matrix_update_2
+        @algorithm_ecosystem_matrix_update_3 =
+          FactoryGirl.create :algorithm_ecosystem_matrix_update,
+                             ecosystem_matrix_update: @ecosystem_matrix_update_3
       end
 
       after(:all)  { DatabaseCleaner.clean }
 
-      it 'marks the Response objects as processed and' +
-         ' deletes AlgorithmEcosystemMatrixUpdates that need to be updated' do
+      it 'upserts EcosystemMatrixUpdates and deletes AlgorithmEcosystemMatrixUpdates' do
         expect { subject.process }.to  not_change { Response.count                       }
-                                  .and not_change { EcosystemMatrixUpdate.count          }
-                                  .and change     { AlgorithmEcosystemMatrixUpdate.count }.by(-1)
-
-        @unprocessed_responses.each do |response|
-          expect(response.reload.used_in_ecosystem_matrix_updates).to eq true
-        end
+                                  .and change     { EcosystemMatrixUpdate.count          }.by(1)
+                                  .and change     { AlgorithmEcosystemMatrixUpdate.count }.by(-2)
       end
     end
   end

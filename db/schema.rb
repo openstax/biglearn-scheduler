@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170725154009) do
+ActiveRecord::Schema.define(version: 20170726145625) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -181,12 +181,13 @@ ActiveRecord::Schema.define(version: 20170725154009) do
   end
 
   create_table "ecosystem_exercises", force: :cascade do |t|
-    t.uuid     "uuid",                 null: false
-    t.uuid     "ecosystem_uuid",       null: false
-    t.uuid     "exercise_uuid",        null: false
-    t.uuid     "book_container_uuids", null: false, array: true
-    t.datetime "created_at",           null: false
-    t.datetime "updated_at",           null: false
+    t.uuid     "uuid",                                        null: false
+    t.uuid     "ecosystem_uuid",                              null: false
+    t.uuid     "exercise_uuid",                               null: false
+    t.uuid     "book_container_uuids",                        null: false, array: true
+    t.datetime "created_at",                                  null: false
+    t.datetime "updated_at",                                  null: false
+    t.integer  "next_ecosystem_matrix_update_response_count"
     t.index ["ecosystem_uuid"], name: "index_ecosystem_exercises_on_ecosystem_uuid", using: :btree
     t.index ["exercise_uuid", "ecosystem_uuid"], name: "index_eco_exercises_on_exercise_uuid_and_eco_uuid", unique: true, using: :btree
     t.index ["uuid"], name: "index_ecosystem_exercises_on_uuid", unique: true, using: :btree
@@ -232,6 +233,14 @@ ActiveRecord::Schema.define(version: 20170725154009) do
     t.index ["uuid"], name: "index_exercise_calculations_on_uuid", unique: true, using: :btree
   end
 
+  create_table "exercise_groups", force: :cascade do |t|
+    t.uuid     "uuid",           null: false
+    t.integer  "response_count", null: false
+    t.datetime "created_at",     null: false
+    t.datetime "updated_at",     null: false
+    t.index ["uuid"], name: "index_exercise_groups_on_uuid", unique: true, using: :btree
+  end
+
   create_table "exercise_pools", force: :cascade do |t|
     t.uuid     "uuid",                                      null: false
     t.uuid     "ecosystem_uuid",                            null: false
@@ -258,28 +267,28 @@ ActiveRecord::Schema.define(version: 20170725154009) do
   end
 
   create_table "responses", force: :cascade do |t|
-    t.uuid     "uuid",                             null: false
-    t.uuid     "ecosystem_uuid",                   null: false
-    t.uuid     "trial_uuid",                       null: false
-    t.uuid     "student_uuid",                     null: false
-    t.uuid     "exercise_uuid",                    null: false
-    t.datetime "first_responded_at",               null: false
-    t.datetime "last_responded_at",                null: false
-    t.boolean  "is_correct",                       null: false
-    t.boolean  "used_in_clue_calculations",        null: false
-    t.boolean  "used_in_exercise_calculations",    null: false
-    t.boolean  "used_in_ecosystem_matrix_updates", null: false
-    t.datetime "created_at",                       null: false
-    t.datetime "updated_at",                       null: false
+    t.uuid     "uuid",                          null: false
+    t.uuid     "ecosystem_uuid",                null: false
+    t.uuid     "trial_uuid",                    null: false
+    t.uuid     "student_uuid",                  null: false
+    t.uuid     "exercise_uuid",                 null: false
+    t.datetime "first_responded_at",            null: false
+    t.datetime "last_responded_at",             null: false
+    t.boolean  "is_correct",                    null: false
+    t.boolean  "used_in_clue_calculations",     null: false
+    t.boolean  "used_in_exercise_calculations", null: false
+    t.datetime "created_at",                    null: false
+    t.datetime "updated_at",                    null: false
+    t.boolean  "used_in_response_count",        null: false
     t.index ["ecosystem_uuid"], name: "index_responses_on_ecosystem_uuid", using: :btree
-    t.index ["exercise_uuid", "used_in_ecosystem_matrix_updates"], name: "index_responses_on_ex_uuid_and_used_in_eco_mtx_updates", using: :btree
+    t.index ["exercise_uuid"], name: "index_responses_on_exercise_uuid", using: :btree
     t.index ["first_responded_at"], name: "index_responses_on_first_responded_at", using: :btree
     t.index ["last_responded_at"], name: "index_responses_on_last_responded_at", using: :btree
     t.index ["student_uuid"], name: "index_responses_on_student_uuid", using: :btree
     t.index ["trial_uuid"], name: "index_responses_on_trial_uuid", using: :btree
     t.index ["used_in_clue_calculations"], name: "index_responses_on_used_in_clue_calculations", using: :btree
-    t.index ["used_in_ecosystem_matrix_updates"], name: "index_responses_on_used_in_ecosystem_matrix_updates", using: :btree
     t.index ["used_in_exercise_calculations"], name: "index_responses_on_used_in_exercise_calculations", using: :btree
+    t.index ["used_in_response_count"], name: "index_responses_on_used_in_response_count", using: :btree
     t.index ["uuid"], name: "index_responses_on_uuid", unique: true, using: :btree
   end
 
