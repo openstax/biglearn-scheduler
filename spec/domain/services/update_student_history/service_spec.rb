@@ -447,6 +447,14 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
         [ @reading_1, @homework_1, @reading_2, @homework_2, @reading_3, @homework_3 ]
       end
 
+      it 'marks the responses as used in the student history' do
+        expect { subject.process }.to(
+          change do
+            ordered_responses.map(&:reload).count(&:used_in_student_history)
+          end.from(0).to(ordered_responses.count)
+        )
+      end
+
       it 'adds the assignments to the student history in the correct order' do
         expect { subject.process }.to  not_change { Assignment.count }
                                   .and change     { AssignmentSpe.count }.by(-2)
@@ -465,6 +473,14 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
         [ @reading_1, @homework_1, @reading_2, @homework_2, @reading_3, @homework_3 ].reverse
       end
 
+      it 'marks the responses as used in the student history' do
+        expect { subject.process }.to(
+          change do
+            ordered_responses.map(&:reload).count(&:used_in_student_history)
+          end.from(0).to(ordered_responses.count)
+        )
+      end
+
       it 'adds the assignments to the student history in the correct order' do
         expect { subject.process }.to  not_change { Assignment.count }
                                   .and change     { AssignmentSpe.count }.by(-2)
@@ -481,6 +497,14 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
     context 'with incomplete assignments' do
       let(:ordered_assignments) do
         [ @reading_2, @homework_2, @reading_3, @homework_3 ]
+      end
+
+      it 'marks the responses as used in the student history' do
+        expect { subject.process }.to(
+          change do
+            ordered_responses.map(&:reload).count(&:used_in_student_history)
+          end.from(0).to(ordered_responses.count)
+        )
       end
 
       it 'adds the assignments to the student history in the correct order' do
@@ -507,6 +531,14 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
         @reading_1.update_attribute :due_at, current_time.yesterday
 
         @homework_1.update_attribute :due_at, current_time.yesterday
+      end
+
+      it 'marks the responses as used in the student history' do
+        expect { subject.process }.to(
+          change do
+            ordered_responses.map(&:reload).count(&:used_in_student_history)
+          end.from(0).to(ordered_responses.count)
+        )
       end
 
       it 'adds the assignments to the student history in the correct order' do
