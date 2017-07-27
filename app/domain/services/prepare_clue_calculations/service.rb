@@ -9,7 +9,6 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
     rr = Response.arel_table
     ee = EcosystemExercise.arel_table
 
-    # Do all the processing in batches to avoid OOM problems
     total_responses = 0
     loop do
       retries = 0

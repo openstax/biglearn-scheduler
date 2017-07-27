@@ -1,4 +1,9 @@
 class Response < ApplicationRecord
+  belongs_to :student, primary_key: :uuid,
+                       foreign_key: :student_uuid,
+                       optional: true,
+                       inverse_of: :responses
+
   belongs_to :exercise, primary_key: :uuid,
                         foreign_key: :exercise_uuid,
                         optional: true,

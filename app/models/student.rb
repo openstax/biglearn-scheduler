@@ -1,4 +1,8 @@
 class Student < ApplicationRecord
+  has_many :responses, primary_key: :uuid,
+                       foreign_key: :student_uuid,
+                       inverse_of: :student
+
   has_many :exercise_calculations, primary_key: :uuid,
                                    foreign_key: :student_uuid,
                                    dependent: :destroy,

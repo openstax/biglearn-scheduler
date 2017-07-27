@@ -5,48 +5,52 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
+    ec = ExerciseCalculation.arel_table
     st = Student.arel_table
     co = Course.arel_table
-    ec = ExerciseCalculation.arel_table
-    re = Response.arel_table
 
-    # Do all the processing in batches to avoid OOM problems
+    total_responses = 0
+    total_assignments = 0
     total_students = 0
     loop do
-      num_students = Student.transaction do
-        # Get Students that don't have an ExerciseCalculation for their Courses' latest ecosystem
-        # or that have a response that has not yet been used in ExerciseCalculations
-        # Also return the Students' Courses' latest ecosystems
-        student_uuid_ecosystem_uuid_pairs = Student
+      num_responses, num_students = Response.transaction do
+        # Get responses that have not yet been used in exercise calculations,
+        # their students' uuids and their courses' latest ecosystem_uuids
+        responses = Response
+          .select(:uuid, '"students"."uuid" AS "student_uuid"', '"courses"."ecosystem_uuid"')
+          .joins(student: :course)
+          .where(used_in_exercise_calculations: false)
+          .lock('FOR NO KEY UPDATE OF "responses", "students" SKIP LOCKED')
+          .take(BATCH_SIZE)
+
+        # Also get students that don't have an ExerciseCalculation
+        # for their courses' latest ecosystem
+        students = Student
+          .select(:uuid, :ecosystem_uuid)
+          .joins(:course)
           .where(
             ExerciseCalculation.where(
               ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(co[:ecosystem_uuid])
             ).exists.not
-          ).or(
-            Student.where(
-              Response.where(
-                re[:student_uuid].eq(st[:uuid]).and re[:used_in_exercise_calculations].eq(false)
-              ).exists
-            )
           )
-          .joins(:course)
-          .limit(BATCH_SIZE)
           .lock('FOR NO KEY UPDATE OF "students" SKIP LOCKED')
-          .pluck(:uuid, :ecosystem_uuid)
-        next 0 if student_uuid_ecosystem_uuid_pairs.empty?
+          .take(BATCH_SIZE)
 
-        student_uuids = student_uuid_ecosystem_uuid_pairs.map(&:first)
+        if responses.empty?
+          next [ 0, 0 ] if students.empty?
+        else
+          # Record the fact that the CLUes are up-to-date with the latest Responses
+          response_uuids = responses.map(&:uuid)
+          Response.where(uuid: response_uuids).update_all(used_in_exercise_calculations: true)
+        end
 
-        # We lock the Responses here to avoid deadlocks when updating them later
-        response_uuids = Response
-          .where(student_uuid: student_uuids, used_in_exercise_calculations: false)
-          .lock('FOR NO KEY UPDATE SKIP LOCKED')
-          .pluck(:uuid)
+        student_uuids = responses.map(&:student_uuid) + students.map(&:uuid)
 
         # For each student, the ecosystems that need calculations are the course's latest
         # ecosystem plus any ecosystems used by assignments that still need SPEs or PEs
         student_uuid_ecosystem_uuid_pairs = (
-          student_uuid_ecosystem_uuid_pairs +
+          responses.map { |response| [ response.student_uuid, response.ecosystem_uuid ] } +
+          students.map { |student| [ student.uuid, student.ecosystem_uuid ] } +
           Assignment.need_spes_or_pes
                     .where(student_uuid: student_uuids)
                     .pluck(:student_uuid, :ecosystem_uuid)
@@ -73,19 +77,18 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
         # an associated ExerciseCalculation record
         AlgorithmExerciseCalculation.unassociated.delete_all
 
-        # Record the fact that the CLUes are up-to-date with the latest Responses
-        Response.where(uuid: response_uuids).update_all(used_in_exercise_calculations: true)
-
-        student_uuids.size
+        [ responses.size, students.size ]
       end
 
-      # If we got less students than the batch size, then this is the last batch
+      # If we got less responses and students than the batch size, then this is the last batch
+      total_responses += num_responses
       total_students += num_students
-      break if num_students < BATCH_SIZE
+      break if num_responses < BATCH_SIZE && num_students < BATCH_SIZE
     end
 
     log(:debug) do
-      "#{total_students} student(s) processed in #{Time.current - start_time} second(s)"
+      "#{total_responses} response(s), #{total_assignments} assignment(s) and #{total_students
+      } non-response student(s) processed in #{Time.current - start_time} second(s)"
     end
   end
 end

@@ -11,7 +11,6 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
     ee = EcosystemExercise.arel_table
     eg = ExerciseGroup.arel_table
 
-    # Do all the processing in batches to avoid OOM problems
     total_responses = 0
     total_ecosystems = 0
     loop do
