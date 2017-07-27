@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170726145625) do
+ActiveRecord::Schema.define(version: 20170727173018) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -280,6 +280,7 @@ ActiveRecord::Schema.define(version: 20170726145625) do
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
     t.boolean  "used_in_response_count",        null: false
+    t.boolean  "used_in_student_history",       null: false
     t.index ["ecosystem_uuid"], name: "index_responses_on_ecosystem_uuid", using: :btree
     t.index ["exercise_uuid"], name: "index_responses_on_exercise_uuid", using: :btree
     t.index ["first_responded_at"], name: "index_responses_on_first_responded_at", using: :btree
@@ -289,6 +290,7 @@ ActiveRecord::Schema.define(version: 20170726145625) do
     t.index ["used_in_clue_calculations"], name: "index_responses_on_used_in_clue_calculations", using: :btree
     t.index ["used_in_exercise_calculations"], name: "index_responses_on_used_in_exercise_calculations", using: :btree
     t.index ["used_in_response_count"], name: "index_responses_on_used_in_response_count", using: :btree
+    t.index ["used_in_student_history"], name: "index_responses_on_used_in_student_history", using: :btree
     t.index ["uuid"], name: "index_responses_on_uuid", unique: true, using: :btree
   end
 

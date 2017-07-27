@@ -324,7 +324,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           is_correct: data.fetch(:is_correct),
           used_in_clue_calculations: false,
           used_in_exercise_calculations: false,
-          used_in_response_count: false
+          used_in_response_count: false,
+          used_in_student_history: false
         )
       end
 
@@ -470,7 +471,10 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       }
     )
 
-    # NOTE: first_responded_at is not included here so it is never updated after set
+    # NOTE: update happens when an answer is changed
+    #       first_responded_at is not included here so it is never updated after set
+    #       used_in_clue_calculations is here because the CLUes need to be recalculated
+    #       exercise calculations, response counts and student history are unaffected
     results << Response.import(
       responses, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
@@ -479,7 +483,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           :student_uuid,
           :exercise_uuid,
           :last_responded_at,
-          :is_correct
+          :is_correct,
+          :used_in_clue_calculations
         ]
       }
     )
@@ -492,10 +497,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         .where(course_uuid: course_uuids_with_changed_ecosystems)
         .pluck(:uuid)
 
-      # Mark CLUes and ecosystem matrices for recalculation
-      # for students in courses with updated ecosystems
-      Response.where(student_uuid: changed_ecosystem_student_uuids)
-              .update_all(used_in_clue_calculations: false)
+      # Mark CLUes for recalculation for students in courses with updated ecosystems
+      StudentClueCalculation.where(student_uuid: changed_ecosystem_student_uuids)
+                            .update_all(recalculate_at: Time.current)
     end
 
     aa = Assignment.arel_table

@@ -5,15 +5,31 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
+    # Check new responses and add assignments that have been completed to the student history
+    total_responses = 0
     total_completed_assignments = 0
-    total_due_assignments = 0
-
-    # Add assignments that have been completed to the student history
     loop do
-      num_completed_assignments = Assignment.transaction do
+      num_responses = Response.transaction do
+        # Find responses not yet used in the student history
+        responses = Response
+          .select(:uuid, :assignment_uuid)
+          .joins(assigned_exercise: :assignment)
+          .where(used_in_student_history: false)
+          .lock('FOR NO KEY UPDATE OF "responses", "assignments" SKIP LOCKED')
+          .take(BATCH_SIZE)
+        next 0 if responses.empty?
+
+        num_responses = responses.size
+
+        # Mark the above responses as used in the student history
+        response_uuids = responses.map(&:uuid)
+        Response.where(uuid: response_uuids).update_all(used_in_student_history: true)
+
+        # Find assignments that correspond to the above responses and check if they are complete
+        responded_assignment_uuids = responses.map(&:assignment_uuid)
         completed_assignments = Assignment
           .select(:uuid, :student_uuid)
-          .where(student_history_at: nil)
+          .where(uuid: responded_assignment_uuids, student_history_at: nil)
           .where(
             <<-WHERE_SQL.strip_heredoc
               NOT EXISTS (
@@ -30,10 +46,12 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
               )
             WHERE_SQL
           )
-          .lock('FOR NO KEY UPDATE SKIP LOCKED')
-          .take(BATCH_SIZE)
-        next 0 if completed_assignments.empty?
+          .to_a
+        next num_responses if completed_assignments.empty?
 
+        total_completed_assignments += completed_assignments.size
+
+        # Add the completed assignments to the student history
         completed_assignment_uuids = completed_assignments.map(&:uuid)
         Assignment.where(uuid: completed_assignment_uuids).update_all(
           <<-SQL.strip_heredoc
@@ -50,19 +68,22 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
           SQL
         )
 
+        # Recalculate SPEs for affected students
         completed_assignment_student_uuids = completed_assignments.map(&:student_uuid)
         AssignmentSpe.joins(:assignment)
                      .where(assignments: { student_uuid: completed_assignment_student_uuids })
                      .delete_all
 
-        completed_assignments.size
+        num_responses
       end
 
-      total_completed_assignments += num_completed_assignments
-      break if num_completed_assignments < BATCH_SIZE
+      # If we got less responses than the batch size, then this is the last batch
+      total_responses += num_responses
+      break if num_responses < BATCH_SIZE
     end
 
     # Add past-due assignments to the student history
+    total_due_assignments = 0
     loop do
       num_due_assignments = Assignment.transaction do
         # Postgres < 10 cannot properly handle correlated columns
@@ -98,9 +119,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
     log(:debug) do
       total_assignments = total_completed_assignments + total_due_assignments
 
-      "#{total_assignments} assignment(s) (#{total_completed_assignments} completed and #{
-      total_due_assignments} past due) added to the student history in #{
-      Time.current - start_time} second(s)"
+      "#{total_responses} response(s) and #{total_assignments} assignment(s) (#{total_completed_assignments} completed and #{total_due_assignments
+      } past-due) processed in #{Time.current - start_time} second(s)"
     end
   end
 end

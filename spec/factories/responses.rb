@@ -12,5 +12,6 @@ FactoryGirl.define do
     used_in_clue_calculations     { [true, false].sample          }
     used_in_exercise_calculations { [true, false].sample          }
     used_in_response_count        { [true, false].sample          }
+    used_in_student_history       { [true, false].sample          }
   end
 end
