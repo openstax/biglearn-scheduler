@@ -19,7 +19,7 @@ class CreateExerciseGroups < ActiveRecord::Migration[5.0]
             ex_rel = Exercise.distinct.order(:group_uuid).limit(BATCH_SIZE)
             ex_rel = ex_rel.where(ex[:group_uuid].gt(last_group_uuid)) unless last_group_uuid.nil?
             group_uuids = ex_rel.pluck(:group_uuid)
-            last_uuid = group_uuids.last
+            last_group_uuid = group_uuids.last
 
             exercise_groups = group_uuids.map do |group_uuid|
               ExerciseGroup.new(uuid: group_uuid, response_count: 0)
