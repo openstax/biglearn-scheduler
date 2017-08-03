@@ -12,6 +12,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
     aec = AlgorithmExerciseCalculation.arel_table
     ec = ExerciseCalculation.arel_table
     cc = Course.arel_table
+    ascc = AlgorithmStudentClueCalculation.arel_table
     spe = StudentPe.arel_table
     aa = Assignment.arel_table
 
@@ -47,7 +48,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           .with_student_clue_calculation_attributes_and_partitioned_rank(
             student_uuids: student_uuids
           )
-          .where("partitioned_rank <= #{MAX_NUM_WORST_CLUES}")
+          .where(ascc[:partitioned_rank].lteq(MAX_NUM_WORST_CLUES))
           .order(:partitioned_rank)
           .each do |algorithm_student_clue_calculation|
           student_uuid = algorithm_student_clue_calculation.student_uuid

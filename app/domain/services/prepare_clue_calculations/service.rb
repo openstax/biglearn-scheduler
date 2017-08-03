@@ -6,8 +6,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
-    rr = Response.arel_table
+    scc = StudentClueCalculation.arel_table
     ee = EcosystemExercise.arel_table
+    bcm = BookContainerMapping.arel_table
+    rr = Response.arel_table
 
     total_responses = 0
     loop do
@@ -22,16 +24,15 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                               .take(BATCH_SIZE)
           # Also get any StudentClueCalculations that need to be recalculated
           sccs = StudentClueCalculation
-            .where("recalculate_at <= '#{start_time.to_s(:db)}'")
-            .limit(BATCH_SIZE)
+            .where(scc[:recalculate_at].lteq(start_time))
             .lock('FOR UPDATE SKIP LOCKED')
-            .pluck(:ecosystem_uuid, :book_container_uuid, :student_uuid)
+            .take(BATCH_SIZE)
           next 0 if responses.empty? && sccs.empty?
 
           response_uuids = responses.map(&:uuid)
           responses_by_ecosystem_uuid = responses.group_by(&:ecosystem_uuid)
-          student_uuids = responses.map(&:student_uuid) + sccs.map(&:third)
-          sccs_by_ecosystem_uuid = sccs.group_by(&:first)
+          student_uuids = (responses + sccs).map(&:student_uuid)
+          sccs_by_ecosystem_uuid = sccs.group_by(&:ecosystem_uuid)
 
           # Map the students to courses and course containers (for teacher CLUes)
           course_uuid_by_student_uuid = {}
@@ -49,21 +50,39 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                            .pluck(:uuid, :student_uuids)
                            .to_h
 
+          from_book_container_uuids_map = Hash.new do |hash, key|
+            hash[key] = Hash.new { |hash, key| hash[key] = [] }
+          end
+
           # Build a query to obtain the book_container_uuids for the grouped Responses
           ee_query = ArelTrees.or_tree(
             responses_by_ecosystem_uuid.map do |ecosystem_uuid, responses|
               exercise_uuids = responses.map(&:exercise_uuid)
 
               ee[:ecosystem_uuid].eq(ecosystem_uuid).and ee[:exercise_uuid].in(exercise_uuids)
+            end + sccs_by_ecosystem_uuid.map do |ecosystem_uuid, sccs|
+              exercise_uuids = sccs.flat_map(&:exercise_uuids)
+
+              ee[:ecosystem_uuid].eq(ecosystem_uuid).and ee[:exercise_uuid].in(exercise_uuids)
             end
           )
-          from_book_container_uuids_map = Hash.new { |hash, key| hash[key] = {} }
           EcosystemExercise
             .where(ee_query)
             .pluck(:ecosystem_uuid, :exercise_uuid, :book_container_uuids)
             .each do |ecosystem_uuid, exercise_uuid, book_container_uuids|
             from_book_container_uuids_map[ecosystem_uuid][exercise_uuid] = book_container_uuids
           end unless ee_query.nil?
+
+          # Also add the book_container_uuids for the grouped StudentClueCalculations to the map
+          sccs.each do |scc|
+            ecosystem_uuid = scc.ecosystem_uuid
+            exercise_uuids = scc.exercise_uuids
+            book_container_uuid = scc.book_container_uuid
+
+            exercise_uuids.each do |exercise_uuid|
+              from_book_container_uuids_map[ecosystem_uuid][exercise_uuid] << book_container_uuid
+            end
+          end
 
           # Map the courses to latest ecosystems
           course_uuids = course_uuid_by_student_uuid.values
@@ -73,7 +92,6 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
           # Create queries to map the book_container_uuids to
           # book_container_uuids in the courses' latest ecosystems
-          bcm = BookContainerMapping.arel_table
           forward_mapping_queries = ArelTrees.or_tree(
             responses_by_ecosystem_uuid.map do |from_ecosystem_uuid, responses|
               from_eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
@@ -102,13 +120,13 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               from_eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
 
               or_queries = ArelTrees.or_tree(
-                sccs.group_by do |_, _, student_uuid|
-                  course_uuid = course_uuid_by_student_uuid[student_uuid]
+                sccs.group_by do |scc|
+                  course_uuid = course_uuid_by_student_uuid[scc.student_uuid]
                   to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
                 end.map do |to_ecosystem_uuid, sccs|
                   next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
 
-                  from_book_container_uuids = sccs.map(&:second)
+                  from_book_container_uuids = sccs.map(&:book_container_uuid)
 
                   bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
                     bcm[:from_book_container_uuid].in(from_book_container_uuids)
@@ -191,12 +209,14 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           sccs_by_ecosystem_uuid.each do |from_ecosystem_uuid, scc|
             from_ecosystem_mappings = forward_mappings[from_ecosystem_uuid]
 
-            sccs.each do |_, from_book_container_uuid, student_uuid|
+            sccs.each do |scc|
               # Find the student's course and its latest ecosystem
+              student_uuid = scc.student_uuid
               course_uuid = course_uuid_by_student_uuid[student_uuid]
               to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
 
               # Forward map the from_book_container_uuid to find the to_book_container_uuid
+              from_book_container_uuid = scc.book_container_uuid
               to_book_container_uuid = from_ecosystem_mappings[from_book_container_uuid].fetch(
                 to_ecosystem_uuid, from_book_container_uuid
               )

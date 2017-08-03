@@ -82,6 +82,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
       break if num_responses < BATCH_SIZE
     end
 
+    aa = Assignment.arel_table
+
     # Add past-due assignments to the student history
     total_due_assignments = 0
     loop do
@@ -94,7 +96,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         due_assignments = Assignment
           .select(:uuid, :student_uuid)
           .where(student_history_at: nil)
-          .where("\"due_at\" <= '#{start_time.to_s(:db)}'")
+          .where(aa[:student_history_at].eq(nil).and(aa[:due_at].lteq(start_time)))
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .take(BATCH_SIZE)
         next 0 if due_assignments.empty?
