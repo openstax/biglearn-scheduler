@@ -568,7 +568,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
   protected
 
-  def get_k_ago_map(assignment, assignment_sequence_number, include_random_ago = false)
+  def get_k_ago_map(assignment, include_random_ago = false)
     # Entries in the list have the form:
     # [from-this-many-assignments-ago, pick-this-many-exercises]
     num_spes = assignment.goal_num_tutor_assigned_spes
@@ -685,7 +685,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
     include_random_ago = history_type == :student_driven &&
                          assignment_sequence_number >= MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO
-    k_ago_map = get_k_ago_map(assignment, assignment_sequence_number, include_random_ago)
+    k_ago_map = get_k_ago_map(assignment, include_random_ago)
 
     assignment_excluded_uuids = excluded_exercise_uuids
 

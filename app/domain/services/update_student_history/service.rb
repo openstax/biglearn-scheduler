@@ -121,7 +121,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
     log(:debug) do
       total_assignments = total_completed_assignments + total_due_assignments
 
-      "#{total_responses} response(s) and #{total_assignments} assignment(s) (#{total_completed_assignments} completed and #{total_due_assignments
+      "#{total_responses} response(s) and #{total_assignments} assignment(s) (#{
+      total_completed_assignments} completed and #{total_due_assignments
       } past-due) processed in #{Time.current - start_time} second(s)"
     end
   end
