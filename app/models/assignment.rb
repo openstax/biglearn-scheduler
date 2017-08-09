@@ -41,36 +41,47 @@ class Assignment < ApplicationRecord
 
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
   def self.with_instructor_and_student_driven_sequence_numbers_subquery(
-    student_uuids: nil, assignment_types: nil, current_time: Time.current
+    student_uuids: nil, assignment_types: nil
   )
     # We use DENSE_RANK() for the student history because we want all assignments
     # not yet in the student history to receive SPEs as if they were next in line
     # This is also why we return NULL for all the student_history tiebreakers
     # if student_history_at is NULL
     rel = select(
-      <<-SQL.strip_heredoc
-        assignments.*,
+      <<-SELECT_SQL.strip_heredoc
+        "assignments".*,
           ROW_NUMBER() OVER (
-            PARTITION BY assignments.student_uuid, assignments.assignment_type
-            ORDER BY assignments.due_at ASC, assignments.opens_at ASC, assignments.created_at ASC
-          ) AS instructor_driven_sequence_number,
+            PARTITION BY "assignments"."student_uuid", "assignments"."assignment_type"
+            ORDER BY "assignments"."due_at" ASC,
+              "assignments"."opens_at" ASC,
+              "assignments"."created_at" ASC
+          ) AS "instructor_driven_sequence_number",
           DENSE_RANK() OVER (
-            PARTITION BY assignments.student_uuid, assignments.assignment_type
-            ORDER BY assignments.student_history_at ASC,
+            PARTITION BY "assignments"."student_uuid", "assignments"."assignment_type"
+            ORDER BY "assignments"."student_history_at" ASC,
               CASE
-                WHEN assignments.student_history_at IS NULL THEN NULL
-                ELSE assignments.due_at
+                WHEN "assignments"."student_history_at" IS NULL THEN NULL
+                ELSE "assignments"."due_at"
               END ASC,
               CASE
-                WHEN assignments.student_history_at IS NULL THEN NULL
-                ELSE assignments.opens_at
+                WHEN "assignments"."student_history_at" IS NULL THEN NULL
+                ELSE "assignments"."opens_at"
               END ASC,
               CASE
-                WHEN assignments.student_history_at IS NULL THEN NULL
-                ELSE assignments.created_at
+                WHEN "assignments"."student_history_at" IS NULL THEN NULL
+                ELSE "assignments"."created_at"
               END ASC
-          ) AS student_driven_sequence_number
-      SQL
+          ) AS "student_driven_sequence_number"
+      SELECT_SQL
+    )
+    .where(
+      # Exclude assignments with no exercises from the instructor and student histories
+      <<-WHERE_SQL.strip_heredoc
+        EXISTS (
+          SELECT * FROM "assigned_exercises"
+            WHERE "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
+        )
+      WHERE_SQL
     )
 
     rel = rel.where(student_uuid: student_uuids) unless student_uuids.nil?
@@ -80,7 +91,7 @@ class Assignment < ApplicationRecord
   end
 
   def self.to_a_with_instructor_and_student_driven_sequence_numbers_cte(
-    student_uuids: nil, assignment_types: nil, current_time: Time.current
+    student_uuids: nil, assignment_types: nil
   )
     find_by_sql(
       <<-SQL.strip_heredoc
@@ -88,8 +99,7 @@ class Assignment < ApplicationRecord
           #{
             unscoped.with_instructor_and_student_driven_sequence_numbers_subquery(
               student_uuids: student_uuids,
-              assignment_types: assignment_types,
-              current_time: current_time
+              assignment_types: assignment_types
             ).to_sql
           }
         ) #{all.to_sql}
