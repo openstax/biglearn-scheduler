@@ -283,7 +283,7 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                     book_container_uuid: @ep_3.book_container_uuid
         FactoryGirl.create :algorithm_student_clue_calculation, student_clue_calculation: @scc_3
 
-        # Will not be updated (anti-cheating)
+        # Will be updated (anti-cheating sets recalculate_at)
         @scc_4 = FactoryGirl.create :student_clue_calculation,
                                     student_uuid: @student_1.uuid,
                                     book_container_uuid: @ep_4.book_container_uuid
@@ -317,14 +317,14 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
         expect do
           subject.process
         end.to  not_change { Response.count                        }
-           .and change     { StudentClueCalculation.count          }.by(1)
+           .and change     { StudentClueCalculation.count          }.by(2)
            .and change     { TeacherClueCalculation.count          }.by(1)
-           .and change     { AlgorithmStudentClueCalculation.count }.by(-2)
+           .and change     { AlgorithmStudentClueCalculation.count }.by(-3)
            .and change     { AlgorithmTeacherClueCalculation.count }.by(-1)
            .and not_change { @scc_1.reload.uuid                    }
            .and change     { @scc_2.reload.uuid                    }
            .and change     { @scc_3.reload.uuid                    }
-           .and not_change { @scc_4.reload.uuid                    }
+           .and change     { @scc_4.reload.uuid                    }
            .and not_change { @scc_5.reload.uuid                    }
            .and not_change { @tcc_1.reload.uuid                    }
            .and change     { @tcc_2.reload.uuid                    }
@@ -337,15 +337,33 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
         expect(@scc_2.responses.map { |response| response['response_uuid'] }).to(
           match_array [ @response_3, @response_4 ].map(&:uuid)
         )
+        expect(@scc_2.recalculate_at).to be_nil
 
         expect(@scc_3.exercise_uuids).to match_array [ @exercise_5, @exercise_6 ].map(&:uuid)
         expect(@scc_3.responses.map { |response| response['response_uuid'] }).to(
           match_array [ @response_5, @response_6 ].map(&:uuid)
         )
+        expect(@scc_3.recalculate_at).to be_nil
 
-        new_scc = StudentClueCalculation.order(:created_at).last
-        expect(new_scc.student_uuid).to eq @student_2.uuid
-        expect(new_scc.book_container_uuid).to eq @ep_3.book_container_uuid
+        expect(@scc_4.exercise_uuids).to match_array [ @exercise_7, @exercise_8 ].map(&:uuid)
+        expect(@scc_4.responses).to be_empty
+        expect(@scc_4.recalculate_at).not_to be_nil
+
+        new_sccs = StudentClueCalculation.order(:created_at).last(2)
+        new_sccs.each do |new_scc|
+          expect(new_scc.student_uuid).to eq @student_2.uuid
+          expect(new_scc.book_container_uuid).to(
+            be_in [ @ep_3.book_container_uuid, @ep_4.book_container_uuid ]
+          )
+
+          if new_scc.book_container_uuid == @ep_3.book_container_uuid
+            expect(new_scc.responses.map { |response| response['response_uuid'] }).to(
+              match_array [ @response_13, @response_14 ].map(&:uuid)
+            )
+          else
+            expect(new_scc.responses).to be_empty
+          end
+        end
 
         expect(@tcc_2.exercise_uuids).to match_array [ @exercise_5, @exercise_6 ].map(&:uuid)
         expect(@tcc_2.responses.map { |response| response['response_uuid'] }).to(
@@ -765,7 +783,7 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                     book_container_uuid: @ep_3.book_container_uuid
         FactoryGirl.create :algorithm_student_clue_calculation, student_clue_calculation: @scc_3
 
-        # Will not be updated (anti-cheating)
+        # Will be updated (anti-cheating sets recalculate_at)
         @scc_4 = FactoryGirl.create :student_clue_calculation,
                                     student_uuid: @student_1.uuid,
                                     book_container_uuid: @ep_4.book_container_uuid
@@ -799,14 +817,14 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
         expect do
           subject.process
         end.to  not_change { Response.count                        }
-           .and change     { StudentClueCalculation.count          }.by(1)
+           .and change     { StudentClueCalculation.count          }.by(2)
            .and change     { TeacherClueCalculation.count          }.by(1)
-           .and change     { AlgorithmStudentClueCalculation.count }.by(-2)
+           .and change     { AlgorithmStudentClueCalculation.count }.by(-3)
            .and change     { AlgorithmTeacherClueCalculation.count }.by(-1)
            .and not_change { @scc_1.reload.uuid                    }
            .and change     { @scc_2.reload.uuid                    }
            .and change     { @scc_3.reload.uuid                    }
-           .and not_change { @scc_4.reload.uuid                    }
+           .and change     { @scc_4.reload.uuid                    }
            .and not_change { @scc_5.reload.uuid                    }
            .and not_change { @tcc_1.reload.uuid                    }
            .and change     { @tcc_2.reload.uuid                    }
@@ -821,6 +839,7 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
         expect(@scc_2.responses.map { |response| response['response_uuid'] }).to(
           match_array [ @response_3, @response_4 ].map(&:uuid)
         )
+        expect(@scc_2.recalculate_at).to be_nil
 
         expect(@scc_3.exercise_uuids).to(
           match_array [ @exercise_5, @exercise_6, @exercise_15 ].map(&:uuid)
@@ -828,10 +847,27 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
         expect(@scc_3.responses.map { |response| response['response_uuid'] }).to(
           match_array [ @response_5, @response_6 ].map(&:uuid)
         )
+        expect(@scc_3.recalculate_at).to be_nil
 
-        new_scc = StudentClueCalculation.order(:created_at).last
-        expect(new_scc.student_uuid).to eq @student_2.uuid
-        expect(new_scc.book_container_uuid).to eq @ep_3.book_container_uuid
+        expect(@scc_4.exercise_uuids).to match_array [ @exercise_7, @exercise_8 ].map(&:uuid)
+        expect(@scc_4.responses).to be_empty
+        expect(@scc_4.recalculate_at).not_to be_nil
+
+        new_sccs = StudentClueCalculation.order(:created_at).last(2)
+        new_sccs.each do |new_scc|
+          expect(new_scc.student_uuid).to eq @student_2.uuid
+          expect(new_scc.book_container_uuid).to(
+            be_in [ @ep_3.book_container_uuid, @ep_4.book_container_uuid ]
+          )
+
+          if new_scc.book_container_uuid == @ep_3.book_container_uuid
+            expect(new_scc.responses.map { |response| response['response_uuid'] }).to(
+              match_array [ @response_13, @response_14 ].map(&:uuid)
+            )
+          else
+            expect(new_scc.responses).to be_empty
+          end
+        end
 
         expect(@tcc_2.exercise_uuids).to(
           match_array [ @exercise_5, @exercise_6, @exercise_15 ].map(&:uuid)

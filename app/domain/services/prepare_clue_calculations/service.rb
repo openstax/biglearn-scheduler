@@ -366,10 +366,9 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               student_uuids.uniq.map do |student_uuid|
                 responses_map = student_responses_map[student_uuid]
                 response_hashes = responses_map.values_at(*group_uuids).compact
-                next if response_hashes.empty?
-
                 recalculate_at = student_recalculate_ats_map[student_uuid]
                   .values_at(*group_uuids).flatten.min
+                next if response_hashes.empty? && recalculate_at.nil?
 
                 StudentClueCalculation.new(
                   uuid: SecureRandom.uuid,
