@@ -84,15 +84,6 @@ RSpec.describe Assignment, type: :model do
                                       opens_at: current_time.yesterday - 1.day
     end
 
-    before do
-      [
-        assignment_1, assignment_2, assignment_3, assignment_4,
-        assignment_5, assignment_6, assignment_7, assignment_8
-      ].each do |assignment|
-        2.times { FactoryGirl.create(:assigned_exercise, assignment_uuid: assignment.uuid) }
-      end
-    end
-
     context '#with_instructor_and_student_driven_sequence_numbers_subquery' do
       it 'assigns instructor_driven_sequence_numbers based on due_at, opens_at and created_at' do
         assignments = Assignment.with_instructor_and_student_driven_sequence_numbers_subquery(
@@ -123,32 +114,6 @@ RSpec.describe Assignment, type: :model do
         [ assignment_5, assignment_6, assignment_7, assignment_8 ].each do |assignment|
           assignment_with_sequence_numbers = assignments.find { |aa| aa.uuid == assignment.uuid }
           expect(assignment_with_sequence_numbers.student_driven_sequence_number).to eq 5
-        end
-      end
-
-      it 'excludes assigments with no assigned_exercises from the history' do
-        assignment_4.assigned_exercises.delete_all
-
-        assignments = Assignment.with_instructor_and_student_driven_sequence_numbers_subquery(
-          student_uuids: [ student_uuid ], assignment_types: [ assignment_type ]
-        ).to_a
-
-        [
-          assignment_1, assignment_2, assignment_3,
-          assignment_5, assignment_6, assignment_7, assignment_8
-        ].each_with_index do |assignment, index|
-          assignment_with_sequence_numbers = assignments.find { |aa| aa.uuid == assignment.uuid }
-          expect(assignment_with_sequence_numbers.instructor_driven_sequence_number).to eq index + 1
-        end
-
-        [ assignment_3, assignment_1, assignment_2 ].each_with_index do |assignment, index|
-          assignment_with_sequence_numbers = assignments.find { |aa| aa.uuid == assignment.uuid }
-          expect(assignment_with_sequence_numbers.student_driven_sequence_number).to eq index + 1
-        end
-
-        [ assignment_5, assignment_6, assignment_7, assignment_8 ].each do |assignment|
-          assignment_with_sequence_numbers = assignments.find { |aa| aa.uuid == assignment.uuid }
-          expect(assignment_with_sequence_numbers.student_driven_sequence_number).to eq 4
         end
       end
     end

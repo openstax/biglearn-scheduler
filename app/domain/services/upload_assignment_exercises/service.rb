@@ -327,7 +327,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           end
         end
 
-        # Map book_container_uuids with exercises to the current ecosystem spaced assignments
+        # Map book_container_uuids with exercises to the current assignment's ecosystem
         # Also store assignment_uuids for use in the SPE spy info
         # Each book_container_uuid can only appear in the history once (the most recent time)
         mapped_instructor_histories = Hash.new { |hash, key| hash[key] = {} }

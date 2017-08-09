@@ -74,15 +74,6 @@ class Assignment < ApplicationRecord
           ) AS "student_driven_sequence_number"
       SELECT_SQL
     )
-    .where(
-      # Exclude assignments with no exercises from the instructor and student histories
-      <<-WHERE_SQL.strip_heredoc
-        EXISTS (
-          SELECT * FROM "assigned_exercises"
-            WHERE "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
-        )
-      WHERE_SQL
-    )
 
     rel = rel.where(student_uuid: student_uuids) unless student_uuids.nil?
     rel = rel.where(assignment_type: assignment_types) unless assignment_types.nil?
