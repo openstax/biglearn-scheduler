@@ -37,7 +37,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         last_id = courses.last.id
 
         partial_course_ids_to_requery, partial_results, num_events =
-          fetch_and_process_course_events(courses)
+          fetch_and_process_course_events(courses, start_time)
 
         course_ids_to_requery.concat partial_course_ids_to_requery
         results.concat partial_results
@@ -60,7 +60,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         next if courses.empty?
 
         partial_course_ids_to_requery, partial_results, num_events =
-          fetch_and_process_course_events(courses)
+          fetch_and_process_course_events(courses, start_time)
 
         course_ids_to_requery.concat partial_course_ids_to_requery
         results.concat partial_results
@@ -81,7 +81,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
   protected
 
-  def fetch_and_process_course_events(courses)
+  def fetch_and_process_course_events(courses, current_time)
     course_ids_to_requery = []
     results = []
     total_events = 0
@@ -499,7 +499,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
       # Mark CLUes for recalculation for students in courses with updated ecosystems
       StudentClueCalculation.where(student_uuid: changed_ecosystem_student_uuids)
-                            .update_all(recalculate_at: Time.current)
+                            .update_all(recalculate_at: current_time)
     end
 
     aa = Assignment.arel_table

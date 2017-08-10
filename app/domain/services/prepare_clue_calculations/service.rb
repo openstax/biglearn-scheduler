@@ -12,9 +12,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
     rr = Response.arel_table
 
     total_responses = 0
+    total_sccs = 0
     loop do
       retries = 0
-      num_responses = begin
+      num_responses, num_sccs = begin
         Response.transaction do
           # Get Responses that have not yet been used in CLUes
           # Responses with no AssignedExercise or Assignment are completely ignored
@@ -27,10 +28,11 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             .where(scc[:recalculate_at].lteq(start_time))
             .lock('FOR UPDATE SKIP LOCKED')
             .take(BATCH_SIZE)
-          next 0 if responses.empty? && sccs.empty?
+          next [ 0, 0 ] if responses.empty? && sccs.empty?
 
           response_uuids = responses.map(&:uuid)
           responses_by_ecosystem_uuid = responses.group_by(&:ecosystem_uuid)
+          scc_uuids = sccs.map(&:uuid)
           student_uuids = (responses + sccs).map(&:student_uuid)
           sccs_by_ecosystem_uuid = sccs.group_by(&:ecosystem_uuid)
 
@@ -441,6 +443,12 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             }
           )
 
+          # Any StudentClueCalculations that did not get updated (still have the same UUID)
+          # have their recalculate_ats cleared
+          # Just so we don't keep retrying to update StudentClueCalculations that will never succeed
+          # (for example, due to an Ecosystem update)
+          StudentClueCalculation.where(uuid: scc_uuids).update_all(recalculate_at: nil)
+
           # Cleanup AlgorithmStudentClueCalculations that no longer have
           # an associated StudentClueCalculation record
           AlgorithmStudentClueCalculation.unassociated.delete_all
@@ -460,7 +468,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           # Record the fact that the CLUes are up-to-date with the latest Responses
           Response.where(uuid: response_uuids).update_all(used_in_clue_calculations: true)
 
-          responses.size
+          [ responses.size, sccs.size ]
         end
       rescue ActiveRecord::StatementInvalid => exception
         raise exception if !exception.cause.is_a?(PG::LockNotAvailable) || retries >= MAX_RETRIES
@@ -471,13 +479,15 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         retry
       end
 
-      # If we got less responses than the batch size, then this is the last batch
       total_responses += num_responses
-      break if num_responses < BATCH_SIZE
+      total_sccs += num_sccs
+      # If we got less responses and sccs than the batch size, then this is the last batch
+      break if num_responses < BATCH_SIZE && num_sccs < BATCH_SIZE
     end
 
     log(:debug) do
-      "#{total_responses} response(s) processed in #{Time.current - start_time} second(s)"
+      "#{total_responses} response(s) processed and #{total_sccs
+      } student CLUe(s) recalculated in #{Time.current - start_time} second(s)"
     end
   end
 end
