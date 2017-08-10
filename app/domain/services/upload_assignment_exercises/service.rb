@@ -295,38 +295,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           excluded_uuids_by_student_uuid[student_uuid].concat excluded_exercise_uuids
         end
 
-        # Remove book containers that have no exercises after all exclusions from the histories
-        instructor_histories.each do |student_uuid, student_instructor_histories|
-          excluded_exercise_uuids = excluded_uuids_by_student_uuid[student_uuid]
-
-          student_instructor_histories
-            .each do |assignment_type, student_assignment_type_instructor_histories|
-            assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
-            student_assignment_type_instructor_histories.each do |sequence_number, history_entry|
-              history_entry.third.reject! do |book_container_uuid|
-                (
-                  assignment_type_exercise_uuids_map[book_container_uuid] - excluded_exercise_uuids
-                ).empty?
-              end
-            end
-          end
-        end
-        student_histories.each do |student_uuid, student_student_histories|
-          excluded_exercise_uuids = excluded_uuids_by_student_uuid[student_uuid]
-
-          student_student_histories
-            .each do |assignment_type, student_assignment_type_student_histories|
-            assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
-            student_assignment_type_student_histories.each do |sequence_number, history_entry|
-              history_entry.third.reject! do |book_container_uuid|
-                (
-                  assignment_type_exercise_uuids_map[book_container_uuid] - excluded_exercise_uuids
-                ).empty?
-              end
-            end
-          end
-        end
-
         # Map book_container_uuids with exercises to the current assignment's ecosystem
         # Also store assignment_uuids for use in the SPE spy info
         # Each book_container_uuid can only appear in the history once (the most recent time)
@@ -355,6 +323,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
           to_ecosystem_uuid = spe_assignment.ecosystem_uuid
 
+          assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
+          excluded_exercise_uuids = excluded_uuids_by_student_uuid[student_uuid]
+
           instructor_book_container_uuids = assigned_book_container_uuids.dup
           K_AGOS_TO_LOAD.each do |k_ago|
             instructor_spaced_sequence_number = instructor_sequence_number - k_ago
@@ -362,7 +333,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               instructor_history[instructor_spaced_sequence_number]
             instructor_spaced_book_container_uuids ||= []
 
-            instructor_mapped_book_containers =
+            instructor_mapped_book_containers = (
               if instructor_from_ecosystem_uuid == to_ecosystem_uuid
                 instructor_spaced_book_container_uuids
               else
@@ -370,6 +341,14 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                   ecosystems_map[to_ecosystem_uuid][book_container_uuid]
                 end
               end - instructor_book_container_uuids
+            ).reject do |book_container_uuid|
+              # Remove book containers that have no exercises after all exclusions
+              # from the instructor history
+
+              (
+                assignment_type_exercise_uuids_map[book_container_uuid] - excluded_exercise_uuids
+              ).empty?
+            end
 
             instructor_book_container_uuids.concat instructor_mapped_book_containers
 
@@ -386,7 +365,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               student_history[student_spaced_sequence_number]
             student_spaced_book_container_uuids ||= []
 
-            student_mapped_book_containers =
+            student_mapped_book_containers = (
               if student_from_ecosystem_uuid == to_ecosystem_uuid
                 student_spaced_book_container_uuids
               else
@@ -394,6 +373,14 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                   ecosystems_map[to_ecosystem_uuid][book_container_uuid]
                 end
               end - student_book_container_uuids
+            ).reject do |book_container_uuid|
+              # Remove book containers that have no exercises after all exclusions
+              # from the student history
+
+              (
+                assignment_type_exercise_uuids_map[book_container_uuid] - excluded_exercise_uuids
+              ).empty?
+            end
 
             student_book_container_uuids.concat student_mapped_book_containers
 
