@@ -1,5 +1,5 @@
 class Services::UpdateStudentHistory::Service < Services::ApplicationService
-  BATCH_SIZE = 1000
+  BATCH_SIZE = 100
 
   def process
     start_time = Time.current

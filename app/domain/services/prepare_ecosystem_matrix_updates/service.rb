@@ -1,5 +1,5 @@
 class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationService
-  BATCH_SIZE = 1000
+  BATCH_SIZE = 100
   # Update once every time we have 10% new responses for any exercise in the ecosystem
   UPDATE_THRESHOLD = 0.1
   MAX_RETRIES = 3
