@@ -3,6 +3,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
   # Update once every time we have 10% new responses for any exercise in the ecosystem
   UPDATE_THRESHOLD = 0.1
   MAX_RETRIES = 3
+  RETRY_DELAY = 10
 
   def process
     start_time = Time.current
@@ -26,8 +27,6 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
             .take(BATCH_SIZE)
           next 0 if responses.empty?
 
-          num_responses = responses.size
-
           # Update the global counts of responses per exercise group
           group_uuids = responses.map(&:group_uuid)
           ExerciseGroup.where(uuid: group_uuids).update_all(
@@ -41,10 +40,6 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
               )
             UPDATE_SQL
           )
-
-          # Mark the responses as used in response counts
-          response_uuids = responses.map(&:uuid)
-          Response.where(uuid: response_uuids).update_all(used_in_response_count: true)
 
           # Get Ecosystems with Exercises whose number of Responses that have not yet
           # been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
@@ -60,6 +55,12 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
             )
             .lock('FOR NO KEY UPDATE OF "ecosystems" NOWAIT')
             .pluck(:uuid)
+
+          # Mark the responses as used in response counts
+          response_uuids = responses.map(&:uuid)
+          Response.where(uuid: response_uuids).update_all(used_in_response_count: true)
+          num_responses = responses.size
+
           next num_responses if ecosystem_uuids.empty?
 
           uniq_ecosystem_uuids = ecosystem_uuids.uniq
@@ -104,7 +105,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
 
         retries += 1
         log(:warn) { "#{exception.message.split("\n:").first}. Retry ##{retries}..." }
-        sleep(1)
+        sleep(RETRY_DELAY)
         retry
       end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170727173018) do
+ActiveRecord::Schema.define(version: 20170816235320) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -190,6 +190,7 @@ ActiveRecord::Schema.define(version: 20170727173018) do
     t.integer  "next_ecosystem_matrix_update_response_count"
     t.index ["ecosystem_uuid"], name: "index_ecosystem_exercises_on_ecosystem_uuid", using: :btree
     t.index ["exercise_uuid", "ecosystem_uuid"], name: "index_eco_exercises_on_exercise_uuid_and_eco_uuid", unique: true, using: :btree
+    t.index ["next_ecosystem_matrix_update_response_count"], name: "index_ecosystem_exercises_on_next_eco_mtx_upd_response_count", using: :btree
     t.index ["uuid"], name: "index_ecosystem_exercises_on_uuid", unique: true, using: :btree
   end
 

@@ -1,6 +1,7 @@
 class Services::PrepareClueCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 10
   MAX_RETRIES = 3
+  RETRY_DELAY = 1
 
   def process
     start_time = Time.current
@@ -475,7 +476,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
         retries += 1
         log(:warn) { "#{exception.message.split("\n:").first}. Retry ##{retries}..." }
-        sleep(1)
+        sleep(RETRY_DELAY)
         retry
       end
 
