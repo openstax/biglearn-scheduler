@@ -96,7 +96,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         due_assignments = Assignment
           .select(:uuid, :student_uuid)
           .where(student_history_at: nil)
-          .where(aa[:student_history_at].eq(nil).and(aa[:due_at].lteq(start_time)))
+          .where(aa[:due_at].lteq(start_time))
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .take(BATCH_SIZE)
         next 0 if due_assignments.empty?
