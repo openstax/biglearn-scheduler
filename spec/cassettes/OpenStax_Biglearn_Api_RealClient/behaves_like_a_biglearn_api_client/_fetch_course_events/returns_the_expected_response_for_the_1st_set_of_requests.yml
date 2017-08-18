@@ -7,7 +7,7 @@ http_interactions:
       encoding: UTF-8
       string: '{"course_event_requests":[{"request_uuid":"<FETCH_COURSE_EVENTS EXAMPLE
         1 REQUEST 1 UUID>","event_types":<COURSE EVENT TYPES>,"course_uuid":"<COURSE
-        UUID>","sequence_number_offset":42,"max_num_events":100}]}'
+        UUID>","sequence_number_offset":42}]}'
     headers:
       User-Agent:
       - Faraday v0.11.0
@@ -25,7 +25,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 27 Jun 2017 23:16:57 GMT
+      - Fri, 18 Aug 2017 23:36:57 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -37,17 +37,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"ce1f5958892210d4a0ed8f75a8f73ba3"
+      - W/"e8588c56fe886c783c5ac1811b42e95b"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - bce8bb1a-a5c0-4316-a48a-0fdfdb7e9060
+      - 1c4c61fd-89d7-4920-a46c-463eebf30c8a
       X-Runtime:
-      - '0.058166'
+      - '0.053311'
     body:
       encoding: UTF-8
       string: '{"course_event_responses":[{"request_uuid":"<FETCH_COURSE_EVENTS EXAMPLE
         1 REQUEST 1 UUID>","course_uuid":"<COURSE UUID>","events":[],"is_gap":false,"is_end":true}]}'
     http_version: 
-  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
+  recorded_at: Fri, 18 Aug 2017 23:36:57 GMT
 recorded_with: VCR 3.0.3

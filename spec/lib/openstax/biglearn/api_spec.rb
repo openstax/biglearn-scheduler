@@ -73,8 +73,7 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
           [
             {
               event_types: @ecosystem_event_types,
-              ecosystem: @ecosystem,
-              max_num_events: 10
+              ecosystem: @ecosystem
             }
           ]
         },
@@ -86,8 +85,7 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
           [
             {
               event_types: @course_event_types,
-              course: @course,
-              max_num_events: 100
+              course: @course
             }
           ]
         },

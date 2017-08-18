@@ -7,7 +7,7 @@ http_interactions:
       encoding: UTF-8
       string: '{"ecosystem_event_requests":[{"request_uuid":"<FETCH_ECOSYSTEM_EVENTS
         EXAMPLE 1 REQUEST 1 UUID>","event_types":<ECOSYSTEM EVENT TYPES>,"ecosystem_uuid":"<ECOSYSTEM
-        UUID>","sequence_number_offset":42,"max_num_events":10}]}'
+        UUID>","sequence_number_offset":42}]}'
     headers:
       User-Agent:
       - Faraday v0.11.0
@@ -25,7 +25,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 27 Jun 2017 23:16:57 GMT
+      - Fri, 18 Aug 2017 23:36:57 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -37,17 +37,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"ddf74194c23d28da4ee72317e4b899af"
+      - W/"5b803c78ebad9261eb1b56fe10f0cb7d"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 87e6979d-f3b8-4dfd-94b6-9570b58c959c
+      - e652db3e-86cc-4b6f-a2df-4dc74516255f
       X-Runtime:
-      - '0.047871'
+      - '0.506186'
     body:
       encoding: UTF-8
       string: '{"ecosystem_event_responses":[{"request_uuid":"<FETCH_ECOSYSTEM_EVENTS
         EXAMPLE 1 REQUEST 1 UUID>","ecosystem_uuid":"<ECOSYSTEM UUID>","events":[],"is_gap":false,"is_end":true}]}'
     http_version: 
-  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
+  recorded_at: Fri, 18 Aug 2017 23:36:57 GMT
 recorded_with: VCR 3.0.3
