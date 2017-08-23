@@ -18,11 +18,21 @@ class OpenStax::Biglearn::Api::RealClient
   #
 
   def fetch_ecosystem_metadatas
-    single_api_request url: :fetch_ecosystem_metadatas
+    request = {
+      metadata_sequence_number_offset: (Ecosystem.maximum(:metadata_sequence_number) || -1) + 1,
+      max_num_metadatas: 1000
+    }
+
+    single_api_request url: :fetch_ecosystem_metadatas, request: request
   end
 
   def fetch_course_metadatas
-    single_api_request url: :fetch_course_metadatas
+    request = {
+      metadata_sequence_number_offset: (Course.maximum(:metadata_sequence_number) || -1) + 1,
+      max_num_metadatas: 1000
+    }
+
+    single_api_request url: :fetch_course_metadatas, request: request
   end
 
   def fetch_ecosystem_events(ecosystem_event_requests)
