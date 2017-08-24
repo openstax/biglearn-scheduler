@@ -14,6 +14,12 @@ class Response < ApplicationRecord
                                  optional: true,
                                  inverse_of: :responses
 
+  has_many :ecosystem_exercises,
+    -> { where '"ecosystem_exercises"."exercise_uuid" = "responses"."exercise_uuid"' },
+    primary_key: :ecosystem_uuid,
+    foreign_key: :ecosystem_uuid,
+    inverse_of: :responses
+
   validates :ecosystem_uuid,     presence: true
   validates :trial_uuid,         presence: true
   validates :student_uuid,       presence: true

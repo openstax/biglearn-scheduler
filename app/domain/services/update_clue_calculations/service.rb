@@ -62,26 +62,28 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
     )
 
     # Mark any affected StudentPes (practice_worst_areas) for recalculation
-    aec = AlgorithmExerciseCalculation.arel_table
-    ec = ExerciseCalculation.arel_table
-    aec_queries = algorithm_student_clue_calculations.map do |algorithm_student_clue_calculation|
-      clue_algorithm_name = algorithm_student_clue_calculation.algorithm_name
-      exercise_algorithm_name = StudentPe::CLUE_TO_EXERCISE_ALGORITHM_NAME[clue_algorithm_name]
-      student_clue_calculation = algorithm_student_clue_calculation.student_clue_calculation
-      student_uuid = student_clue_calculation.student_uuid
+    unless algorithm_student_clue_calculations.empty?
+      values = algorithm_student_clue_calculations.map do |algorithm_student_clue_calculation|
+        clue_algorithm_name = algorithm_student_clue_calculation.algorithm_name
+        student_clue_calculation = algorithm_student_clue_calculation.student_clue_calculation
 
-      aec[:algorithm_name].eq(exercise_algorithm_name).and ec[:student_uuid].eq(student_uuid)
-    end
-    aec_query = ArelTrees.or_tree(aec_queries)
-    unless aec_query.nil?
-      affected_algorithm_exercise_calculation_uuids = AlgorithmExerciseCalculation
-        .joins(:exercise_calculation)
-        .where(aec_query)
-        .pluck(:uuid)
+        "(#{
+          [
+            "#{StudentPe.sanitize(student_clue_calculation.student_uuid)}::uuid",
+            "'#{StudentPe::CLUE_TO_EXERCISE_ALGORITHM_NAME[clue_algorithm_name]}'"
+          ].join(', ')
+        })"
+      end.join(', ')
+      join_query = <<-JOIN_SQL.strip_heredoc
+        INNER JOIN (VALUES #{values}) AS "recalc" ("student_uuid", "algorithm_name")
+          ON "exercise_calculations"."student_uuid" = "recalc"."student_uuid"
+            AND "algorithm_exercise_calculations"."algorithm_name" = "recalc"."algorithm_name"
+      JOIN_SQL
 
-      StudentPe.where(
-        algorithm_exercise_calculation_uuid: affected_algorithm_exercise_calculation_uuids
-      ).delete_all
+      StudentPe
+        .joins(algorithm_exercise_calculation: :exercise_calculation)
+        .joins(join_query)
+        .delete_all
     end
 
     { clue_calculation_update_responses: clue_calculation_update_responses }

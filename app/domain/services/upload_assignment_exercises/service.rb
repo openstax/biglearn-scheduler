@@ -430,16 +430,12 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         AssignmentPe.import assignment_pes, validate: false
 
         # Remove SPEs for any assignments that are using the PEs above (PEs have priority over SPEs)
-        unless assignment_pe_requests.empty?
-          aspe_query = ArelTrees.or_tree(
-            assignment_pe_requests.map do |assignment_pe_request|
-              aspe[:assignment_uuid].eq(assignment_pe_request[:assignment_uuid]).and(
-                aspe[:exercise_uuid].in(assignment_pe_request[:exercise_uuids])
-              )
-            end
-          )
-          conflicting_assignment_uuids = AssignmentSpe.where(aspe_query).pluck(:assignment_uuid)
-          AssignmentSpe.where(assignment_uuid: conflicting_assignment_uuids).delete_all
+        unless assignment_pes.empty?
+          assignment_pe_uuids = assignment_pes.map(&:uuid)
+
+          AssignmentSpe.joins(:conflicting_assignment_pes)
+                       .where(assignment_pes: { uuid: assignment_pe_uuids })
+                       .delete_all
         end
 
         excluded_pe_uuids_by_assignment_uuid = Hash.new { |hash, key| hash[key] = [] }

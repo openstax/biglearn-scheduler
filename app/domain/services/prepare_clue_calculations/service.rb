@@ -8,7 +8,6 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
     log(:debug) { "Started at #{start_time}" }
 
     scc = StudentClueCalculation.arel_table
-    ee = EcosystemExercise.arel_table
     bcm = BookContainerMapping.arel_table
     rr = Response.arel_table
 
@@ -57,24 +56,20 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             hash[key] = Hash.new { |hash, key| hash[key] = [] }
           end
 
-          # Build a query to obtain the book_container_uuids for the grouped Responses
-          ee_query = ArelTrees.or_tree(
-            responses_by_ecosystem_uuid.map do |ecosystem_uuid, responses|
-              exercise_uuids = responses.map(&:exercise_uuid)
-
-              ee[:ecosystem_uuid].eq(ecosystem_uuid).and ee[:exercise_uuid].in(exercise_uuids)
-            end + sccs_by_ecosystem_uuid.map do |ecosystem_uuid, sccs|
-              exercise_uuids = sccs.flat_map(&:exercise_uuids)
-
-              ee[:ecosystem_uuid].eq(ecosystem_uuid).and ee[:exercise_uuid].in(exercise_uuids)
-            end
-          )
-          EcosystemExercise
-            .where(ee_query)
+          # Obtain the book_container_uuids for the Responses and StudentClueCalculations
+          response_ecosystem_exercises = EcosystemExercise
+            .joins(:responses)
+            .where(responses: { uuid: response_uuids })
             .pluck(:ecosystem_uuid, :exercise_uuid, :book_container_uuids)
-            .each do |ecosystem_uuid, exercise_uuid, book_container_uuids|
+          scc_ecosystem_exercises = EcosystemExercise
+            .joins(:student_clue_calculations)
+            .where(student_clue_calculations: { uuid: scc_uuids })
+            .pluck(:ecosystem_uuid, :exercise_uuid, :book_container_uuids)
+          ecosystem_exercises = response_ecosystem_exercises + scc_ecosystem_exercises
+
+          ecosystem_exercises.each do |ecosystem_uuid, exercise_uuid, book_container_uuids|
             from_book_container_uuids_map[ecosystem_uuid][exercise_uuid] = book_container_uuids
-          end unless ee_query.nil?
+          end
 
           # Also add the book_container_uuids for the grouped StudentClueCalculations to the map
           sccs.each do |scc|
