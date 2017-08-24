@@ -5,8 +5,8 @@ http_interactions:
     uri: http://localhost:3000/fetch_course_events
     body:
       encoding: UTF-8
-      string: '{"course_event_requests":[{"request_uuid":"<FETCH_COURSE_EVENTS EXAMPLE
-        1 REQUEST 1 UUID>","event_types":<COURSE EVENT TYPES>,"course_uuid":"<COURSE
+      string: '{"max_num_events":1000,"course_event_requests":[{"request_uuid":"<FETCH_COURSE_EVENTS
+        EXAMPLE 1 REQUEST 1 UUID>","event_types":<COURSE EVENT TYPES>,"course_uuid":"<COURSE
         UUID>","sequence_number_offset":42}]}'
     headers:
       User-Agent:
@@ -25,7 +25,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Fri, 18 Aug 2017 23:36:57 GMT
+      - Thu, 24 Aug 2017 16:05:05 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -37,17 +37,17 @@ http_interactions:
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"e8588c56fe886c783c5ac1811b42e95b"
+      - W/"0a23665695af8eb3d58809f76433690f"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 1c4c61fd-89d7-4920-a46c-463eebf30c8a
+      - e674568a-9270-4149-a752-9a6e33c6a820
       X-Runtime:
-      - '0.053311'
+      - '0.044394'
     body:
       encoding: UTF-8
       string: '{"course_event_responses":[{"request_uuid":"<FETCH_COURSE_EVENTS EXAMPLE
         1 REQUEST 1 UUID>","course_uuid":"<COURSE UUID>","events":[],"is_gap":false,"is_end":true}]}'
     http_version: 
-  recorded_at: Fri, 18 Aug 2017 23:36:57 GMT
+  recorded_at: Thu, 24 Aug 2017 16:05:05 GMT
 recorded_with: VCR 3.0.3
