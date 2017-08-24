@@ -295,8 +295,6 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             is_spe: assigned_exercise.fetch(:is_spe),
             is_pe: assigned_exercise.fetch(:is_pe)
           )
-
-          student_uuids_by_assigned_exercise_uuid[exercise_uuid] << student_uuid
         end
       end
 
@@ -498,112 +496,96 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                             .update_all(recalculate_at: current_time)
     end
 
-    aa = Assignment.arel_table
-    ec = ExerciseCalculation.arel_table
-    aec_query = ArelTrees.or_tree(
-      assignments_hash.values.group_by(&:ecosystem_uuid).map do |ecosystem_uuid, assignments|
-        student_uuids = assignments.map(&:student_uuid)
+    assignment_uuids = assignments_hash.keys
+    assignment_calc_uuids_to_recalculate = AlgorithmExerciseCalculation
+      .joins(exercise_calculation: :assignments)
+      .where(assignments: { uuid: assignment_uuids })
+      .pluck(:uuid)
 
-        ec[:ecosystem_uuid].eq(ecosystem_uuid).and(ec[:student_uuid].in(student_uuids))
-      end
-    )
-    calc_uuids_to_recalculate_for_assignments = aec_query.nil? ? [] :
-      AlgorithmExerciseCalculation.joins(:exercise_calculation).where(aec_query).pluck(:uuid)
+    unless assigned_exercises.empty?
+      # Find conflicting SPEs and PEs for students with updated assignments
+      # (with the same exercise_uuids) and mark them for recalculation
+      assigned_exercise_uuids = assigned_exercises.map(&:uuid)
 
-    # Group assigned exercises by student_uuids so exercises assigned to exactly
-    # the same students (usually the core exercises) can become a single query
-    assigned_exercise_uuids_by_student_uuids = Hash.new { |hash, key| hash[key] = [] }
-    student_uuids_by_assigned_exercise_uuid.each do |assigned_exercise_uuid, student_uuids|
-      assigned_exercise_uuids_by_student_uuids[student_uuids] << assigned_exercise_uuid
-    end
-
-    # Find conflicting SPEs and PEs for students with updated assignments
-    # (with the same exercise_uuids) and mark them for recalculation
-    aa = Assignment.arel_table
-    aspe = AssignmentSpe.arel_table
-    ape = AssignmentPe.arel_table
-    ec = ExerciseCalculation.arel_table
-    spe = StudentPe.arel_table
-    aspe_queries = []
-    ape_queries =  []
-    spe_queries =  []
-    assigned_exercise_uuids_by_student_uuids.each do |student_uuids, assigned_exercise_uuids|
-      aspe_queries << aa[:student_uuid].in(student_uuids).and(
-                        aspe[:exercise_uuid].in(assigned_exercise_uuids)
-                      )
-
-      ape_queries << aa[:student_uuid].in(student_uuids).and(
-                       ape[:exercise_uuid].in(assigned_exercise_uuids)
-                     )
-
-      spe_queries << ec[:student_uuid].in(student_uuids).and(
-                       spe[:exercise_uuid].in(assigned_exercise_uuids)
-                     )
-    end
-
-    aspe_query = ArelTrees.or_tree(aspe_queries)
-    unless aspe_query.nil?
-      # Group by algorithm_exercise_calculation_uuid to try to improve query performance
-      conflicting_spe_a_uuids_by_calc_uuid = Hash.new { |hash, key| hash[key] = [] }
-      AssignmentSpe.with_student_uuids
-                   .where(aspe_query)
-                   .distinct
-                   .pluck(:algorithm_exercise_calculation_uuid, :assignment_uuid)
-                   .each do |calc_uuid, assignment_uuid|
-        calc_uuids_to_recalculate_for_assignments << calc_uuid
-        conflicting_spe_a_uuids_by_calc_uuid[calc_uuid] << assignment_uuid
-      end
-
-      delete_aspe_query = ArelTrees.or_tree(
-        conflicting_spe_a_uuids_by_calc_uuid.map do |calc_uuid, assignment_uuids|
-          aspe[:algorithm_exercise_calculation_uuid].eq(calc_uuid).and(
-            aspe[:assignment_uuid].in(assignment_uuids)
+      assignment_calc_uuids_to_recalculate.concat AssignmentSpe.connection.execute(
+        <<-DELETE_SQL
+          DELETE FROM "assignment_spes"
+          WHERE "assignment_spes"."id" IN (
+            SELECT "assignment_spes"."id"
+            FROM "assignment_spes"
+              INNER JOIN "assignments"
+                ON "assignments"."uuid" = "assignment_spes"."assignment_uuid"
+              INNER JOIN "assignments" "same_student_assignments"
+                ON "same_student_assignments"."student_uuid" = "assignments"."student_uuid"
+              INNER JOIN "assignment_spes" "similar_assignment_spes"
+                ON "similar_assignment_spes"."assignment_uuid" = "same_student_assignments"."uuid"
+                AND "similar_assignment_spes"."algorithm_exercise_calculation_uuid" =
+                  "assignment_spes"."algorithm_exercise_calculation_uuid"
+              INNER JOIN "assigned_exercises"
+                ON "assigned_exercises"."assignment_uuid" = "same_student_assignments"."uuid"
+                AND "assigned_exercises"."exercise_uuid" = "similar_assignment_spes"."exercise_uuid"
+            WHERE "assigned_exercises"."uuid" IN (#{
+              assigned_exercise_uuids.map { |uuid| "'#{uuid}'" }.join(', ')
+            })
           )
-        end
-      )
+          RETURNING "assignment_spes"."algorithm_exercise_calculation_uuid"
+        DELETE_SQL
+      ).to_a
 
-      AssignmentSpe.where(delete_aspe_query).delete_all unless delete_aspe_query.nil?
-    end
-
-    ape_query = ArelTrees.or_tree(ape_queries)
-    unless ape_query.nil?
-      # Group by algorithm_exercise_calculation_uuid to try to improve query performance
-      conflicting_pe_a_uuids_by_calc_uuid = Hash.new { |hash, key| hash[key] = [] }
-      AssignmentPe.with_student_uuids
-                  .where(ape_query)
-                  .distinct
-                  .pluck(:algorithm_exercise_calculation_uuid, :assignment_uuid)
-                  .each do |calc_uuid, assignment_uuid|
-        calc_uuids_to_recalculate_for_assignments << calc_uuid
-        conflicting_pe_a_uuids_by_calc_uuid[calc_uuid] << assignment_uuid
-      end
-
-      delete_ape_query = ArelTrees.or_tree(
-        conflicting_pe_a_uuids_by_calc_uuid.map do |calc_uuid, assignment_uuids|
-          ape[:algorithm_exercise_calculation_uuid].eq(calc_uuid).and(
-            ape[:assignment_uuid].in(assignment_uuids)
+      assignment_calc_uuids_to_recalculate.concat AssignmentPe.connection.execute(
+        <<-DELETE_SQL
+          DELETE FROM "assignment_pes"
+          WHERE "assignment_pes"."id" IN (
+            SELECT "assignment_pes"."id"
+            FROM "assignment_pes"
+              INNER JOIN "assignments"
+                ON "assignments"."uuid" = "assignment_pes"."assignment_uuid"
+              INNER JOIN "assignments" "same_student_assignments"
+                ON "same_student_assignments"."student_uuid" = "assignments"."student_uuid"
+              INNER JOIN "assignment_pes" "similar_assignment_pes"
+                ON "similar_assignment_pes"."assignment_uuid" = "same_student_assignments"."uuid"
+                AND "similar_assignment_pes"."algorithm_exercise_calculation_uuid" =
+                  "assignment_pes"."algorithm_exercise_calculation_uuid"
+              INNER JOIN "assigned_exercises"
+                ON "assigned_exercises"."assignment_uuid" = "same_student_assignments"."uuid"
+                AND "assigned_exercises"."exercise_uuid" = "similar_assignment_pes"."exercise_uuid"
+            WHERE "assigned_exercises"."uuid" IN (#{
+              assigned_exercise_uuids.map { |uuid| "'#{uuid}'" }.join(', ')
+            })
           )
-        end
-      )
+          RETURNING "assignment_pes"."algorithm_exercise_calculation_uuid"
+        DELETE_SQL
+      ).to_a
 
-      AssignmentPe.where(delete_ape_query).delete_all unless delete_ape_query.nil?
-    end
+      student_calc_uuids_to_recalculate = StudentPe.connection.execute(
+        <<-DELETE_SQL
+          DELETE FROM "student_pes"
+          WHERE "student_pes"."id" IN (
+            SELECT "student_pes"."id"
+            FROM "student_pes"
+              INNER JOIN "exercise_calculations"
+                ON "exercise_calculations"."uuid" =
+                  "student_pes"."algorithm_exercise_calculation_uuid"
+              INNER JOIN "assignments"
+                ON "assignments"."student_uuid" = "exercise_calculations"."student_uuid"
+              INNER JOIN "student_pes" "similar_student_pes"
+                ON "similar_student_pes"."algorithm_exercise_calculation_uuid" =
+                  "student_pes"."algorithm_exercise_calculation_uuid"
+              INNER JOIN "assigned_exercises"
+                ON "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
+                AND "assigned_exercises"."exercise_uuid" = "similar_student_pes"."exercise_uuid"
+            WHERE "assigned_exercises"."uuid" IN (#{
+              assigned_exercise_uuids.map { |uuid| "'#{uuid}'" }.join(', ')
+            })
+          )
+          RETURNING "student_pes"."algorithm_exercise_calculation_uuid"
+        DELETE_SQL
+      ).to_a
 
-    AlgorithmExerciseCalculation.where(uuid: calc_uuids_to_recalculate_for_assignments)
-                                .update_all(is_uploaded_for_assignments: false)
+      AlgorithmExerciseCalculation.where(uuid: assignment_calc_uuids_to_recalculate)
+                                  .update_all(is_uploaded_for_assignments: false)
 
-    spe_query = ArelTrees.or_tree(spe_queries)
-    unless spe_query.nil?
-      conflicting_s_pe_calc_uuids = StudentPe.with_student_uuids
-                                             .where(spe_query)
-                                             .distinct
-                                             .pluck(:algorithm_exercise_calculation_uuid)
-
-      StudentPe.where(
-        algorithm_exercise_calculation_uuid: conflicting_s_pe_calc_uuids
-      ).delete_all
-
-      AlgorithmExerciseCalculation.where(uuid: conflicting_s_pe_calc_uuids)
+      AlgorithmExerciseCalculation.where(uuid: student_calc_uuids_to_recalculate)
                                   .update_all(is_uploaded_for_student: false)
     end
 

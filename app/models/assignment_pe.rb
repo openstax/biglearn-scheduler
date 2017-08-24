@@ -12,9 +12,6 @@ class AssignmentPe < ApplicationRecord
     scope: [ :assignment_uuid, :algorithm_exercise_calculation_uuid ]
   }
 
-  scope :with_student_uuids, -> do
-    joins(:assignment).select [ arel_table[Arel.star], Assignment.arel_table[:student_uuid] ]
-  end
   scope :unassociated, -> do
     where.not(
       AlgorithmExerciseCalculation.where(

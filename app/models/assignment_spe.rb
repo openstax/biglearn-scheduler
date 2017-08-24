@@ -15,9 +15,6 @@ class AssignmentSpe < ApplicationRecord
   }
   validates :history_type, presence: true
 
-  scope :with_student_uuids, -> do
-    joins(:assignment).select [ arel_table[Arel.star], Assignment.arel_table[:student_uuid] ]
-  end
   scope :unassociated, -> do
     where.not(
       AlgorithmExerciseCalculation.where(
