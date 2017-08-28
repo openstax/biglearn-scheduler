@@ -63,21 +63,16 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
 
     # Mark any affected StudentPes (practice_worst_areas) for recalculation
     unless algorithm_student_clue_calculations.empty?
-      values = algorithm_student_clue_calculations.map do |algorithm_student_clue_calculation|
-        clue_algorithm_name = algorithm_student_clue_calculation.algorithm_name
-        student_clue_calculation = algorithm_student_clue_calculation.student_clue_calculation
-
-        "(#{
-          [
-            "#{StudentPe.sanitize(student_clue_calculation.student_uuid)}::uuid",
-            "'#{StudentPe::CLUE_TO_EXERCISE_ALGORITHM_NAME[clue_algorithm_name]}'"
-          ].join(', ')
-        })"
-      end.join(', ')
+      values_array = algorithm_student_clue_calculations.map do |calculation|
+        [
+          calculation.student_clue_calculation.student_uuid,
+          StudentPe::CLUE_TO_EXERCISE_ALGORITHM_NAME[calculation.algorithm_name]
+        ]
+      end
       join_query = <<-JOIN_SQL.strip_heredoc
-        INNER JOIN (VALUES #{values}) AS "recalc" ("student_uuid", "algorithm_name")
-          ON "exercise_calculations"."student_uuid" = "recalc"."student_uuid"
-            AND "algorithm_exercise_calculations"."algorithm_name" = "recalc"."algorithm_name"
+        INNER JOIN (#{ValuesTable.new(values_array)}) AS "values" ("student_uuid", "algorithm_name")
+          ON "exercise_calculations"."student_uuid" = "values"."student_uuid"
+            AND "algorithm_exercise_calculations"."algorithm_name" = "values"."algorithm_name"
       JOIN_SQL
 
       StudentPe

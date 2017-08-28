@@ -225,33 +225,39 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           end
 
           # Find all book_container_uuids that map to the book_container_uuids found above
-          reverse_mapping_queries = ArelTrees.or_tree(
-            student_clues_to_update.map do |to_ecosystem_uuid, to_ecosystem_student_clues|
-              to_book_container_uuids = to_ecosystem_student_clues.keys
-
-              bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(
-                bcm[:to_book_container_uuid].in(to_book_container_uuids)
-              )
-            end
-          )
           reverse_mappings = Hash.new do |hash, key|
             hash[key] = Hash.new { |hash, key| hash[key] = {} }
           end
-          BookContainerMapping.where(reverse_mapping_queries)
-                              .pluck(
-                                :to_ecosystem_uuid,
-                                :to_book_container_uuid,
-                                :from_ecosystem_uuid,
-                                :from_book_container_uuid
-                              ).each do |
-                                to_ecosystem_uuid,
-                                to_book_container_uuid,
-                                from_ecosystem_uuid,
-                                from_book_container_uuid
-                              |
-            reverse_mappings[to_ecosystem_uuid][to_book_container_uuid][from_ecosystem_uuid] =
-              from_book_container_uuid
-          end unless reverse_mapping_queries.nil?
+          unless student_clues_to_update.empty?
+            values_array = student_clues_to_update
+              .flat_map do |to_ecosystem_uuid, book_container_student_clues|
+              book_container_student_clues.keys.map do |to_book_container_uuid|
+                [ to_ecosystem_uuid, to_book_container_uuid ]
+              end
+            end
+            join_query = <<-JOIN_SQL.strip_heredoc
+              INNER JOIN (#{ValuesTable.new(values_array)})
+                AS "values" ("to_ecosystem_uuid", "to_book_container_uuid")
+                ON "book_container_mappings"."to_ecosystem_uuid" = "values"."to_ecosystem_uuid"
+                  AND "book_container_mappings"."to_book_container_uuid" =
+                    "values"."to_book_container_uuid"
+            JOIN_SQL
+            BookContainerMapping.joins(join_query)
+                                .pluck(
+                                  :to_ecosystem_uuid,
+                                  :to_book_container_uuid,
+                                  :from_ecosystem_uuid,
+                                  :from_book_container_uuid
+                                ).each do |
+                                  to_ecosystem_uuid,
+                                  to_book_container_uuid,
+                                  from_ecosystem_uuid,
+                                  from_book_container_uuid
+                                |
+              reverse_mappings[to_ecosystem_uuid][to_book_container_uuid][from_ecosystem_uuid] =
+                from_book_container_uuid
+            end
+          end
 
           # Map the found book_container_uuids to exercise_uuids that should be used for CLUes
           from_book_container_uuids = reverse_mappings.values.map do |val|
