@@ -101,13 +101,12 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     ecosystem_preparations = []
     course_uuids_with_changed_ecosystems = []
     book_container_mappings = []
-    course_containers = []
-    students = []
-    assignments = []
+    course_containers_hash = {}
+    students_hash = {}
+    assignments_hash = {}
     assigned_exercises = []
     student_uuids_by_assigned_exercise_uuid = Hash.new { |hash, key| hash[key] = [] }
-    responses = []
-    response_uuids = []
+    responses_hash = {}
     courses = course_event_responses.map do |course_event_response|
       events = course_event_response.fetch :events
       num_events = events.size
@@ -193,7 +192,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             current_container_uuid = parent_uuids_by_container_uuid[current_container_uuid]
           end
 
-          students << Student.new(
+          students_hash[student_uuid] = Student.new(
             uuid: student_uuid,
             course_uuid: course_uuid,
             course_container_uuids: container_uuids
@@ -203,7 +202,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         containers.each do |course_container|
           container_uuid = course_container.fetch(:container_uuid)
 
-          course_containers << CourseContainer.new(
+          course_containers_hash[container_uuid] = CourseContainer.new(
             uuid: container_uuid,
             course_uuid: course_uuid,
             student_uuids: student_uuids_by_container_uuid[container_uuid]
@@ -269,7 +268,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         due_at = exclusion_info[:due_at]
         feedback_at = exclusion_info[:feedback_at]
 
-        assignment = Assignment.new(
+        assignments_hash[assignment_uuid] = Assignment.new(
           uuid: assignment_uuid,
           course_uuid: course_uuid,
           ecosystem_uuid: ecosystem_uuid,
@@ -285,14 +284,13 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           goal_num_tutor_assigned_pes: data[:goal_num_tutor_assigned_pes],
           pes_are_assigned: data.fetch(:pes_are_assigned)
         )
-        assignments << assignment
 
         data.fetch(:assigned_exercises).each do |assigned_exercise|
           exercise_uuid = assigned_exercise.fetch(:exercise_uuid)
 
           assigned_exercises << AssignedExercise.new(
             uuid: assigned_exercise.fetch(:trial_uuid),
-            assignment: assignment,
+            assignment: assignments_hash[assignment_uuid],
             exercise_uuid: exercise_uuid,
             is_spe: assigned_exercise.fetch(:is_spe),
             is_pe: assigned_exercise.fetch(:is_pe)
@@ -311,9 +309,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         data = last_record_response.fetch(:event_data)
         responded_at = data.fetch(:responded_at)
 
-        response_uuids << response_uuid
-
-        responses << Response.new(
+        responses_hash[response_uuid] = Response.new(
           uuid: response_uuid,
           ecosystem_uuid: data.fetch(:ecosystem_uuid),
           trial_uuid: data.fetch(:trial_uuid),
@@ -432,20 +428,20 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     )
 
     results << CourseContainer.import(
-      course_containers, validate: false, on_duplicate_key_update: {
+      course_containers_hash.values, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ], columns: [ :course_uuid, :student_uuids ]
       }
     )
 
     results << Student.import(
-      students, validate: false, on_duplicate_key_update: {
+      students_hash.values, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
         columns: [ :course_uuid, :course_container_uuids ]
       }
     )
 
     results << Assignment.import(
-      assignments, validate: false, on_duplicate_key_update: {
+      assignments_hash.values, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
         columns: [
           :course_uuid,
@@ -476,7 +472,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     #       used_in_clue_calculations is here because the CLUes need to be recalculated
     #       exercise calculations, response counts and student history are unaffected
     results << Response.import(
-      responses, validate: false, on_duplicate_key_update: {
+      responses_hash.values, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
         columns: [
           :trial_uuid,
@@ -505,7 +501,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     aa = Assignment.arel_table
     ec = ExerciseCalculation.arel_table
     aec_query = ArelTrees.or_tree(
-      assignments.group_by(&:ecosystem_uuid).map do |ecosystem_uuid, assignments|
+      assignments_hash.values.group_by(&:ecosystem_uuid).map do |ecosystem_uuid, assignments|
         student_uuids = assignments.map(&:student_uuid)
 
         ec[:ecosystem_uuid].eq(ecosystem_uuid).and(ec[:student_uuid].in(student_uuids))
