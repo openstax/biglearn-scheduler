@@ -11,8 +11,10 @@ class ValuesTable
 
   def to_sql
     "VALUES #{values_array.map do |values|
+      next if values.any? { |value| value.is_a?(Array) && value.empty? }
+
       "(#{values.map { |value| sanitize value }.join(', ')})"
-    end.join(', ')}"
+    end.compact.join(', ')}"
   end
 
   def to_s
@@ -22,12 +24,10 @@ class ValuesTable
   protected
 
   def sanitize(value)
-    if value.is_a?(Array)
-      value.empty? ? 'NULL' : "ARRAY[#{value.map { |val| sanitize val }.join(', ')}]"
-    else
-      sanitized_value = ActiveRecord::Base.sanitize value
+    return "ARRAY[#{value.map { |val| sanitize val }.join(', ')}]" if value.is_a?(Array)
 
-      UUID_REGEX === value ? "#{sanitized_value}::uuid" : sanitized_value
-    end
+    sanitized_value = ActiveRecord::Base.sanitize value
+
+    UUID_REGEX === value ? "#{sanitized_value}::uuid" : sanitized_value
   end
 end
