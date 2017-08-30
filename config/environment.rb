@@ -1,7 +1,6 @@
 # Load the Rails application.
 require_relative 'application'
 
-require 'arel_trees'
 require 'errors'
 require 'values_table'
 require 'worker'

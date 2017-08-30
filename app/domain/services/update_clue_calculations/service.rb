@@ -63,21 +63,22 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
 
     # Mark any affected StudentPes (practice_worst_areas) for recalculation
     unless algorithm_student_clue_calculations.empty?
-      values_array = algorithm_student_clue_calculations.map do |calculation|
+      student_pes_values_array = algorithm_student_clue_calculations.map do |calculation|
         [
           calculation.student_clue_calculation.student_uuid,
           StudentPe::CLUE_TO_EXERCISE_ALGORITHM_NAME[calculation.algorithm_name]
         ]
       end
-      join_query = <<-JOIN_SQL.strip_heredoc
-        INNER JOIN (#{ValuesTable.new(values_array)}) AS "values" ("student_uuid", "algorithm_name")
-          ON "exercise_calculations"."student_uuid" = "values"."student_uuid"
-            AND "algorithm_exercise_calculations"."algorithm_name" = "values"."algorithm_name"
+      student_pes_join_query = <<-JOIN_SQL.strip_heredoc
+        INNER JOIN (#{ValuesTable.new(student_pes_values_array)})
+          AS "values" ("student_uuid", "algorithm_name")
+            ON "exercise_calculations"."student_uuid" = "values"."student_uuid"
+              AND "algorithm_exercise_calculations"."algorithm_name" = "values"."algorithm_name"
       JOIN_SQL
 
       StudentPe
         .joins(algorithm_exercise_calculation: :exercise_calculation)
-        .joins(join_query)
+        .joins(student_pes_join_query)
         .delete_all
     end
 

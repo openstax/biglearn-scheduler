@@ -3,6 +3,8 @@ class ValuesTable
 
   attr_reader :values_array
 
+  # values_array is an array of arrays
+  # Each array entry becomes a row in the values table
   def initialize(values_array)
     @values_array = values_array
   end
@@ -20,10 +22,12 @@ class ValuesTable
   protected
 
   def sanitize(value)
-    return "ARRAY[#{value.map { |val| sanitize val }}]" if value.is_a?(Array)
+    if value.is_a?(Array)
+      value.empty? ? 'NULL' : "ARRAY[#{value.map { |val| sanitize val }.join(', ')}]"
+    else
+      sanitized_value = ActiveRecord::Base.sanitize value
 
-    sanitized_value = ActiveRecord::Base.sanitize value
-
-    UUID_REGEX === value ? "#{sanitized_value}::uuid" : sanitized_value
+      UUID_REGEX === value ? "#{sanitized_value}::uuid" : sanitized_value
+    end
   end
 end

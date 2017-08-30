@@ -508,7 +508,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       assigned_exercise_uuids = assigned_exercises.map(&:uuid)
 
       assignment_calc_uuids_to_recalculate.concat AssignmentSpe.connection.execute(
-        <<-DELETE_SQL
+        <<-DELETE_SQL.strip_heredoc
           DELETE FROM "assignment_spes"
           WHERE "assignment_spes"."id" IN (
             SELECT "assignment_spes"."id"
@@ -533,7 +533,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       ).to_a
 
       assignment_calc_uuids_to_recalculate.concat AssignmentPe.connection.execute(
-        <<-DELETE_SQL
+        <<-DELETE_SQL.strip_heredoc
           DELETE FROM "assignment_pes"
           WHERE "assignment_pes"."id" IN (
             SELECT "assignment_pes"."id"
@@ -558,7 +558,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       ).to_a
 
       student_calc_uuids_to_recalculate = StudentPe.connection.execute(
-        <<-DELETE_SQL
+        <<-DELETE_SQL.strip_heredoc
           DELETE FROM "student_pes"
           WHERE "student_pes"."id" IN (
             SELECT "student_pes"."id"

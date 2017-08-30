@@ -17,9 +17,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     log(:debug) { "Started at #{start_time}" }
 
     aa = Assignment.arel_table
-    aspe = AssignmentSpe.arel_table
-    ape = AssignmentPe.arel_table
     aec = AlgorithmExerciseCalculation.arel_table
+    ape = AssignmentPe.arel_table
+    aspe = AssignmentSpe.arel_table
 
     total_algorithm_exercise_calculations = 0
     loop do
@@ -123,55 +123,57 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
         # Create a mapping of spaced practice book containers to each assignment's ecosystem
         bcm = BookContainerMapping.arel_table
-        mapping_queries = ArelTrees.or_tree(
-          spe_assignments.map do |spe_assignment|
-            uuid = spe_assignment.uuid
-            student_uuid = spe_assignment.student_uuid
-            assignment_type = spe_assignment.assignment_type
-            instructor_history = instructor_histories[student_uuid][assignment_type]
-            student_history = student_histories[student_uuid][assignment_type]
+        forward_mapping_values_array = spe_assignments.flat_map do |spe_assignment|
+          uuid = spe_assignment.uuid
+          student_uuid = spe_assignment.student_uuid
+          assignment_type = spe_assignment.assignment_type
+          instructor_history = instructor_histories[student_uuid][assignment_type]
+          student_history = student_histories[student_uuid][assignment_type]
 
-            instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(uuid)
-            student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
-            to_ecosystem_uuid = spe_assignment.ecosystem_uuid
+          instructor_sequence_number = instructor_sequence_numbers_by_assignment_uuid.fetch(uuid)
+          student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
+          to_ecosystem_uuid = spe_assignment.ecosystem_uuid
 
-            instructor_spaced_assignments = K_AGOS_TO_LOAD.map do |k_ago|
-              instructor_spaced_sequence_number = instructor_sequence_number - k_ago
-              instructor_history[instructor_spaced_sequence_number]
-            end.compact
-            student_spaced_assignments = K_AGOS_TO_LOAD.map do |k_ago|
-              student_spaced_sequence_number = student_sequence_number - k_ago
-              student_history[student_spaced_sequence_number]
-            end.compact
-
-            from_queries = ArelTrees.or_tree(
-              (instructor_spaced_assignments + student_spaced_assignments)
-                .uniq
-                .map do |assignment_uuid, from_ecosystem_uuid, from_book_container_uuids|
-                next if from_ecosystem_uuid == to_ecosystem_uuid
-
-                bcm[:from_ecosystem_uuid].eq(from_ecosystem_uuid).and(
-                  bcm[:from_book_container_uuid].in(from_book_container_uuids)
-                )
-              end.compact
-            )
-
-            bcm[:to_ecosystem_uuid].eq(to_ecosystem_uuid).and(from_queries) unless from_queries.nil?
+          instructor_spaced_assignments = K_AGOS_TO_LOAD.map do |k_ago|
+            instructor_spaced_sequence_number = instructor_sequence_number - k_ago
+            instructor_history[instructor_spaced_sequence_number]
           end.compact
-        )
+          student_spaced_assignments = K_AGOS_TO_LOAD.map do |k_ago|
+            student_spaced_sequence_number = student_sequence_number - k_ago
+            student_history[student_spaced_sequence_number]
+          end.compact
+
+          (instructor_spaced_assignments + student_spaced_assignments)
+            .uniq
+            .map do |assignment_uuid, from_ecosystem_uuid, from_book_container_uuids|
+            next if from_ecosystem_uuid == to_ecosystem_uuid
+
+            [ to_ecosystem_uuid, from_ecosystem_uuid, from_book_container_uuids ]
+          end.compact
+        end
         ecosystems_map = Hash.new { |hash, key| hash[key] = {} }
-        BookContainerMapping.where(mapping_queries)
-                            .pluck(
-                              :to_ecosystem_uuid,
-                              :from_book_container_uuid,
-                              :to_book_container_uuid
-                            ).each do |
-                              to_ecosystem_uuid,
-                              from_book_container_uuid,
-                              to_book_container_uuid
-                            |
-          ecosystems_map[to_ecosystem_uuid][from_book_container_uuid] = to_book_container_uuid
-        end unless mapping_queries.nil?
+        unless forward_mapping_values_array.empty?
+          forward_mapping_join_query = <<-JOIN_SQL.strip_heredoc
+            INNER JOIN (#{ValuesTable.new(forward_mapping_values_array)})
+              AS "values" ("to_ecosystem_uuid", "from_ecosystem_uuid", "from_book_container_uuids")
+              ON "book_container_mappings"."to_ecosystem_uuid" = "values"."to_ecosystem_uuid"
+                AND "book_container_mappings"."from_ecosystem_uuid" = "values"."from_ecosystem_uuid"
+                AND "book_container_mappings"."from_book_container_uuid" =
+                  ANY("values"."from_book_container_uuids")
+          JOIN_SQL
+          BookContainerMapping.joins(forward_mapping_join_query)
+                              .pluck(
+                                :to_ecosystem_uuid,
+                                :from_book_container_uuid,
+                                :to_book_container_uuid
+                              ).each do |
+                                to_ecosystem_uuid,
+                                from_book_container_uuid,
+                                to_book_container_uuid
+                              |
+            ecosystems_map[to_ecosystem_uuid][from_book_container_uuid] = to_book_container_uuid
+          end
+        end
 
         # Map all spaced book_container_uuids to the current ecosystem for each spaced assignment
         spaced_book_container_uuids = spe_assignments.flat_map do |spe_assignment|
