@@ -1,26 +1,35 @@
 class Services::FetchClueCalculations::Service < Services::ApplicationService
-  def process(algorithm_name:)
-    scc = StudentClueCalculation.arel_table
-    ascc = AlgorithmStudentClueCalculation.arel_table
-    scc_query = scc[:uuid].eq(ascc[:student_clue_calculation_uuid]).and(
-      ascc[:algorithm_name].eq(algorithm_name)
-    )
-    scc_join = "LEFT OUTER JOIN algorithm_student_clue_calculations ON #{scc_query.to_sql}"
-    student_clue_calculations = StudentClueCalculation
-                                  .joins(scc_join)
-                                  .where(algorithm_student_clue_calculations: {id: nil})
-                                  .limit(1000)
+  BATCH_SIZE = 100
 
-    tcc = TeacherClueCalculation.arel_table
-    atcc = AlgorithmTeacherClueCalculation.arel_table
-    tcc_query = tcc[:uuid].eq(atcc[:teacher_clue_calculation_uuid]).and(
-      atcc[:algorithm_name].eq(algorithm_name)
-    )
-    tcc_join = "LEFT OUTER JOIN algorithm_teacher_clue_calculations ON #{tcc_query.to_sql}"
-    teacher_clue_calculations = TeacherClueCalculation
-                                  .joins(tcc_join)
-                                  .where(algorithm_teacher_clue_calculations: {id: nil})
-                                  .limit(1000)
+  def process(algorithm_name:)
+    sanitized_algo_name = ActiveRecord::Base.sanitize algorithm_name
+
+    student_clue_calculations = []
+    teacher_clue_calculations = []
+    ActiveRecord::Base.transaction do
+      # Extra memory is required to perform the hash anti-join efficiently
+      EcosystemMatrixUpdate.connection.execute 'SET LOCAL work_mem=20480'
+
+      student_clue_calculations = StudentClueCalculation.where.not(
+        AlgorithmStudentClueCalculation.where(
+          <<-WHERE_SQL.strip_heredoc
+            "algorithm_student_clue_calculations"."student_clue_calculation_uuid" =
+              "student_clue_calculations"."uuid"
+              AND "algorithm_student_clue_calculations"."algorithm_name" = #{sanitized_algo_name}
+          WHERE_SQL
+        ).exists
+      ).take(BATCH_SIZE)
+
+      teacher_clue_calculations = TeacherClueCalculation.where.not(
+        AlgorithmTeacherClueCalculation.where(
+          <<-WHERE_SQL.strip_heredoc
+            "algorithm_teacher_clue_calculations"."teacher_clue_calculation_uuid" =
+              "teacher_clue_calculations"."uuid"
+              AND "algorithm_teacher_clue_calculations"."algorithm_name" = #{sanitized_algo_name}
+          WHERE_SQL
+        ).exists
+      ).take(BATCH_SIZE)
+    end
 
     clue_calculations = student_clue_calculations + teacher_clue_calculations
     clue_calculation_responses = clue_calculations.map do |clue_calculation|

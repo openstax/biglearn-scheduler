@@ -2,17 +2,22 @@ class Services::FetchExerciseCalculations::Service < Services::ApplicationServic
   BATCH_SIZE = 10
 
   def process(algorithm_name:)
-    ec = ExerciseCalculation.arel_table
-    aec = AlgorithmExerciseCalculation.arel_table
-    aec_query = aec[:exercise_calculation_uuid].eq(ec[:uuid]).and(
-      aec[:algorithm_name].eq(algorithm_name)
-    )
-    aec_join = "LEFT OUTER JOIN algorithm_exercise_calculations ON #{aec_query.to_sql}"
-    exercise_calculations = ExerciseCalculation
-                              .with_exercise_uuids
-                              .joins(aec_join)
-                              .where(algorithm_exercise_calculations: {id: nil})
-                              .limit(BATCH_SIZE)
+    sanitized_algorithm_name = AlgorithmExerciseCalculation.sanitize algorithm_name
+
+    exercise_calculations = ExerciseCalculation.transaction do
+      # Extra memory is required to perform the hash anti-join efficiently
+      EcosystemMatrixUpdate.connection.execute 'SET LOCAL work_mem=20480'
+
+      ExerciseCalculation.with_exercise_uuids.where.not(
+        AlgorithmExerciseCalculation.where(
+          <<-WHERE_SQL.strip_heredoc
+            "algorithm_exercise_calculations"."exercise_calculation_uuid" =
+              "exercise_calculations"."uuid"
+              AND "algorithm_exercise_calculations"."algorithm_name" = #{sanitized_algorithm_name}
+          WHERE_SQL
+        ).exists
+      ).take(BATCH_SIZE)
+    end
 
     exercise_calculation_responses = exercise_calculations.map do |exercise_calculation|
       {
