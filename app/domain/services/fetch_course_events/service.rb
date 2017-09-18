@@ -1,5 +1,5 @@
 class Services::FetchCourseEvents::Service < Services::ApplicationService
-  BATCH_SIZE = 100
+  BATCH_SIZE = 1000
 
   # create_course is already included in the metadata
   # and would not be useful to look at besides error-checking
