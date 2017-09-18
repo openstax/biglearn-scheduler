@@ -6,7 +6,7 @@ class Services::FetchExerciseCalculations::Service < Services::ApplicationServic
 
     exercise_calculations = ExerciseCalculation.transaction do
       # Extra memory is required to perform the hash anti-join efficiently
-      EcosystemMatrixUpdate.connection.execute 'SET LOCAL work_mem=20480'
+      ExerciseCalculation.connection.execute 'SET LOCAL work_mem=20480'
 
       ExerciseCalculation.with_exercise_uuids.where.not(
         AlgorithmExerciseCalculation.where(

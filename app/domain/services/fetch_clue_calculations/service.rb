@@ -8,7 +8,7 @@ class Services::FetchClueCalculations::Service < Services::ApplicationService
     teacher_clue_calculations = []
     ActiveRecord::Base.transaction do
       # Extra memory is required to perform the hash anti-join efficiently
-      EcosystemMatrixUpdate.connection.execute 'SET LOCAL work_mem=20480'
+      ActiveRecord::Base.connection.execute 'SET LOCAL work_mem=20480'
 
       student_clue_calculations = StudentClueCalculation.where.not(
         AlgorithmStudentClueCalculation.where(
