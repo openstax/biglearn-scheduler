@@ -9,15 +9,19 @@ class AssignmentSpe < ApplicationRecord
                                               foreign_key: :assignment_uuid,
                                               inverse_of: :assignment_spes
 
+  has_many :conflicting_assignment_pes,
+           -> { where '"assignment_pes"."exercise_uuid" = "assignment_spes"."exercise_uuid"' },
+           class_name: 'AssignmentPe',
+           primary_key: :assignment_uuid,
+           foreign_key: :assignment_uuid,
+           inverse_of: :conflicting_assignment_spes
+
   validates :assignment_uuid, presence: true
   validates :exercise_uuid, presence: true, uniqueness: {
     scope: [ :assignment_uuid, :algorithm_exercise_calculation_uuid, :history_type ]
   }
   validates :history_type, presence: true
 
-  scope :with_student_uuids, -> do
-    joins(:assignment).select [ arel_table[Arel.star], Assignment.arel_table[:student_uuid] ]
-  end
   scope :unassociated, -> do
     where.not(
       AlgorithmExerciseCalculation.where(

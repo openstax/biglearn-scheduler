@@ -10,11 +10,6 @@ class StudentPe < ApplicationRecord
   validates :exercise_uuid, presence: true,
                             uniqueness: { scope: :algorithm_exercise_calculation_uuid }
 
-  scope :with_student_uuids, -> do
-    joins(algorithm_exercise_calculation: :exercise_calculation).select [
-      arel_table[Arel.star], ExerciseCalculation.arel_table[:student_uuid]
-    ]
-  end
   scope :unassociated, -> do
     where.not(
       AlgorithmExerciseCalculation.where(

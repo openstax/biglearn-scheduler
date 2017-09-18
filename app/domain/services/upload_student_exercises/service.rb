@@ -13,7 +13,6 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
     ec = ExerciseCalculation.arel_table
     cc = Course.arel_table
     ascc = AlgorithmStudentClueCalculation.arel_table
-    spe = StudentPe.arel_table
     aa = Assignment.arel_table
 
     total_students = 0
@@ -35,6 +34,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           .where(ec[:ecosystem_uuid].eq(cc[:ecosystem_uuid]))
           # Not necessary because whenever we flip is_uploaded_for_students back to false
           # we also delete all the StudentPes for that algorithm_exercise_calculation
+          # spe = StudentPe.arel_table
           #.where(
           #  StudentPe.where(spe[:algorithm_exercise_calculation_uuid].eq aec[:uuid]).exists.not
           #)
