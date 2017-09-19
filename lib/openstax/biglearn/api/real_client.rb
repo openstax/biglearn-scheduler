@@ -31,14 +31,14 @@ class OpenStax::Biglearn::Api::RealClient
 
       request.slice(:request_uuid, :event_types).merge(
         ecosystem_uuid: ecosystem.uuid,
-        sequence_number_offset: ecosystem.sequence_number,
-        max_num_events: request.fetch(:max_num_events, 10)
+        sequence_number_offset: ecosystem.sequence_number
       )
     end
 
     bulk_api_request url: :fetch_ecosystem_events,
                      requests: requests,
                      requests_key: :ecosystem_event_requests,
+                     other_params: { max_num_events: 1000 },
                      responses_key: :ecosystem_event_responses
   end
 
@@ -48,14 +48,14 @@ class OpenStax::Biglearn::Api::RealClient
 
       request.slice(:request_uuid, :event_types).merge(
         course_uuid: course.uuid,
-        sequence_number_offset: course.sequence_number,
-        max_num_events: request.fetch(:max_num_events, 100)
+        sequence_number_offset: course.sequence_number
       )
     end
 
     bulk_api_request url: :fetch_course_events,
                      requests: requests,
                      requests_key: :course_event_requests,
+                     other_params: { max_num_events: 1000 },
                      responses_key: :course_event_responses
   end
 
@@ -141,12 +141,12 @@ class OpenStax::Biglearn::Api::RealClient
     block_given? ? yield(response_hash) : response_hash
   end
 
-  def bulk_api_request(method: :post, url:, requests:,
-                       requests_key:, responses_key:, max_requests: 1000)
+  def bulk_api_request(method: :post, url:, requests:, requests_key:, max_requests: 1000,
+                       other_params: {}, responses_key:)
     max_requests ||= requests.size
 
     requests.each_slice(max_requests).flat_map do |requests|
-      body = { requests_key => requests }
+      body = other_params.merge(requests_key => requests)
 
       response_hash = api_request method: method, url: url, body: body
 

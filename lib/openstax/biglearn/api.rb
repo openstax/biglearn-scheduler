@@ -29,15 +29,13 @@ module OpenStax::Biglearn::Api
     def fetch_ecosystem_events(ecosystem_event_requests)
       bulk_api_request method: :fetch_ecosystem_events,
                        requests: ecosystem_event_requests,
-                       keys: [ :event_types, :ecosystem, ],
-                       optional_keys: :max_num_events
+                       keys: [ :event_types, :ecosystem, ]
     end
 
     def fetch_course_events(course_event_requests)
       bulk_api_request method: :fetch_course_events,
                        requests: course_event_requests,
-                       keys: [ :event_types, :course ],
-                       optional_keys: :max_num_events
+                       keys: [ :event_types, :course ]
     end
 
     def update_student_clues(student_clue_updates)
