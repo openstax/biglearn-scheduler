@@ -21,7 +21,7 @@ RSpec.describe Services::EcosystemMatricesUpdated::Service, type: :service do
   let(:action)                           do
     service.process(ecosystem_matrices_updated: given_ecosystem_matrices_updated)
   end
-  let(:results)                        { action.fetch(:ecosystem_matrix_updated_responses) }
+  let(:results)                          { action.fetch(:ecosystem_matrix_updated_responses) }
 
   context "when non-existing EcosystemMatrixUpdate calculation_uuids are given" do
     it 'does not create new records and returns calculation_status: "calculation_unknown"' do

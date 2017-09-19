@@ -30,10 +30,14 @@ RSpec.describe Services::FetchClueCalculations::Service, type: :service do
         FactoryGirl.create :algorithm_student_clue_calculation,
                            student_clue_calculation: student_clue_calculation,
                            algorithm_name: given_algorithm_name
+        student_clue_calculation.algorithm_names << given_algorithm_name
+        student_clue_calculation.save!
 
         FactoryGirl.create :algorithm_teacher_clue_calculation,
                            teacher_clue_calculation: teacher_clue_calculation,
                            algorithm_name: given_algorithm_name
+        teacher_clue_calculation.algorithm_names << given_algorithm_name
+        teacher_clue_calculation.save!
       end
 
       it "an empty array of clue_calculations is returned" do

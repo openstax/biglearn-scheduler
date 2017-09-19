@@ -29,10 +29,14 @@ RSpec.describe Services::FetchEcosystemMatrixUpdates::Service, type: :service do
         FactoryGirl.create :algorithm_ecosystem_matrix_update,
                            ecosystem_matrix_update: ecosystem_matrix_update_1,
                            algorithm_name: given_algorithm_name
+        ecosystem_matrix_update_1.algorithm_names << given_algorithm_name
+        ecosystem_matrix_update_1.save!
 
         FactoryGirl.create :algorithm_ecosystem_matrix_update,
                            ecosystem_matrix_update: ecosystem_matrix_update_2,
                            algorithm_name: given_algorithm_name
+        ecosystem_matrix_update_2.algorithm_names << given_algorithm_name
+        ecosystem_matrix_update_2.save!
       end
 
       it "an empty array of ecosystem_matrix_updates is returned" do

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170816235320) do
+ActiveRecord::Schema.define(version: 20170919003441) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -195,10 +195,12 @@ ActiveRecord::Schema.define(version: 20170816235320) do
   end
 
   create_table "ecosystem_matrix_updates", force: :cascade do |t|
-    t.uuid     "uuid",           null: false
-    t.uuid     "ecosystem_uuid", null: false
-    t.datetime "created_at",     null: false
-    t.datetime "updated_at",     null: false
+    t.uuid     "uuid",                         null: false
+    t.uuid     "ecosystem_uuid",               null: false
+    t.datetime "created_at",                   null: false
+    t.datetime "updated_at",                   null: false
+    t.string   "algorithm_names", default: [], null: false, array: true
+    t.index ["algorithm_names"], name: "index_ecosystem_matrix_updates_on_algorithm_names", using: :gin
     t.index ["ecosystem_uuid"], name: "index_ecosystem_matrix_updates_on_ecosystem_uuid", unique: true, using: :btree
     t.index ["uuid"], name: "index_ecosystem_matrix_updates_on_uuid", unique: true, using: :btree
   end
@@ -224,11 +226,13 @@ ActiveRecord::Schema.define(version: 20170816235320) do
   end
 
   create_table "exercise_calculations", force: :cascade do |t|
-    t.uuid     "uuid",           null: false
-    t.uuid     "ecosystem_uuid", null: false
-    t.uuid     "student_uuid",   null: false
-    t.datetime "created_at",     null: false
-    t.datetime "updated_at",     null: false
+    t.uuid     "uuid",                         null: false
+    t.uuid     "ecosystem_uuid",               null: false
+    t.uuid     "student_uuid",                 null: false
+    t.datetime "created_at",                   null: false
+    t.datetime "updated_at",                   null: false
+    t.string   "algorithm_names", default: [], null: false, array: true
+    t.index ["algorithm_names"], name: "index_exercise_calculations_on_algorithm_names", using: :gin
     t.index ["ecosystem_uuid"], name: "index_exercise_calculations_on_ecosystem_uuid", using: :btree
     t.index ["student_uuid", "ecosystem_uuid"], name: "index_exercise_calculations_on_student_uuid_and_ecosystem_uuid", unique: true, using: :btree
     t.index ["uuid"], name: "index_exercise_calculations_on_uuid", unique: true, using: :btree
@@ -296,15 +300,17 @@ ActiveRecord::Schema.define(version: 20170816235320) do
   end
 
   create_table "student_clue_calculations", force: :cascade do |t|
-    t.uuid     "uuid",                null: false
-    t.uuid     "ecosystem_uuid",      null: false
-    t.uuid     "book_container_uuid", null: false
-    t.uuid     "student_uuid",        null: false
-    t.uuid     "exercise_uuids",      null: false, array: true
-    t.text     "responses",           null: false
-    t.datetime "created_at",          null: false
-    t.datetime "updated_at",          null: false
+    t.uuid     "uuid",                             null: false
+    t.uuid     "ecosystem_uuid",                   null: false
+    t.uuid     "book_container_uuid",              null: false
+    t.uuid     "student_uuid",                     null: false
+    t.uuid     "exercise_uuids",                   null: false, array: true
+    t.text     "responses",                        null: false
+    t.datetime "created_at",                       null: false
+    t.datetime "updated_at",                       null: false
     t.datetime "recalculate_at"
+    t.string   "algorithm_names",     default: [], null: false, array: true
+    t.index ["algorithm_names"], name: "index_student_clue_calculations_on_algorithm_names", using: :gin
     t.index ["book_container_uuid"], name: "index_student_clue_calculations_on_book_container_uuid", using: :btree
     t.index ["ecosystem_uuid"], name: "index_student_clue_calculations_on_ecosystem_uuid", using: :btree
     t.index ["recalculate_at"], name: "index_student_clue_calculations_on_recalculate_at", using: :btree
@@ -334,15 +340,17 @@ ActiveRecord::Schema.define(version: 20170816235320) do
   end
 
   create_table "teacher_clue_calculations", force: :cascade do |t|
-    t.uuid     "uuid",                  null: false
-    t.uuid     "ecosystem_uuid",        null: false
-    t.uuid     "book_container_uuid",   null: false
-    t.uuid     "course_container_uuid", null: false
-    t.uuid     "student_uuids",         null: false, array: true
-    t.uuid     "exercise_uuids",        null: false, array: true
-    t.text     "responses",             null: false
-    t.datetime "created_at",            null: false
-    t.datetime "updated_at",            null: false
+    t.uuid     "uuid",                               null: false
+    t.uuid     "ecosystem_uuid",                     null: false
+    t.uuid     "book_container_uuid",                null: false
+    t.uuid     "course_container_uuid",              null: false
+    t.uuid     "student_uuids",                      null: false, array: true
+    t.uuid     "exercise_uuids",                     null: false, array: true
+    t.text     "responses",                          null: false
+    t.datetime "created_at",                         null: false
+    t.datetime "updated_at",                         null: false
+    t.string   "algorithm_names",       default: [], null: false, array: true
+    t.index ["algorithm_names"], name: "index_teacher_clue_calculations_on_algorithm_names", using: :gin
     t.index ["book_container_uuid"], name: "index_teacher_clue_calculations_on_book_container_uuid", using: :btree
     t.index ["course_container_uuid", "book_container_uuid"], name: "index_t_clue_calc_on_cc_uuid_and_bc_uuid", unique: true, using: :btree
     t.index ["ecosystem_uuid"], name: "index_teacher_clue_calculations_on_ecosystem_uuid", using: :btree

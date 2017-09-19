@@ -3,15 +3,17 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
     relevant_calculation_uuids = clue_calculation_updates.map { |calc| calc[:calculation_uuid] }
     student_clue_calculations_by_uuid = StudentClueCalculation
                                           .where(uuid: relevant_calculation_uuids)
-                                          .select(:uuid, :student_uuid)
+                                          .select(:uuid, :student_uuid, :algorithm_names)
                                           .index_by(&:uuid)
     teacher_clue_calculations_by_uuid = TeacherClueCalculation
                                           .where(uuid: relevant_calculation_uuids)
-                                          .select(:uuid)
+                                          .select(:uuid, :algorithm_names)
                                           .index_by(&:uuid)
 
     algorithm_student_clue_calculations = []
     algorithm_teacher_clue_calculations = []
+    student_clue_calculation_uuids_by_algorithm_names = Hash.new { |hash, key| hash[key] = [] }
+    teacher_clue_calculation_uuids_by_algorithm_names = Hash.new { |hash, key| hash[key] = [] }
     clue_calculation_update_responses = clue_calculation_updates.map do |clue_calculation_update|
       calculation_uuid = clue_calculation_update.fetch(:calculation_uuid)
       algorithm_name = clue_calculation_update.fetch(:algorithm_name)
@@ -28,6 +30,9 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
           is_uploaded: false
         )
 
+        student_clue_calculation_uuids_by_algorithm_names[algorithm_name] << calculation_uuid \
+          unless student_clue_calculation.algorithm_names.include?(algorithm_name)
+
         { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
       else
         teacher_clue_calculation = teacher_clue_calculations_by_uuid[calculation_uuid]
@@ -39,6 +44,9 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
             clue_data: clue_data,
             is_uploaded: false
           )
+
+        teacher_clue_calculation_uuids_by_algorithm_names[algorithm_name] << calculation_uuid \
+          unless teacher_clue_calculation.algorithm_names.include?(algorithm_name)
 
           { calculation_uuid: calculation_uuid, calculation_status: 'calculation_accepted' }
         else
@@ -60,6 +68,22 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
         columns: [ :uuid, :clue_data, :is_uploaded ]
       }
     )
+
+    student_clue_calculation_uuids_by_algorithm_names.each do |algorithm_name, uuids|
+      sanitized_algorithm_name = StudentClueCalculation.sanitize(algorithm_name.downcase)
+
+      StudentClueCalculation.where(uuid: uuids).update_all(
+        "\"algorithm_names\" = \"algorithm_names\" || #{sanitized_algorithm_name}::varchar"
+      )
+    end
+
+    teacher_clue_calculation_uuids_by_algorithm_names.each do |algorithm_name, uuids|
+      sanitized_algorithm_name = TeacherClueCalculation.sanitize(algorithm_name.downcase)
+
+      TeacherClueCalculation.where(uuid: uuids).update_all(
+        "\"algorithm_names\" = \"algorithm_names\" || #{sanitized_algorithm_name}::varchar"
+      )
+    end
 
     # Mark any affected StudentPes (practice_worst_areas) for recalculation
     unless algorithm_student_clue_calculations.empty?

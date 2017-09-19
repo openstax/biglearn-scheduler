@@ -29,10 +29,14 @@ RSpec.describe Services::FetchExerciseCalculations::Service, type: :service do
         FactoryGirl.create :algorithm_exercise_calculation,
                            exercise_calculation: exercise_calculation_1,
                            algorithm_name: given_algorithm_name
+        exercise_calculation_1.algorithm_names << given_algorithm_name
+        exercise_calculation_1.save!
 
         FactoryGirl.create :algorithm_exercise_calculation,
                            exercise_calculation: exercise_calculation_2,
                            algorithm_name: given_algorithm_name
+        exercise_calculation_2.algorithm_names << given_algorithm_name
+        exercise_calculation_2.save!
       end
 
       it "an empty array of exercise_calculations is returned" do
