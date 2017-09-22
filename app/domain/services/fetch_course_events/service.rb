@@ -496,11 +496,15 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                             .update_all(recalculate_at: current_time)
     end
 
+    assignment_calc_uuids_to_recalculate = []
+
     assignment_uuids = assignments_hash.keys
-    assignment_calc_uuids_to_recalculate = AlgorithmExerciseCalculation
-      .joins(exercise_calculation: :assignments)
-      .where(assignments: { uuid: assignment_uuids })
-      .pluck(:uuid)
+    assignment_calc_uuids_to_recalculate.concat(
+      AlgorithmExerciseCalculation
+        .joins(exercise_calculation: :assignments)
+        .where(assignments: { uuid: assignment_uuids })
+        .pluck(:uuid)
+    ) unless assignment_uuids.empty?
 
     unless assigned_exercises.empty?
       # Find conflicting SPEs and PEs for students with updated assignments
@@ -582,12 +586,13 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         DELETE_SQL
       ).to_a
 
-      AlgorithmExerciseCalculation.where(uuid: assignment_calc_uuids_to_recalculate)
-                                  .update_all(is_uploaded_for_assignments: false)
-
       AlgorithmExerciseCalculation.where(uuid: student_calc_uuids_to_recalculate)
                                   .update_all(is_uploaded_for_student: false)
     end
+
+    AlgorithmExerciseCalculation.where(uuid: assignment_calc_uuids_to_recalculate)
+                                .update_all(is_uploaded_for_assignments: false) \
+      unless assignment_calc_uuids_to_recalculate.empty?
 
     results << Course.import(
       courses, validate: false, on_duplicate_key_update: {
