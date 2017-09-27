@@ -437,7 +437,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           StudentClueCalculation.import(
             student_clue_calculations, validate: false, on_duplicate_key_update: {
               conflict_target: [ :student_uuid, :book_container_uuid ],
-              columns: [ :uuid, :exercise_uuids, :responses, :recalculate_at ]
+              columns: [ :uuid, :exercise_uuids, :responses, :recalculate_at, :algorithm_names ]
             }
           )
 
@@ -455,7 +455,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           TeacherClueCalculation.import(
             teacher_clue_calculations, validate: false, on_duplicate_key_update: {
               conflict_target: [ :course_container_uuid, :book_container_uuid ],
-              columns: [ :uuid, :student_uuids, :exercise_uuids, :responses ]
+              columns: [ :uuid, :student_uuids, :exercise_uuids, :responses, :algorithm_names ]
             }
           )
 

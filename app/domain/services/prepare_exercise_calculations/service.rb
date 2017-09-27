@@ -69,7 +69,8 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
         # Record the ExerciseCalculations
         ExerciseCalculation.import(
           exercise_calculations, validate: false, on_duplicate_key_update: {
-            conflict_target: [ :student_uuid, :ecosystem_uuid ], columns: [ :uuid ]
+            conflict_target: [ :student_uuid, :ecosystem_uuid ],
+            columns: [ :uuid, :algorithm_names ]
           }
         )
 

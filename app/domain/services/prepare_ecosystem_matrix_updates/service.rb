@@ -90,7 +90,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
           # Record any new ecosystem matrix updates
           EcosystemMatrixUpdate.import(
             ecosystem_matrix_updates, validate: false, on_duplicate_key_update: {
-              conflict_target: [ :ecosystem_uuid ], columns: [ :uuid ]
+              conflict_target: [ :ecosystem_uuid ], columns: [ :uuid, :algorithm_names ]
             }
           )
 
