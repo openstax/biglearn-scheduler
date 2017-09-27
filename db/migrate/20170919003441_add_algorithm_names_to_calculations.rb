@@ -11,37 +11,61 @@ class AddAlgorithmNamesToCalculations < ActiveRecord::Migration[5.0]
 
     reversible do |dir|
       dir.up do
-        EcosystemMatrixUpdate
-          .joins(:algorithm_ecosystem_matrix_updates)
-          .select(:id, :algorithm_names, '"algorithm_ecosystem_matrix_updates"."algorithm_name"')
-          .find_each do |ecosystem_matrix_update|
-          ecosystem_matrix_update.algorithm_names << ecosystem_matrix_update.algorithm_name
-          ecosystem_matrix_update.save(validate: false)
-        end
+        EcosystemMatrixUpdate.update_all(
+          <<-UPDATE_SQL.strip_heredoc
+            "algorithm_names" = (
+              SELECT COALESCE(
+                ARRAY_AGG("algorithm_ecosystem_matrix_updates"."algorithm_name"),
+                ARRAY[]::varchar[]
+              )
+              FROM "algorithm_ecosystem_matrix_updates"
+              WHERE "algorithm_ecosystem_matrix_updates"."ecosystem_matrix_update_uuid" =
+                "ecosystem_matrix_updates"."uuid"
+            )
+          UPDATE_SQL
+        )
 
-        ExerciseCalculation
-          .joins(:algorithm_exercise_calculations)
-          .select(:id, :algorithm_names, '"algorithm_exercise_calculations"."algorithm_name"')
-          .find_each do |exercise_calculation|
-          exercise_calculation.algorithm_names << exercise_calculation.algorithm_name
-          exercise_calculation.save(validate: false)
-        end
+        ExerciseCalculation.update_all(
+          <<-UPDATE_SQL.strip_heredoc
+            "algorithm_names" = (
+              SELECT COALESCE(
+                ARRAY_AGG("algorithm_exercise_calculations"."algorithm_name"),
+                ARRAY[]::varchar[]
+              )
+              FROM "algorithm_exercise_calculations"
+              WHERE "algorithm_exercise_calculations"."exercise_calculation_uuid" =
+                "exercise_calculations"."uuid"
+            )
+          UPDATE_SQL
+        )
 
-        StudentClueCalculation
-          .joins(:algorithm_student_clue_calculations)
-          .select(:id, :algorithm_names, '"algorithm_student_clue_calculations"."algorithm_name"')
-          .find_each do |student_clue_calculation|
-          student_clue_calculation.algorithm_names << student_clue_calculation.algorithm_name
-          student_clue_calculation.save(validate: false)
-        end
+        StudentClueCalculation.update_all(
+          <<-UPDATE_SQL.strip_heredoc
+            "algorithm_names" = (
+              SELECT COALESCE(
+                ARRAY_AGG("algorithm_student_clue_calculations"."algorithm_name"),
+                ARRAY[]::varchar[]
+              )
+              FROM "algorithm_student_clue_calculations"
+              WHERE "algorithm_student_clue_calculations"."student_clue_calculation_uuid" =
+                "student_clue_calculations"."uuid"
+            )
+          UPDATE_SQL
+        )
 
-        TeacherClueCalculation
-          .joins(:algorithm_teacher_clue_calculations)
-          .select(:id, :algorithm_names, '"algorithm_teacher_clue_calculations"."algorithm_name"')
-          .find_each do |teacher_clue_calculation|
-          teacher_clue_calculation.algorithm_names << teacher_clue_calculation.algorithm_name
-          teacher_clue_calculation.save(validate: false)
-        end
+        TeacherClueCalculation.update_all(
+          <<-UPDATE_SQL.strip_heredoc
+            "algorithm_names" = (
+              SELECT COALESCE(
+                ARRAY_AGG("algorithm_teacher_clue_calculations"."algorithm_name"),
+                ARRAY[]::varchar[]
+              )
+              FROM "algorithm_teacher_clue_calculations"
+              WHERE "algorithm_teacher_clue_calculations"."teacher_clue_calculation_uuid" =
+                "teacher_clue_calculations"."uuid"
+            )
+          UPDATE_SQL
+        )
       end
     end
 
