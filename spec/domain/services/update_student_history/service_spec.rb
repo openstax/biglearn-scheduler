@@ -548,7 +548,7 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
         student_history_assignments = Assignment
           .where(uuid: all_assignment_uuids)
           .where.not(student_history_at: nil)
-          .order(:student_history_at)
+          .order(:student_history_at, :due_at, :opens_at, :created_at)
 
         expect(student_history_assignments).to eq [ @reading_1, @homework_1 ] + ordered_assignments
       end
