@@ -1,7 +1,8 @@
 class Services::PrepareClueCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 10
+  LOCK_TIMEOUT = '60s'
+  RETRYABLE_EXCEPTIONS = [ PG::LockNotAvailable, PG::TRDeadlockDetected ]
   MAX_RETRIES = 3
-  RETRY_DELAY = 1
 
   def process
     start_time = Time.current
@@ -312,6 +313,9 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           end
           teacher_responses_map = Hash.new { |hash, key| hash[key] = {} }
           unless response_values_array.empty?
+            # Set the lock_timeout so we don't keep waiting for the lock forever
+            Response.connection.execute "SET LOCAL lock_timeout = '#{LOCK_TIMEOUT}'"
+
             response_join_query = <<-JOIN_SQL.strip_heredoc
               INNER JOIN (#{ValuesTable.new(response_values_array)})
                 AS "values" ("student_uuids", "exercise_uuids")
@@ -322,7 +326,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               .joins(assigned_exercise: :assignment)
               .joins(response_join_query)
               .order(:last_responded_at)
-              .lock('FOR NO KEY UPDATE OF "responses" NOWAIT')
+              .lock('FOR NO KEY UPDATE OF "responses"')
               .pluck(:uuid, :trial_uuid, :student_uuid, :exercise_uuid,
                      :used_in_clue_calculations, :is_correct, :feedback_at)
               .each do |response_uuid, trial_uuid, student_uuid, exercise_uuid,
@@ -469,11 +473,12 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           [ responses.size, sccs.size ]
         end
       rescue ActiveRecord::StatementInvalid => exception
-        raise exception if !exception.cause.is_a?(PG::LockNotAvailable) || retries >= MAX_RETRIES
+        raise exception if retries >= MAX_RETRIES || RETRYABLE_EXCEPTIONS.none? do |exception_class|
+          exception.cause.is_a?(exception_class)
+        end
 
         retries += 1
         log(:warn) { "#{exception.message.split("\n:").first}. Retry ##{retries}..." }
-        sleep(RETRY_DELAY)
         retry
       end
 
