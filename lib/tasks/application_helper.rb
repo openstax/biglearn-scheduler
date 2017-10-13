@@ -25,14 +25,9 @@ module Tasks
       logfilename = ENV['LOG_FILENAME'] || "#{sanitized_task_name}.log"
 
       {
-        dir_mode: :script,
         dir: File.expand_path(ENV['PID_DIR'] || 'tmp'),
         log_dir: File.expand_path(ENV['LOG_DIR'] || 'log'),
         logfilename: logfilename,
-        multiple: false,
-        ontop: false,
-        backtrace: true,
-        monitor: false,
         ARGV: args.to_a
       }
     end
