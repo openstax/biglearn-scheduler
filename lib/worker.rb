@@ -1,14 +1,22 @@
 class Worker
   def initialize(task_name_string)
     @task_name_string = task_name_string
-    @task = Rake::Task[@task_name_string]
+  end
+
+  def task
+    @task ||= Rake::Task[@task_name_string]
   end
 
   def run_once
-    log(:debug) { 'Executing task...' }
+    log(:debug) { 'Reenabling task...' }
+    task.reenable
 
-    @task.reenable
-    @task.invoke
+    log(:debug) { 'Invoking task...' }
+    task.invoke
+  rescue Exception => ex
+    log(:fatal) { "#{ex.class.name}: #{ex.message}\n#{ex.backtrace.join("\n")}" }
+
+    raise ex
   end
 
   def run(run_every = 1.second)
