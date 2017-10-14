@@ -45,6 +45,8 @@ module Tasks
         Rails.logger = logger
         ActiveRecord::Base.logger = logger
         ActionController::Base.logger = logger
+        ActionView::Base.logger = logger
+        ActionMailer::Base.logger = logger
 
         Worker.new(task_name_string).run
       end
