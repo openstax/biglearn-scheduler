@@ -8,15 +8,13 @@ class Worker
   end
 
   def run_once
-    log(:debug) { 'Reenabling task...' }
-    task.reenable
+    OpenStax::RescueFrom.this do
+      log(:debug) { 'Reenabling task...' }
+      task.reenable
 
-    log(:debug) { 'Invoking task...' }
-    task.invoke
-  rescue Exception => ex
-    log(:fatal) { "#{ex.class.name}: #{ex.message}\n#{ex.backtrace.join("\n")}" }
-
-    raise ex
+      log(:debug) { 'Invoking task...' }
+      task.invoke
+    end
   end
 
   def run(run_every = 1.second)
