@@ -1,8 +1,11 @@
 class Services::PrepareClueCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 10
   LOCK_TIMEOUT = '60s'
-  RETRYABLE_EXCEPTIONS = [ PG::LockNotAvailable, PG::TRDeadlockDetected ]
   MAX_RETRIES = 3
+  RETRY_DELAYS_BY_EXCEPTION_CAUSE = {
+    PG::LockNotAvailable => 0,
+    PG::TRDeadlockDetected => 60
+  }
 
   def process
     start_time = Time.current
@@ -473,12 +476,13 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           [ responses.size, sccs.size ]
         end
       rescue ActiveRecord::StatementInvalid => exception
-        raise exception if retries >= MAX_RETRIES || RETRYABLE_EXCEPTIONS.none? do |exception_class|
-          exception.cause.is_a?(exception_class)
-        end
+        raise exception if retries >= MAX_RETRIES
+        retry_delay = RETRY_DELAYS_BY_EXCEPTION_CAUSE[exception.cause.class]
+        raise exception if retry_delay.nil?
 
         retries += 1
         log(:warn) { "#{exception.message.split("\n:").first}. Retry ##{retries}..." }
+        sleep retry_delay
         retry
       end
 
