@@ -28,8 +28,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     # Query events for all courses in chunks
     loop do
       num_courses = Course.transaction do
-        course_relation = Course.order(:id)
-                                .lock('FOR NO KEY UPDATE SKIP LOCKED')
+        course_relation = Course.order(:id).lock('FOR NO KEY UPDATE SKIP LOCKED')
         course_relation = course_relation.where(co[:id].gt(last_id)) unless last_id.nil?
         courses = course_relation.take(BATCH_SIZE)
         next 0 if courses.empty?
@@ -99,7 +98,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       .map(&:deep_symbolize_keys)
 
     ecosystem_preparations = []
-    course_uuids_with_changed_ecosystems = []
+    course_uuids_with_changed_ecosystems_or_rosters = []
     book_container_mappings = []
     course_containers_hash = {}
     students_hash = {}
@@ -163,7 +162,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         preparation = course_ecosystem_preparations.find{ |prep| prep.uuid == preparation_uuid }
         preparation ||= EcosystemPreparation.find_by uuid: preparation_uuid
         course.ecosystem_uuid = preparation.ecosystem_uuid
-        course_uuids_with_changed_ecosystems << course.uuid
+        course_uuids_with_changed_ecosystems_or_rosters << course.uuid
       end
 
       # Update roster changes the students and periods we compute CLUes for
@@ -208,6 +207,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             student_uuids: student_uuids_by_container_uuid[container_uuid]
           )
         end
+
+        course_uuids_with_changed_ecosystems_or_rosters << course.uuid
       end
 
       # Update course active dates is used to exclude past courses from calculations
@@ -485,14 +486,14 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
     # Event side-effects
 
-    unless course_uuids_with_changed_ecosystems.empty?
+    unless course_uuids_with_changed_ecosystems_or_rosters.empty?
       # Get students in courses with updated ecosystems
-      changed_ecosystem_student_uuids = Student
-        .where(course_uuid: course_uuids_with_changed_ecosystems)
+      changed_student_uuids = Student
+        .where(course_uuid: course_uuids_with_changed_ecosystems_or_rosters)
         .pluck(:uuid)
 
       # Mark CLUes for recalculation for students in courses with updated ecosystems
-      StudentClueCalculation.where(student_uuid: changed_ecosystem_student_uuids)
+      StudentClueCalculation.where(student_uuid: changed_student_uuids)
                             .update_all(recalculate_at: current_time)
     end
 
