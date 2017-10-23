@@ -302,12 +302,20 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                     student_uuids: [ @student_1.uuid, @student_2.uuid ]
         FactoryGirl.create :algorithm_teacher_clue_calculation, teacher_clue_calculation: @tcc_1
 
-        # Will be updated (new responses)
+        # Will be updated (recalculate_at)
         @tcc_2 = FactoryGirl.create :teacher_clue_calculation,
+                                    book_container_uuid: @ep_2.book_container_uuid,
+                                    course_container_uuid: @cc_1.uuid,
+                                    student_uuids: [ @student_1.uuid, @student_2.uuid ],
+                                    recalculate_at: assignment_2.feedback_at
+        FactoryGirl.create :algorithm_teacher_clue_calculation, teacher_clue_calculation: @tcc_2
+
+        # Will be updated (new responses)
+        @tcc_3 = FactoryGirl.create :teacher_clue_calculation,
                                     book_container_uuid: @ep_3.book_container_uuid,
                                     course_container_uuid: @cc_1.uuid,
                                     student_uuids: [ @student_1.uuid, @student_2.uuid ]
-        FactoryGirl.create :algorithm_teacher_clue_calculation, teacher_clue_calculation: @tcc_2
+        FactoryGirl.create :algorithm_teacher_clue_calculation, teacher_clue_calculation: @tcc_3
       end
 
       after(:all)  { DatabaseCleaner.clean }
@@ -320,7 +328,7 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
            .and change     { StudentClueCalculation.count          }.by(2)
            .and change     { TeacherClueCalculation.count          }.by(1)
            .and change     { AlgorithmStudentClueCalculation.count }.by(-3)
-           .and change     { AlgorithmTeacherClueCalculation.count }.by(-1)
+           .and change     { AlgorithmTeacherClueCalculation.count }.by(-2)
            .and not_change { @scc_1.reload.uuid                    }
            .and change     { @scc_2.reload.uuid                    }
            .and change     { @scc_3.reload.uuid                    }
@@ -328,6 +336,7 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
            .and not_change { @scc_5.reload.uuid                    }
            .and not_change { @tcc_1.reload.uuid                    }
            .and change     { @tcc_2.reload.uuid                    }
+           .and change     { @tcc_3.reload.uuid                    }
 
         @unprocessed_responses.each do |response|
           expect(response.reload.used_in_clue_calculations).to eq true
@@ -365,10 +374,17 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
           end
         end
 
-        expect(@tcc_2.exercise_uuids).to match_array [ @exercise_5, @exercise_6 ].map(&:uuid)
+        expect(@tcc_2.exercise_uuids).to match_array [ @exercise_3, @exercise_4 ].map(&:uuid)
         expect(@tcc_2.responses.map { |response| response['response_uuid'] }).to(
+          match_array [ @response_3, @response_4, @response_11, @response_12 ].map(&:uuid)
+        )
+        expect(@tcc_2.recalculate_at).to be_nil
+
+        expect(@tcc_3.exercise_uuids).to match_array [ @exercise_5, @exercise_6 ].map(&:uuid)
+        expect(@tcc_3.responses.map { |response| response['response_uuid'] }).to(
           match_array [ @response_5, @response_6, @response_13, @response_14 ].map(&:uuid)
         )
+        expect(@tcc_3.recalculate_at).to be_nil
 
         new_tcc = TeacherClueCalculation.order(:created_at).last
         expect(new_tcc.exercise_uuids).to match_array [ @exercise_7, @exercise_8 ].map(&:uuid)

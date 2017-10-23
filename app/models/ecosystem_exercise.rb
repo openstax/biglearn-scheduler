@@ -23,6 +23,16 @@ class EcosystemExercise < ApplicationRecord
     foreign_key: :ecosystem_uuid,
     inverse_of: :ecosystem_exercises
 
+  has_many :teacher_clue_calculations,
+    -> do
+      where(
+        '"ecosystem_exercises"."exercise_uuid" = ANY("teacher_clue_calculations"."exercise_uuids")'
+      )
+    end,
+    primary_key: :ecosystem_uuid,
+    foreign_key: :ecosystem_uuid,
+    inverse_of: :ecosystem_exercises
+
   validates :book_container_uuids, presence: true
 
   validates :next_ecosystem_matrix_update_response_count,

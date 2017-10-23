@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20170919003441) do
+ActiveRecord::Schema.define(version: 20171023184359) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -350,10 +350,12 @@ ActiveRecord::Schema.define(version: 20170919003441) do
     t.datetime "created_at",                         null: false
     t.datetime "updated_at",                         null: false
     t.string   "algorithm_names",       default: [], null: false, array: true
+    t.datetime "recalculate_at"
     t.index ["algorithm_names"], name: "index_teacher_clue_calculations_on_algorithm_names", using: :gin
     t.index ["book_container_uuid"], name: "index_teacher_clue_calculations_on_book_container_uuid", using: :btree
     t.index ["course_container_uuid", "book_container_uuid"], name: "index_t_clue_calc_on_cc_uuid_and_bc_uuid", unique: true, using: :btree
     t.index ["ecosystem_uuid"], name: "index_teacher_clue_calculations_on_ecosystem_uuid", using: :btree
+    t.index ["recalculate_at"], name: "index_teacher_clue_calculations_on_recalculate_at", using: :btree
     t.index ["uuid"], name: "index_teacher_clue_calculations_on_uuid", unique: true, using: :btree
   end
 
