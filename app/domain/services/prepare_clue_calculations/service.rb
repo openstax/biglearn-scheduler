@@ -12,12 +12,14 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
     log(:debug) { "Started at #{start_time}" }
 
     scc = StudentClueCalculation.arel_table
+    tcc = TeacherClueCalculation.arel_table
 
     total_responses = 0
     total_sccs = 0
+    total_tccs = 0
     loop do
       retries = 0
-      num_responses, num_sccs = begin
+      num_responses, num_sccs, num_tccs = begin
         Response.transaction do
           # Get Responses that have not yet been used in CLUes
           # Responses with no AssignedExercise or Assignment are completely ignored
@@ -25,18 +27,24 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                               .where(used_in_clue_calculations: false)
                               .lock('FOR NO KEY UPDATE OF "responses" SKIP LOCKED')
                               .take(BATCH_SIZE)
-          # Also get any StudentClueCalculations that need to be recalculated
+          # Get any ClueCalculations that need to be recalculated
           sccs = StudentClueCalculation
             .where(scc[:recalculate_at].lteq(start_time))
             .lock('FOR UPDATE SKIP LOCKED')
             .take(BATCH_SIZE)
-          next [ 0, 0 ] if responses.empty? && sccs.empty?
+          tccs = TeacherClueCalculation
+            .where(tcc[:recalculate_at].lteq(start_time))
+            .lock('FOR UPDATE SKIP LOCKED')
+            .take(BATCH_SIZE)
+          next [ 0, 0, 0 ] if responses.empty? && sccs.empty? && tccs.empty?
 
           response_uuids = responses.map(&:uuid)
           responses_by_ecosystem_uuid = responses.group_by(&:ecosystem_uuid)
           scc_uuids = sccs.map(&:uuid)
+          tcc_uuids = tccs.map(&:uuid)
           student_uuids = (responses + sccs).map(&:student_uuid)
           sccs_by_ecosystem_uuid = sccs.group_by(&:ecosystem_uuid)
+          tccs_by_ecosystem_uuid = tccs.group_by(&:ecosystem_uuid)
 
           # Map the students to courses and course containers (for teacher CLUes)
           course_uuid_by_student_uuid = {}
@@ -48,17 +56,21 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           end
 
           # Map the course containers back to students (for teacher CLUes)
-          course_container_uuids = course_container_uuids_by_student_uuids.values.flatten
-          student_uuids_by_course_container_uuids =
-            CourseContainer.where(uuid: course_container_uuids)
-                           .pluck(:uuid, :student_uuids)
-                           .to_h
+          course_container_uuids = course_container_uuids_by_student_uuids.values.flatten +
+                                   tccs.map(&:course_container_uuid)
+          course_uuid_by_course_container_uuid = {}
+          student_uuids_by_course_container_uuids = {}
+          CourseContainer.where(uuid: course_container_uuids).each do |course_container|
+            uuid = course_container.uuid
+            course_uuid_by_course_container_uuid[uuid] = course_container.course_uuid
+            student_uuids_by_course_container_uuids[uuid] = course_container.student_uuids
+          end
 
           from_book_container_uuids_map = Hash.new do |hash, key|
             hash[key] = Hash.new { |hash, key| hash[key] = [] }
           end
 
-          # Obtain the book_container_uuids for the Responses and StudentClueCalculations
+          # Obtain the book_container_uuids for the Responses and ClueCalculations
           response_ecosystem_exercises = EcosystemExercise
             .joins(:responses)
             .where(responses: { uuid: response_uuids })
@@ -67,17 +79,23 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             .joins(:student_clue_calculations)
             .where(student_clue_calculations: { uuid: scc_uuids })
             .pluck(:ecosystem_uuid, :exercise_uuid, :book_container_uuids)
-          ecosystem_exercises = response_ecosystem_exercises + scc_ecosystem_exercises
+          tcc_ecosystem_exercises = EcosystemExercise
+            .joins(:teacher_clue_calculations)
+            .where(teacher_clue_calculations: { uuid: tcc_uuids })
+            .pluck(:ecosystem_uuid, :exercise_uuid, :book_container_uuids)
+          ecosystem_exercises = response_ecosystem_exercises +
+                                scc_ecosystem_exercises +
+                                tcc_ecosystem_exercises
 
           ecosystem_exercises.each do |ecosystem_uuid, exercise_uuid, book_container_uuids|
             from_book_container_uuids_map[ecosystem_uuid][exercise_uuid] = book_container_uuids
           end
 
-          # Also add the book_container_uuids for the grouped StudentClueCalculations to the map
-          sccs.each do |scc|
-            ecosystem_uuid = scc.ecosystem_uuid
-            exercise_uuids = scc.exercise_uuids
-            book_container_uuid = scc.book_container_uuid
+          # Also add the book_container_uuids for the ClueCalculations to the map
+          (sccs + tccs).each do |cc|
+            ecosystem_uuid = cc.ecosystem_uuid
+            exercise_uuids = cc.exercise_uuids
+            book_container_uuid = cc.book_container_uuid
 
             exercise_uuids.each do |exercise_uuid|
               from_book_container_uuids_map[ecosystem_uuid][exercise_uuid] << book_container_uuid
@@ -120,6 +138,17 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
 
               [ from_ecosystem_uuid, to_ecosystem_uuid, [ scc.book_container_uuid ] ]
+            end.compact
+          end + tccs_by_ecosystem_uuid.flat_map do |from_ecosystem_uuid, tccs|
+            from_eco_book_container_uuids_map =
+              from_book_container_uuids_map[from_ecosystem_uuid]
+
+            tccs.map do |tcc|
+              course_uuid = course_uuid_by_course_container_uuid[tcc.course_container_uuid]
+              to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
+              next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
+
+              [ from_ecosystem_uuid, to_ecosystem_uuid, [ tcc.book_container_uuid ] ]
             end.compact
           end
           unless forward_mapping_values_array.empty?
@@ -196,7 +225,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             end
           end
 
-          # Also add the StudentClueCalculations that need to be recalculated to the list
+          # Also add the ClueCalculations that need to be recalculated to the list
           sccs_by_ecosystem_uuid.each do |from_ecosystem_uuid, scc|
             from_ecosystem_mappings = forward_mappings[from_ecosystem_uuid]
 
@@ -214,6 +243,26 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
               # Add it to the list of CLUes to update
               student_clues_to_update[to_ecosystem_uuid][to_book_container_uuid] << student_uuid
+            end
+          end
+          tccs_by_ecosystem_uuid.each do |from_ecosystem_uuid, tccs|
+            from_ecosystem_mappings = forward_mappings[from_ecosystem_uuid]
+
+            tccs.each do |tcc|
+              # Find the course container's course and its latest ecosystem
+              course_container_uuid = tcc.course_container_uuid
+              course_uuid = course_uuid_by_course_container_uuid[course_container_uuid]
+              to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
+
+              # Forward map the from_book_container_uuid to find the to_book_container_uuid
+              from_book_container_uuid = tcc.book_container_uuid
+              to_book_container_uuid = from_ecosystem_mappings[from_book_container_uuid].fetch(
+                to_ecosystem_uuid, from_book_container_uuid
+              )
+
+              # Add it to the list of CLUes to update
+              teacher_clues_to_update[to_ecosystem_uuid][to_book_container_uuid] <<
+                course_container_uuid
             end
           end
 
@@ -434,46 +483,56 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                   course_container_uuid: course_container_uuid,
                   student_uuids: student_uuids,
                   exercise_uuids: exercise_uuids,
-                  responses: response_hashes
+                  responses: response_hashes,
+                  recalculate_at: nil
                 )
               end.compact
             end
           end
 
-          # Record the StudentClueCalculations
+          # Record the ClueCalculations
           StudentClueCalculation.import(
             student_clue_calculations, validate: false, on_duplicate_key_update: {
               conflict_target: [ :student_uuid, :book_container_uuid ],
-              columns: [ :uuid, :exercise_uuids, :responses, :recalculate_at, :algorithm_names ]
+              columns: [
+                :uuid,
+                :exercise_uuids,
+                :responses,
+                :recalculate_at,
+                :algorithm_names
+              ]
             }
           )
-
-          # Any StudentClueCalculations that did not get updated (still have the same UUID)
-          # have their recalculate_ats cleared
-          # Just so we don't keep retrying to update StudentClueCalculations that will never succeed
-          # (for example, due to an Ecosystem update)
-          StudentClueCalculation.where(uuid: scc_uuids).update_all(recalculate_at: nil)
-
-          # Cleanup AlgorithmStudentClueCalculations that no longer have
-          # an associated StudentClueCalculation record
-          AlgorithmStudentClueCalculation.unassociated.delete_all
-
-          # Record the TeacherClueCalculations
           TeacherClueCalculation.import(
             teacher_clue_calculations, validate: false, on_duplicate_key_update: {
               conflict_target: [ :course_container_uuid, :book_container_uuid ],
-              columns: [ :uuid, :student_uuids, :exercise_uuids, :responses, :algorithm_names ]
+              columns: [
+                :uuid,
+                :student_uuids,
+                :exercise_uuids,
+                :responses,
+                :recalculate_at,
+                :algorithm_names
+              ]
             }
           )
 
-          # Cleanup AlgorithmTeacherClueCalculations that no longer have
-          # an associated TeacherClueCalculation record
+          # Any ClueCalculations that did not get updated (still have the same UUID)
+          # have their recalculate_ats cleared
+          # Just so we don't keep retrying to update ClueCalculations that will never succeed
+          # (for example, due to an Ecosystem update)
+          StudentClueCalculation.where(uuid: scc_uuids).update_all(recalculate_at: nil)
+          TeacherClueCalculation.where(uuid: tcc_uuids).update_all(recalculate_at: nil)
+
+          # Cleanup AlgorithmClueCalculations that no longer have
+          # an associated ClueCalculation record
+          AlgorithmStudentClueCalculation.unassociated.delete_all
           AlgorithmTeacherClueCalculation.unassociated.delete_all
 
           # Record the fact that the CLUes are up-to-date with the latest Responses
           Response.where(uuid: response_uuids).update_all(used_in_clue_calculations: true)
 
-          [ responses.size, sccs.size ]
+          [ responses.size, sccs.size, tccs.size ]
         end
       rescue ActiveRecord::StatementInvalid => exception
         raise exception if retries >= MAX_RETRIES
@@ -488,13 +547,14 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
       total_responses += num_responses
       total_sccs += num_sccs
-      # If we got less responses and sccs than the batch size, then this is the last batch
-      break if num_responses < BATCH_SIZE && num_sccs < BATCH_SIZE
+      total_tccs += num_tccs
+      # If we got less responses, sccs and tccs than the batch size, then this is the last batch
+      break if num_responses < BATCH_SIZE && num_sccs < BATCH_SIZE && num_tccs < BATCH_SIZE
     end
 
     log(:debug) do
-      "#{total_responses} response(s) processed and #{total_sccs
-      } student CLUe(s) recalculated in #{Time.current - start_time} second(s)"
+      "#{total_responses} response(s) processed and #{total_sccs} student CLUe(s) and #{
+      total_tccs} teacher CLUe(s) recalculated in #{Time.current - start_time} second(s)"
     end
   end
 end
