@@ -38,7 +38,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         sccs_by_ecosystem_uuid = sccs.group_by(&:ecosystem_uuid)
         tccs_by_ecosystem_uuid = tccs.group_by(&:ecosystem_uuid)
 
-        # Map the students to courses and course containers (for teacher CLUes)
+        # Map the students to courses and course containers (for student CLUes)
         course_uuid_by_student_uuid = {}
         course_container_uuids_by_student_uuids = {}
         Student.where(uuid: student_uuids).each do |student|
@@ -95,7 +95,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         end
 
         # Map the courses to latest ecosystems
-        course_uuids = course_uuid_by_student_uuid.values
+        course_uuids = course_uuid_by_course_container_uuid.values
         latest_ecosystem_uuid_by_course_uuid = Course.where(uuid: course_uuids)
                                                      .pluck(:uuid, :ecosystem_uuid)
                                                      .to_h
