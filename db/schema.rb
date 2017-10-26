@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20171023184359) do
+ActiveRecord::Schema.define(version: 20171025224253) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -187,7 +187,7 @@ ActiveRecord::Schema.define(version: 20171023184359) do
     t.uuid     "book_container_uuids",                        null: false, array: true
     t.datetime "created_at",                                  null: false
     t.datetime "updated_at",                                  null: false
-    t.integer  "next_ecosystem_matrix_update_response_count"
+    t.integer  "next_ecosystem_matrix_update_response_count", null: false
     t.index ["ecosystem_uuid"], name: "index_ecosystem_exercises_on_ecosystem_uuid", using: :btree
     t.index ["exercise_uuid", "ecosystem_uuid"], name: "index_eco_exercises_on_exercise_uuid_and_eco_uuid", unique: true, using: :btree
     t.index ["next_ecosystem_matrix_update_response_count"], name: "index_ecosystem_exercises_on_next_eco_mtx_upd_response_count", using: :btree
@@ -239,10 +239,12 @@ ActiveRecord::Schema.define(version: 20171023184359) do
   end
 
   create_table "exercise_groups", force: :cascade do |t|
-    t.uuid     "uuid",           null: false
-    t.integer  "response_count", null: false
-    t.datetime "created_at",     null: false
-    t.datetime "updated_at",     null: false
+    t.uuid     "uuid",                             null: false
+    t.integer  "response_count",                   null: false
+    t.datetime "created_at",                       null: false
+    t.datetime "updated_at",                       null: false
+    t.boolean  "used_in_ecosystem_matrix_updates", null: false
+    t.index ["used_in_ecosystem_matrix_updates"], name: "index_exercise_groups_on_used_in_ecosystem_matrix_updates", using: :btree
     t.index ["uuid"], name: "index_exercise_groups_on_uuid", unique: true, using: :btree
   end
 

@@ -11,10 +11,11 @@ RSpec.describe EcosystemExercise, type: :model do
   it { is_expected.to have_many(:teacher_clue_calculations) }
 
   it { is_expected.to validate_presence_of :book_container_uuids }
+  it { is_expected.to validate_presence_of :next_ecosystem_matrix_update_response_count }
 
   it do
     is_expected.to(
-      validate_numericality_of(:next_ecosystem_matrix_update_response_count).only_integer.allow_nil
+      validate_numericality_of(:next_ecosystem_matrix_update_response_count).only_integer
     )
   end
 end

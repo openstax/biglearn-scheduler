@@ -29,8 +29,11 @@ RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service 
       @ecosystem_exercise_3 = FactoryGirl.create :ecosystem_exercise,
                                                  ecosystem_uuid: @ecosystem_3.uuid,
                                                  next_ecosystem_matrix_update_response_count: 1
+      exercise_group = FactoryGirl.create :exercise_group, used_in_ecosystem_matrix_updates: false
+      exercise = FactoryGirl.create :exercise, exercise_group: exercise_group
       @ecosystem_exercise_4 = FactoryGirl.create :ecosystem_exercise,
-                                                 ecosystem_uuid: @ecosystem_4.uuid
+                                                 ecosystem_uuid: @ecosystem_4.uuid,
+                                                 exercise: exercise
 
       @response_1 = FactoryGirl.create :response,
                                        ecosystem_uuid: @ecosystem_exercise_1.ecosystem_uuid,

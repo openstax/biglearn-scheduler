@@ -145,7 +145,11 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         exercise_hashes = data.fetch(:exercises).uniq { |ex_hash| ex_hash.fetch(:exercise_uuid) }
 
         exercise_hashes.map { |ex_hash| ex_hash.fetch(:group_uuid) }.uniq.map do |group_uuid|
-          exercise_groups << ExerciseGroup.new(uuid: group_uuid, response_count: 0)
+          exercise_groups << ExerciseGroup.new(
+            uuid: group_uuid,
+            response_count: 0,
+            used_in_ecosystem_matrix_updates: false
+          )
         end
 
         ecosystem.exercise_uuids = exercise_hashes.map do |ex_hash|
@@ -161,7 +165,8 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
               uuid: SecureRandom.uuid,
               ecosystem_uuid: ecosystem_uuid,
               exercise_uuid: exercise_uuid,
-              book_container_uuids: book_container_uuids
+              book_container_uuids: book_container_uuids,
+              next_ecosystem_matrix_update_response_count: 0
             )
           end
         end
