@@ -321,11 +321,12 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             # Find all exercises in the above book_container_uuids
             exercise_uuids = clue_exercise_uuids_by_book_container_uuids
               .values_at(*same_mapping_book_container_uuids).flatten
+            next if exercise_uuids.empty?
 
             # Load all responses from the students
             # that refer to any exercise in the same_mapping_book_container_uuids
             [ student_uuids, exercise_uuids ]
-          end
+          end.compact
         end + teacher_clues_to_update
           .flat_map do |to_ecosystem_uuid, to_ecosystem_teacher_clues|
           to_ecosystem_teacher_clues.map do |to_book_container_uuid, course_container_uuids|
@@ -336,6 +337,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             # Find all exercises in the above book_container_uuids
             exercise_uuids = clue_exercise_uuids_by_book_container_uuids
               .values_at(*same_mapping_book_container_uuids).flatten
+            next if exercise_uuids.empty?
 
             # Teacher clues use all students in the same course container
             student_uuids = student_uuids_by_course_container_uuids
@@ -344,7 +346,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             # Load all responses from students in the same course containers
             # that refer to any exercise in the same_mapping_book_container_uuids
             [ student_uuids, exercise_uuids ]
-          end
+          end.compact
         end
 
         # Map student_uuids and exercise_group_uuids to correctness information
