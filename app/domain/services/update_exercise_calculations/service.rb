@@ -3,6 +3,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
     calculation_uuids = exercise_calculation_updates.map { |calc| calc[:calculation_uuid] }
     exercise_calculations_by_uuid = ExerciseCalculation.where(uuid: calculation_uuids)
                                                        .select(:uuid, :algorithm_names)
+                                                       .lock('FOR NO KEY UPDATE')
                                                        .index_by(&:uuid)
 
     algorithm_exercise_calculations = []
@@ -50,8 +51,8 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
 
     # Cleanup AssignmentSpes, AssignmentPes and StudentPes that no longer have
     # an associated AlgorithmExerciseCalculation record
-    AssignmentSpe.unassociated.delete_all
     AssignmentPe.unassociated.delete_all
+    AssignmentSpe.unassociated.delete_all
     StudentPe.unassociated.delete_all
 
     { exercise_calculation_update_responses: exercise_calculation_update_responses }

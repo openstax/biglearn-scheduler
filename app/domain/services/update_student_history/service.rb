@@ -70,13 +70,14 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
 
         # Recalculate SPEs for affected students
         completed_assignment_student_uuids = completed_assignments.map(&:student_uuid)
-        AssignmentSpe.joins(:assignment)
-                     .where(assignments: { student_uuid: completed_assignment_student_uuids })
-                     .delete_all
         AlgorithmExerciseCalculation
           .joins(exercise_calculation: :assignments)
           .where(assignments: { student_uuid: completed_assignment_student_uuids })
           .update_all(is_uploaded_for_assignments: false)
+
+        AssignmentSpe.joins(:assignment)
+                     .where(assignments: { student_uuid: completed_assignment_student_uuids })
+                     .delete_all
 
         num_responses
       end
@@ -111,13 +112,14 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         Assignment.where(uuid: due_assignment_uuids).update_all('"student_history_at" = "due_at"')
 
         due_assignment_student_uuids = due_assignments.map(&:student_uuid)
-        AssignmentSpe.joins(:assignment)
-                     .where(assignments: { student_uuid: due_assignment_student_uuids })
-                     .delete_all
         AlgorithmExerciseCalculation
           .joins(exercise_calculation: :assignments)
           .where(assignments: { student_uuid: due_assignment_student_uuids })
           .update_all(is_uploaded_for_assignments: false)
+
+        AssignmentSpe.joins(:assignment)
+                     .where(assignments: { student_uuid: due_assignment_student_uuids })
+                     .delete_all
 
         due_assignments.size
       end

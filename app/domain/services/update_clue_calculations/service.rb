@@ -4,10 +4,12 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
     student_clue_calculations_by_uuid = StudentClueCalculation
                                           .where(uuid: relevant_calculation_uuids)
                                           .select(:uuid, :student_uuid, :algorithm_names)
+                                          .lock('FOR NO KEY UPDATE')
                                           .index_by(&:uuid)
     teacher_clue_calculations_by_uuid = TeacherClueCalculation
                                           .where(uuid: relevant_calculation_uuids)
                                           .select(:uuid, :algorithm_names)
+                                          .lock('FOR NO KEY UPDATE')
                                           .index_by(&:uuid)
 
     algorithm_student_clue_calculations = []

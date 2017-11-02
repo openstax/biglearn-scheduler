@@ -26,8 +26,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       num_algorithm_exercise_calculations = AlgorithmExerciseCalculation.transaction do
         # Find algorithm_exercise_calculations with assignments that need PEs or SPEs
         algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
-          .where(is_uploaded_for_assignments: false)
           .select([:uuid, :algorithm_name, :exercise_uuids])
+          .where(is_uploaded_for_assignments: false)
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .limit(BATCH_SIZE)
           .index_by(&:uuid)
@@ -431,15 +431,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
         AssignmentPe.import assignment_pes, validate: false
 
-        # Remove SPEs for any assignments that are using the PEs above (PEs have priority over SPEs)
-        unless assignment_pes.empty?
-          assignment_pe_uuids = assignment_pes.map(&:uuid)
-
-          AssignmentSpe.joins(:conflicting_assignment_pes)
-                       .where(assignment_pes: { uuid: assignment_pe_uuids })
-                       .delete_all
-        end
-
         excluded_pe_uuids_by_assignment_uuid = Hash.new { |hash, key| hash[key] = [] }
         AssignmentPe
           .where(assignment_uuid: spe_assignment_uuids)
@@ -532,6 +523,15 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           if assignment_spe_requests.any?
 
         AssignmentSpe.import assignment_spes, validate: false
+
+        # Remove SPEs for any assignments that are using the PEs above (PEs have priority over SPEs)
+        unless assignment_pes.empty?
+          assignment_pe_uuids = assignment_pes.map(&:uuid)
+
+          AssignmentSpe.joins(:conflicting_assignment_pes)
+                       .where(assignment_pes: { uuid: assignment_pe_uuids })
+                       .delete_all
+        end
 
         # Mark the AlgorithmExerciseCalculations as uploaded
         AlgorithmExerciseCalculation.where(uuid: algorithm_exercise_calculation_uuids)
