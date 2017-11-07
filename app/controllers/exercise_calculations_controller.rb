@@ -56,7 +56,7 @@ class ExerciseCalculationsController < JsonApiController
           },
           'minItems': 0,
           'maxItems': 10
-        },
+        }
       },
       'required': ['exercise_calculations'],
       'additionalProperties': false,

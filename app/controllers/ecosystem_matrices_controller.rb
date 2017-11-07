@@ -49,7 +49,7 @@ class EcosystemMatricesController < JsonApiController
           },
           'minItems': 0,
           'maxItems': 1000
-        },
+        }
       },
       'required': ['ecosystem_matrix_updates'],
       'additionalProperties': false,

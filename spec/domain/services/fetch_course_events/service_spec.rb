@@ -361,7 +361,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       let(:assignment_uuid)                   { SecureRandom.uuid }
       let(:is_deleted)                        { [true, false].sample }
       let(:ecosystem_uuid)                    { SecureRandom.uuid }
-      let(:student_uuid)                      { SecureRandom.uuid }
+      let(:student)                           { FactoryGirl.create :student, course: course }
+      let(:student_uuid)                      { student.uuid }
       let(:assignment_type)                   do
         ['reading', 'homework', 'practice', 'concept-coach'].sample
       end
@@ -384,6 +385,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           }
         end
       end
+      let(:assigned_exercise_uuids) { assigned_exercises.map { |ex| ex.fetch(:exercise_uuid) } }
       let(:event_data)                        do
         due_at = Time.current.tomorrow.iso8601
 
@@ -419,8 +421,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       end
 
       it 'creates an Assignment for the Course' do
-        assigned_exercise_uuids = assigned_exercises.map { |ex| ex.fetch(:exercise_uuid) }
-
         expect { subject.process }.to  not_change { Course.count }
                                   .and not_change { EcosystemPreparation.count }
                                   .and not_change { BookContainerMapping.count }
@@ -454,8 +454,79 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         expect(assignment.pes_are_assigned).to eq pes_are_assigned
       end
 
-      xcontext 'with an existing assignment with SPE/PE calculations and associated records' do
-        it 'updates the existing assignment' do
+      context 'with an existing assignment with SPE/PE calculations and associated records' do
+        let(:exercise_calculation)           do
+          FactoryGirl.create :exercise_calculation, student: student
+        end
+        let(:algorithm_exercise_calculation) do
+          FactoryGirl.create :algorithm_exercise_calculation,
+            exercise_calculation: exercise_calculation,
+            is_uploaded_for_student: true,
+            is_uploaded_for_assignments: true
+        end
+        let!(:existing_assignment)           do
+          FactoryGirl.create :assignment, uuid: assignment_uuid, student_uuid: student_uuid
+        end
+        let!(:existing_assignment_pes)       do
+          assigned_exercise_uuids.map do |assigned_exercise_uuid|
+            FactoryGirl.create :assignment_pe,
+              assignment: other_assignment,
+              exercise_uuid: assigned_exercise_uuid,
+              algorithm_exercise_calculation: algorithm_exercise_calculation
+          end
+        end
+        let!(:existing_assignment_spes)      do
+          assigned_exercise_uuids.map do |assigned_exercise_uuid|
+            FactoryGirl.create :assignment_spe,
+              assignment: other_assignment,
+              exercise_uuid: assigned_exercise_uuid,
+              algorithm_exercise_calculation: algorithm_exercise_calculation
+          end
+        end
+        let!(:existing_student_pes)          do
+          assigned_exercise_uuids.map do |assigned_exercise_uuid|
+            FactoryGirl.create :student_pe,
+              exercise_uuid: assigned_exercise_uuid,
+              algorithm_exercise_calculation: algorithm_exercise_calculation
+          end
+        end
+
+        it 'updates the existing assignment and marks the algorithm calculations for reupload' do
+          expect { subject.process }.to  not_change { Course.count }
+                                    .and not_change { EcosystemPreparation.count }
+                                    .and not_change { BookContainerMapping.count }
+                                    .and not_change { CourseContainer.count }
+                                    .and not_change { Student.count }
+                                    .and not_change { Assignment.count }
+                                    .and change     { AssignedExercise.count }
+                                                      .by(num_assigned_exercises)
+                                    .and not_change { Response.count }
+                                    .and not_change { other_assignment.reload.spes_are_assigned }
+                                    .and not_change { other_assignment.reload.pes_are_assigned }
+                                    .and change     { course.reload.sequence_number }
+                                                      .from(0).to(sequence_number + 1)
+                                    .and not_change { course.ecosystem_uuid }
+                                    .and not_change { course.course_excluded_exercise_uuids }
+                                    .and not_change { course.course_excluded_exercise_group_uuids }
+                                    .and not_change { course.global_excluded_exercise_uuids }
+                                    .and not_change { course.global_excluded_exercise_group_uuids }
+
+          assignment = existing_assignment.reload
+          expect(assignment.course_uuid).to eq course.uuid
+          expect(assignment.ecosystem_uuid).to eq ecosystem_uuid
+          expect(assignment.student_uuid).to eq student_uuid
+          expect(assignment.assignment_type).to eq assignment_type
+          expect(assignment.assigned_book_container_uuids).to eq assigned_book_container_uuids
+          expect(assignment.assigned_exercise_uuids).to eq assigned_exercise_uuids.uniq
+
+          expect(assignment.goal_num_tutor_assigned_spes).to eq goal_num_tutor_assigned_spes
+          expect(assignment.spes_are_assigned).to eq spes_are_assigned
+          expect(assignment.goal_num_tutor_assigned_pes).to eq goal_num_tutor_assigned_pes
+          expect(assignment.pes_are_assigned).to eq pes_are_assigned
+
+          algorithm_exercise_calculation.reload
+          expect(algorithm_exercise_calculation.is_uploaded_for_student).to eq false
+          expect(algorithm_exercise_calculation.is_uploaded_for_assignments).to eq false
         end
       end
     end

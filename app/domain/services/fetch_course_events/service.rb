@@ -522,57 +522,50 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     unless assigned_exercises.empty?
       # Find conflicting SPEs and PEs for students with updated assignments
       # (with the same exercise_uuids) and mark them for recalculation
-      assigned_exercise_uuids = assigned_exercises.map(&:uuid)
+      assigned_exercise_uuids = assigned_exercises.map do |assigned_exercise|
+        AssignedExercise.sanitize assigned_exercise.uuid
+      end.join(', ')
 
-      assignment_calc_uuids_to_recalculate.concat AssignmentSpe.connection.execute(
-        <<-DELETE_SQL.strip_heredoc
-          DELETE FROM "assignment_spes"
-          WHERE "assignment_spes"."id" IN (
-            SELECT "assignment_spes"."id"
-            FROM "assignment_spes"
-              INNER JOIN "assignments"
-                ON "assignments"."uuid" = "assignment_spes"."assignment_uuid"
-              INNER JOIN "assignments" "same_student_assignments"
-                ON "same_student_assignments"."student_uuid" = "assignments"."student_uuid"
-              INNER JOIN "assignment_spes" "similar_assignment_spes"
-                ON "similar_assignment_spes"."assignment_uuid" = "same_student_assignments"."uuid"
-                AND "similar_assignment_spes"."algorithm_exercise_calculation_uuid" =
-                  "assignment_spes"."algorithm_exercise_calculation_uuid"
-              INNER JOIN "assigned_exercises"
-                ON "assigned_exercises"."assignment_uuid" = "same_student_assignments"."uuid"
-                AND "assigned_exercises"."exercise_uuid" = "similar_assignment_spes"."exercise_uuid"
-            WHERE "assigned_exercises"."uuid" IN (#{
-              assigned_exercise_uuids.map { |uuid| "'#{uuid}'" }.join(', ')
-            })
-          )
-          RETURNING "assignment_spes"."algorithm_exercise_calculation_uuid"
-        DELETE_SQL
-      ).to_a
-
-      assignment_calc_uuids_to_recalculate.concat AssignmentPe.connection.execute(
-        <<-DELETE_SQL.strip_heredoc
-          DELETE FROM "assignment_pes"
-          WHERE "assignment_pes"."id" IN (
-            SELECT "assignment_pes"."id"
-            FROM "assignment_pes"
-              INNER JOIN "assignments"
-                ON "assignments"."uuid" = "assignment_pes"."assignment_uuid"
-              INNER JOIN "assignments" "same_student_assignments"
-                ON "same_student_assignments"."student_uuid" = "assignments"."student_uuid"
-              INNER JOIN "assignment_pes" "similar_assignment_pes"
-                ON "similar_assignment_pes"."assignment_uuid" = "same_student_assignments"."uuid"
-                AND "similar_assignment_pes"."algorithm_exercise_calculation_uuid" =
-                  "assignment_pes"."algorithm_exercise_calculation_uuid"
-              INNER JOIN "assigned_exercises"
-                ON "assigned_exercises"."assignment_uuid" = "same_student_assignments"."uuid"
-                AND "assigned_exercises"."exercise_uuid" = "similar_assignment_pes"."exercise_uuid"
-            WHERE "assigned_exercises"."uuid" IN (#{
-              assigned_exercise_uuids.map { |uuid| "'#{uuid}'" }.join(', ')
-            })
-          )
-          RETURNING "assignment_pes"."algorithm_exercise_calculation_uuid"
-        DELETE_SQL
-      ).to_a
+      assignment_calc_uuids_to_recalculate.concat(
+        (
+          AssignmentSpe.connection.execute(
+            <<-DELETE_SQL.strip_heredoc
+              DELETE FROM "assignment_spes"
+              WHERE "assignment_spes"."id" IN (
+                SELECT "assignment_spes"."id"
+                FROM "assignment_spes"
+                  INNER JOIN "assignments"
+                    ON "assignments"."uuid" = "assignment_spes"."assignment_uuid"
+                  INNER JOIN "assignments" "same_student_assignments"
+                    ON "same_student_assignments"."student_uuid" = "assignments"."student_uuid"
+                  INNER JOIN "assigned_exercises"
+                    ON "assigned_exercises"."assignment_uuid" = "same_student_assignments"."uuid"
+                    AND "assigned_exercises"."exercise_uuid" = "assignment_spes"."exercise_uuid"
+                WHERE "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids})
+              )
+              RETURNING "assignment_spes"."algorithm_exercise_calculation_uuid"
+            DELETE_SQL
+          ).to_a + AssignmentPe.connection.execute(
+            <<-DELETE_SQL.strip_heredoc
+              DELETE FROM "assignment_pes"
+              WHERE "assignment_pes"."id" IN (
+                SELECT "assignment_pes"."id"
+                FROM "assignment_pes"
+                  INNER JOIN "assignments"
+                    ON "assignments"."uuid" = "assignment_pes"."assignment_uuid"
+                  INNER JOIN "assignments" "same_student_assignments"
+                    ON "same_student_assignments"."student_uuid" = "assignments"."student_uuid"
+                  INNER JOIN "assigned_exercises"
+                    ON "assigned_exercises"."assignment_uuid" = "same_student_assignments"."uuid"
+                    AND "assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"
+                WHERE "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids})
+              )
+              RETURNING "assignment_pes"."algorithm_exercise_calculation_uuid"
+            DELETE_SQL
+          ).to_a
+        ).map { |hash| hash['algorithm_exercise_calculation_uuid'] }
+      )
+      assignment_calc_uuids_to_recalculate = assignment_calc_uuids_to_recalculate.uniq
 
       student_calc_uuids_to_recalculate = StudentPe.connection.execute(
         <<-DELETE_SQL.strip_heredoc
@@ -580,24 +573,22 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           WHERE "student_pes"."id" IN (
             SELECT "student_pes"."id"
             FROM "student_pes"
+              INNER JOIN "algorithm_exercise_calculations"
+                ON "algorithm_exercise_calculations"."uuid" =
+                  "student_pes"."algorithm_exercise_calculation_uuid"
               INNER JOIN "exercise_calculations"
                 ON "exercise_calculations"."uuid" =
-                  "student_pes"."algorithm_exercise_calculation_uuid"
+                  "algorithm_exercise_calculations"."exercise_calculation_uuid"
               INNER JOIN "assignments"
                 ON "assignments"."student_uuid" = "exercise_calculations"."student_uuid"
-              INNER JOIN "student_pes" "similar_student_pes"
-                ON "similar_student_pes"."algorithm_exercise_calculation_uuid" =
-                  "student_pes"."algorithm_exercise_calculation_uuid"
               INNER JOIN "assigned_exercises"
                 ON "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
-                AND "assigned_exercises"."exercise_uuid" = "similar_student_pes"."exercise_uuid"
-            WHERE "assigned_exercises"."uuid" IN (#{
-              assigned_exercise_uuids.map { |uuid| "'#{uuid}'" }.join(', ')
-            })
+                AND "assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"
+            WHERE "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids})
           )
           RETURNING "student_pes"."algorithm_exercise_calculation_uuid"
         DELETE_SQL
-      ).to_a
+      ).map { |hash| hash['algorithm_exercise_calculation_uuid'] }.uniq
 
       AlgorithmExerciseCalculation.where(uuid: student_calc_uuids_to_recalculate)
                                   .update_all(is_uploaded_for_student: false)
