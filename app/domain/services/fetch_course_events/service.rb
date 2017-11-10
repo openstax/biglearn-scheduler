@@ -522,6 +522,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     unless assigned_exercises.empty?
       # Find conflicting SPEs and PEs for students with updated assignments
       # (with the same exercise_uuids) and mark them for recalculation
+      # We delete not only the conflicting SPE/PE, but also all other SPEs/PEs
+      # for the same assignment and algorithm_exercise_calculation
+      # since they are only recalculated when none exist
       assigned_exercise_uuids = assigned_exercises.map do |assigned_exercise|
         AssignedExercise.sanitize assigned_exercise.uuid
       end.join(', ')
@@ -532,14 +535,19 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             <<-DELETE_SQL.strip_heredoc
               DELETE FROM "assignment_spes"
               WHERE "assignment_spes"."id" IN (
-                SELECT "assignment_spes"."id"
-                FROM "assignment_spes"
-                  INNER JOIN "assignments"
-                    ON "assignments"."uuid" = "assignment_spes"."assignment_uuid"
+                SELECT "same_assignment_spes"."id"
+                FROM "assignment_spes" "same_assignment_spes"
+                  INNER JOIN "assignment_spes"
+                    ON "assignment_spes"."assignment_uuid" =
+                      "same_assignment_spes"."assignment_uuid"
+                    AND "assignment_spes"."algorithm_exercise_calculation_uuid" =
+                      "same_assignment_spes"."algorithm_exercise_calculation_uuid"
                   INNER JOIN "assignments" "same_student_assignments"
-                    ON "same_student_assignments"."student_uuid" = "assignments"."student_uuid"
+                    ON "same_student_assignments"."uuid" = "assignment_spes"."assignment_uuid"
+                  INNER JOIN "assignments"
+                    ON "assignments"."student_uuid" = "same_student_assignments"."student_uuid"
                   INNER JOIN "assigned_exercises"
-                    ON "assigned_exercises"."assignment_uuid" = "same_student_assignments"."uuid"
+                    ON "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
                     AND "assigned_exercises"."exercise_uuid" = "assignment_spes"."exercise_uuid"
                 WHERE "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids})
               )
@@ -549,14 +557,18 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             <<-DELETE_SQL.strip_heredoc
               DELETE FROM "assignment_pes"
               WHERE "assignment_pes"."id" IN (
-                SELECT "assignment_pes"."id"
-                FROM "assignment_pes"
-                  INNER JOIN "assignments"
-                    ON "assignments"."uuid" = "assignment_pes"."assignment_uuid"
+                SELECT "same_assignment_pes"."id"
+                FROM "assignment_pes" "same_assignment_pes"
+                  INNER JOIN "assignment_pes"
+                    ON "assignment_pes"."assignment_uuid" = "same_assignment_pes"."assignment_uuid"
+                    AND "assignment_pes"."algorithm_exercise_calculation_uuid" =
+                      "same_assignment_pes"."algorithm_exercise_calculation_uuid"
                   INNER JOIN "assignments" "same_student_assignments"
-                    ON "same_student_assignments"."student_uuid" = "assignments"."student_uuid"
+                    ON "same_student_assignments"."uuid" = "assignment_pes"."assignment_uuid"
+                  INNER JOIN "assignments"
+                    ON "assignments"."student_uuid" = "same_student_assignments"."student_uuid"
                   INNER JOIN "assigned_exercises"
-                    ON "assigned_exercises"."assignment_uuid" = "same_student_assignments"."uuid"
+                    ON "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
                     AND "assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"
                 WHERE "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids})
               )
@@ -571,8 +583,11 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         <<-DELETE_SQL.strip_heredoc
           DELETE FROM "student_pes"
           WHERE "student_pes"."id" IN (
-            SELECT "student_pes"."id"
-            FROM "student_pes"
+            SELECT "same_student_pes"."id"
+            FROM "student_pes" "same_student_pes"
+              INNER JOIN "student_pes"
+                ON "student_pes"."algorithm_exercise_calculation_uuid" =
+                  "same_student_pes"."algorithm_exercise_calculation_uuid"
               INNER JOIN "algorithm_exercise_calculations"
                 ON "algorithm_exercise_calculations"."uuid" =
                   "student_pes"."algorithm_exercise_calculation_uuid"

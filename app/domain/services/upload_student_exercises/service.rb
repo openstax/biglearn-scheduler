@@ -27,17 +27,14 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           .index_by(&:uuid)
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
 
+        # Checking that no StudentPes exist for these AlgorithmExerciseCalculations is not
+        # necessary because whenever we flip is_uploaded_for_students back to false
+        # we also delete all the StudentPes for that AlgorithmExerciseCalculation
         students = Student
           .select([ st[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
           .joins(:course, exercise_calculations: :algorithm_exercise_calculations)
           .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
           .where(ec[:ecosystem_uuid].eq(cc[:ecosystem_uuid]))
-          # Not necessary because whenever we flip is_uploaded_for_students back to false
-          # we also delete all the StudentPes for that algorithm_exercise_calculation
-          # spe = StudentPe.arel_table
-          #.where(
-          #  StudentPe.where(spe[:algorithm_exercise_calculation_uuid].eq aec[:uuid]).exists.not
-          #)
         student_uuids = students.map(&:uuid)
 
         # Get the worst clues for each student
