@@ -531,7 +531,34 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
       assignment_calc_uuids_to_recalculate.concat(
         (
-          AssignmentSpe.connection.execute(
+          AssignmentPe.connection.execute(
+            <<-DELETE_SQL.strip_heredoc
+              DELETE FROM "assignment_pes"
+              WHERE "assignment_pes"."id" IN (
+                SELECT "same_assignment_pes"."id"
+                FROM "assignment_pes" "same_assignment_pes"
+                  INNER JOIN "assignment_pes"
+                    ON "assignment_pes"."assignment_uuid" = "same_assignment_pes"."assignment_uuid"
+                    AND "assignment_pes"."algorithm_exercise_calculation_uuid" =
+                      "same_assignment_pes"."algorithm_exercise_calculation_uuid"
+                  INNER JOIN "algorithm_exercise_calculations"
+                    ON "algorithm_exercise_calculations"."uuid" =
+                      "assignment_pes"."algorithm_exercise_calculation_uuid"
+                  INNER JOIN "exercise_calculations"
+                    ON "exercise_calculations"."uuid" =
+                      "algorithm_exercise_calculations"."exercise_calculation_uuid"
+                  INNER JOIN "assignments"
+                    ON "assignments"."student_uuid" = "exercise_calculations"."student_uuid"
+                  INNER JOIN "assigned_exercises"
+                    ON "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
+                    AND "assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"
+                WHERE "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids})
+                FOR NO KEY UPDATE OF "algorithm_exercise_calculations"
+                FOR UPDATE OF "same_assignment_pes"
+              )
+              RETURNING "assignment_pes"."algorithm_exercise_calculation_uuid"
+            DELETE_SQL
+          ).to_a + AssignmentSpe.connection.execute(
             <<-DELETE_SQL.strip_heredoc
               DELETE FROM "assignment_spes"
               WHERE "assignment_spes"."id" IN (
@@ -542,37 +569,22 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                       "same_assignment_spes"."assignment_uuid"
                     AND "assignment_spes"."algorithm_exercise_calculation_uuid" =
                       "same_assignment_spes"."algorithm_exercise_calculation_uuid"
-                  INNER JOIN "assignments" "same_student_assignments"
-                    ON "same_student_assignments"."uuid" = "assignment_spes"."assignment_uuid"
+                  INNER JOIN "algorithm_exercise_calculations"
+                    ON "algorithm_exercise_calculations"."uuid" =
+                      "assignment_spes"."algorithm_exercise_calculation_uuid"
+                  INNER JOIN "exercise_calculations"
+                    ON "exercise_calculations"."uuid" =
+                      "algorithm_exercise_calculations"."exercise_calculation_uuid"
                   INNER JOIN "assignments"
-                    ON "assignments"."student_uuid" = "same_student_assignments"."student_uuid"
+                    ON "assignments"."student_uuid" = "exercise_calculations"."student_uuid"
                   INNER JOIN "assigned_exercises"
                     ON "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
                     AND "assigned_exercises"."exercise_uuid" = "assignment_spes"."exercise_uuid"
                 WHERE "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids})
+                FOR NO KEY UPDATE OF "algorithm_exercise_calculations"
+                FOR UPDATE OF "same_assignment_spes"
               )
               RETURNING "assignment_spes"."algorithm_exercise_calculation_uuid"
-            DELETE_SQL
-          ).to_a + AssignmentPe.connection.execute(
-            <<-DELETE_SQL.strip_heredoc
-              DELETE FROM "assignment_pes"
-              WHERE "assignment_pes"."id" IN (
-                SELECT "same_assignment_pes"."id"
-                FROM "assignment_pes" "same_assignment_pes"
-                  INNER JOIN "assignment_pes"
-                    ON "assignment_pes"."assignment_uuid" = "same_assignment_pes"."assignment_uuid"
-                    AND "assignment_pes"."algorithm_exercise_calculation_uuid" =
-                      "same_assignment_pes"."algorithm_exercise_calculation_uuid"
-                  INNER JOIN "assignments" "same_student_assignments"
-                    ON "same_student_assignments"."uuid" = "assignment_pes"."assignment_uuid"
-                  INNER JOIN "assignments"
-                    ON "assignments"."student_uuid" = "same_student_assignments"."student_uuid"
-                  INNER JOIN "assigned_exercises"
-                    ON "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
-                    AND "assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"
-                WHERE "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids})
-              )
-              RETURNING "assignment_pes"."algorithm_exercise_calculation_uuid"
             DELETE_SQL
           ).to_a
         ).map { |hash| hash['algorithm_exercise_calculation_uuid'] }
@@ -600,6 +612,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 ON "assigned_exercises"."assignment_uuid" = "assignments"."uuid"
                 AND "assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"
             WHERE "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids})
+            FOR NO KEY UPDATE OF "algorithm_exercise_calculations"
+            FOR UPDATE OF "same_student_pes"
           )
           RETURNING "student_pes"."algorithm_exercise_calculation_uuid"
         DELETE_SQL
