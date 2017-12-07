@@ -5,7 +5,7 @@ class Services::FetchEcosystemMatrixUpdates::Service < Services::ApplicationServ
     sanitized_algorithm_name = AlgorithmEcosystemMatrixUpdate.sanitize(algorithm_name.downcase)
 
     ecosystem_matrix_updates = EcosystemMatrixUpdate
-      .where.not("\"algorithm_names\" @> ARRAY[#{sanitized_algorithm_name}]::varchar[]")
+      .where.not("\"algorithm_names\" && ARRAY[#{sanitized_algorithm_name}]::varchar[]")
       .take(BATCH_SIZE)
 
     ecosystem_matrix_update_responses = ecosystem_matrix_updates.map do |ecosystem_matrix_update|

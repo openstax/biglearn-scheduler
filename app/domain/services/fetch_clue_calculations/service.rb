@@ -5,11 +5,11 @@ class Services::FetchClueCalculations::Service < Services::ApplicationService
     sanitized_algorithm_name = ActiveRecord::Base.sanitize(algorithm_name.downcase)
 
     student_clue_calculations = StudentClueCalculation
-      .where.not("\"algorithm_names\" @> ARRAY[#{sanitized_algorithm_name}]::varchar[]")
+      .where.not("\"algorithm_names\" && ARRAY[#{sanitized_algorithm_name}]::varchar[]")
       .take(BATCH_SIZE)
 
     teacher_clue_calculations = TeacherClueCalculation
-      .where.not("\"algorithm_names\" @> ARRAY[#{sanitized_algorithm_name}]::varchar[]")
+      .where.not("\"algorithm_names\" && ARRAY[#{sanitized_algorithm_name}]::varchar[]")
       .take(BATCH_SIZE)
 
     clue_calculations = student_clue_calculations + teacher_clue_calculations
