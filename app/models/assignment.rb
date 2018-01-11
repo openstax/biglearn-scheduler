@@ -17,6 +17,11 @@ class Assignment < ApplicationRecord
     foreign_key: :student_uuid,
     inverse_of: :assignments
 
+  belongs_to :student, primary_key: :uuid,
+                       foreign_key: :student_uuid,
+                       optional: true,
+                       inverse_of: :assignments
+
   scope :need_spes, -> do
     where(
       arel_table[:spes_are_assigned].eq(false).and(
