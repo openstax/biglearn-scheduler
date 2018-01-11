@@ -7,6 +7,8 @@ RSpec.describe Assignment, type: :model do
   it { is_expected.to have_many(:assignment_pes).dependent(:destroy) }
   it { is_expected.to have_many(:assignment_spes).dependent(:destroy) }
 
+  it { is_expected.to belong_to(:student) }
+
   it { is_expected.to validate_presence_of :course_uuid }
   it { is_expected.to validate_presence_of :ecosystem_uuid }
   it { is_expected.to validate_presence_of :student_uuid }
