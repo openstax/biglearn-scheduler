@@ -330,6 +330,11 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         end + teacher_clues_to_update
           .flat_map do |to_ecosystem_uuid, to_ecosystem_teacher_clues|
           to_ecosystem_teacher_clues.map do |to_book_container_uuid, course_container_uuids|
+            # Teacher clues use all students in the same course container
+            student_uuids = student_uuids_by_course_container_uuids
+              .values_at(*course_container_uuids).compact.flatten
+            next if student_uuids.empty?
+
             # Reverse map to find book_container_uuids that map to the to_book_container_uuid
             same_mapping_book_container_uuids = [ to_book_container_uuid ] +
               reverse_mappings[to_ecosystem_uuid][to_book_container_uuid].values
@@ -338,10 +343,6 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             exercise_uuids = clue_exercise_uuids_by_book_container_uuids
               .values_at(*same_mapping_book_container_uuids).flatten
             next if exercise_uuids.empty?
-
-            # Teacher clues use all students in the same course container
-            student_uuids = student_uuids_by_course_container_uuids
-              .values_at(*course_container_uuids).compact.flatten
 
             # Load all responses from students in the same course containers
             # that refer to any exercise in the same_mapping_book_container_uuids
