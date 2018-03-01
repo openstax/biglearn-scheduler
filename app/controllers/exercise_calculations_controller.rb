@@ -3,6 +3,8 @@
 class ExerciseCalculationsController < JsonApiController
 
   def fetch_exercise_calculations
+    ScoutApm::RequestManager.lookup.ignore_request!
+
     respond_with_json_apis_and_service(
       input_schema: _fetch_exercise_calculations_request_payload_schema,
       output_schema: _fetch_exercise_calculations_response_payload_schema,

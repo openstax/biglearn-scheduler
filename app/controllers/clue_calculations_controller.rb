@@ -1,6 +1,8 @@
 class ClueCalculationsController < JsonApiController
 
   def fetch_clue_calculations
+    ScoutApm::RequestManager.lookup.ignore_request!
+
     respond_with_json_apis_and_service(
       input_schema: _fetch_clue_calculations_request_payload_schema,
       output_schema: _fetch_clue_calculations_response_payload_schema,
