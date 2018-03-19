@@ -127,7 +127,8 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 3,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        has_exercise_calculation: true
       )
       @reading_2 = FactoryGirl.create(
         :assignment,
@@ -140,7 +141,8 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 3,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        has_exercise_calculation: true
       )
       @reading_3 = FactoryGirl.create(
         :assignment,
@@ -153,7 +155,8 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 3,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        has_exercise_calculation: true
       )
       @reading_4 = FactoryGirl.create(
         :assignment,
@@ -166,7 +169,8 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 3,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        has_exercise_calculation: false
       )
 
       # No Biglearn exercises requested
@@ -181,7 +185,8 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: true,
         goal_num_tutor_assigned_pes: 0,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        has_exercise_calculation: true
       )
       @homework_2 = FactoryGirl.create(
         :assignment,
@@ -194,7 +199,8 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: true,
         goal_num_tutor_assigned_pes: 0,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        has_exercise_calculation: true
       )
     end
 
@@ -207,20 +213,16 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
           student_uuid: @student_1.uuid
         },
         {
-          ecosystem_uuid: @ecosystem_1.uuid,
-          student_uuid: @student_2.uuid
-        },
-        {
           ecosystem_uuid: @ecosystem_3.uuid,
           student_uuid: @student_1.uuid
-        },
-        {
-          ecosystem_uuid: @ecosystem_3.uuid,
-          student_uuid: @student_2.uuid
         },
         {
           ecosystem_uuid: @ecosystem_4.uuid,
           student_uuid: @student_1.uuid
+        },
+        {
+          ecosystem_uuid: @ecosystem_3.uuid,
+          student_uuid: @student_2.uuid
         },
         {
           ecosystem_uuid: @ecosystem_4.uuid,
@@ -230,9 +232,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
     end
 
     let!(:responses) do
-      [
-        @reading_1, @reading_2, @reading_3, @reading_4, @homework_1, @homework_2
-      ].flat_map do |assignment|
+      [ @reading_1, @homework_1 ].flat_map do |assignment|
         student_uuid = assignment.student_uuid
 
         assignment.assigned_exercise_uuids.map do |assigned_exercise_uuid|
