@@ -43,8 +43,9 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
         # Get the ecosystem UUIDs for assignments that need SPEs or PEs for each student above
         # and also include other students that are missing assignment ExerciseCalculations
         assignment_pairs = Assignment
-          .where(student_uuid: response_student_uuids).or(
-            Assignment.where(
+          .where(student_uuid: response_student_uuids)
+          .or(
+            Assignment.where(has_exercise_calculation: false).where(
               ExerciseCalculation.where(
                 ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
               ).exists.not
@@ -87,6 +88,13 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
         # Cleanup AlgorithmExerciseCalculations that no longer have
         # an associated ExerciseCalculation record
         AlgorithmExerciseCalculation.unassociated.delete_all
+
+        # Check if any assignments with has_exercise_calculation: false need to be updated
+        Assignment.joins(:student).need_spes_or_pes.where(has_exercise_calculation: false).where(
+          ExerciseCalculation.where(
+            ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
+          ).exists
+        ).update_all(has_exercise_calculation: true)
 
         [ num_responses, course_pairs.size, assignment_pairs.size ]
       end

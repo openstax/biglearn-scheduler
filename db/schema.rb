@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20171025224253) do
+ActiveRecord::Schema.define(version: 20180319193544) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -127,6 +127,7 @@ ActiveRecord::Schema.define(version: 20171025224253) do
     t.datetime "created_at",                    null: false
     t.datetime "updated_at",                    null: false
     t.datetime "student_history_at"
+    t.boolean  "has_exercise_calculation",      null: false
     t.index ["course_uuid"], name: "index_assignments_on_course_uuid", using: :btree
     t.index ["due_at", "opens_at", "created_at"], name: "index_assignments_on_due_at_and_opens_at_and_created_at", using: :btree
     t.index ["due_at", "student_history_at"], name: "index_assignments_on_due_at_and_student_history_at", using: :btree
@@ -134,6 +135,7 @@ ActiveRecord::Schema.define(version: 20171025224253) do
     t.index ["feedback_at"], name: "index_assignments_on_feedback_at", using: :btree
     t.index ["goal_num_tutor_assigned_pes"], name: "index_assignments_on_goal_num_tutor_assigned_pes", using: :btree
     t.index ["goal_num_tutor_assigned_spes"], name: "index_assignments_on_goal_num_tutor_assigned_spes", using: :btree
+    t.index ["has_exercise_calculation"], name: "index_assignments_on_has_exercise_calculation", using: :btree
     t.index ["opens_at"], name: "index_assignments_on_opens_at", using: :btree
     t.index ["pes_are_assigned"], name: "index_assignments_on_pes_are_assigned", using: :btree
     t.index ["spes_are_assigned"], name: "index_assignments_on_spes_are_assigned", using: :btree
