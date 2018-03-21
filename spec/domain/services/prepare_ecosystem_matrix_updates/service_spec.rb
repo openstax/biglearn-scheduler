@@ -20,20 +20,32 @@ RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service 
       @ecosystem_3 = FactoryGirl.create :ecosystem
       @ecosystem_4 = FactoryGirl.create :ecosystem
 
+      exercise_group_1 = FactoryGirl.create :exercise_group, next_update_response_count: 1,
+                                                             trigger_ecosystem_matrix_update: false
+      exercise_1 = FactoryGirl.create :exercise, exercise_group: exercise_group_1
       @ecosystem_exercise_1 = FactoryGirl.create :ecosystem_exercise,
-                                                 ecosystem_uuid: @ecosystem_1.uuid,
-                                                 next_ecosystem_matrix_update_response_count: 1
+                                                 ecosystem: @ecosystem_1,
+                                                 exercise: exercise_1
+
+      exercise_group_2 = FactoryGirl.create :exercise_group, next_update_response_count: 2,
+                                                             trigger_ecosystem_matrix_update: false
+      exercise_2 = FactoryGirl.create :exercise, exercise_group: exercise_group_2
       @ecosystem_exercise_2 = FactoryGirl.create :ecosystem_exercise,
-                                                 ecosystem_uuid: @ecosystem_2.uuid,
-                                                 next_ecosystem_matrix_update_response_count: 2
+                                                 ecosystem: @ecosystem_2,
+                                                 exercise: exercise_2
+
+      exercise_group_3 = FactoryGirl.create :exercise_group, next_update_response_count: 1,
+                                                             trigger_ecosystem_matrix_update: false
+      exercise_3 = FactoryGirl.create :exercise, exercise_group: exercise_group_3
       @ecosystem_exercise_3 = FactoryGirl.create :ecosystem_exercise,
-                                                 ecosystem_uuid: @ecosystem_3.uuid,
-                                                 next_ecosystem_matrix_update_response_count: 1
-      exercise_group = FactoryGirl.create :exercise_group, used_in_ecosystem_matrix_updates: false
-      exercise = FactoryGirl.create :exercise, exercise_group: exercise_group
+                                                 ecosystem: @ecosystem_3,
+                                                 exercise: exercise_3
+
+      exercise_group_4 = FactoryGirl.create :exercise_group, trigger_ecosystem_matrix_update: true
+      exercise_4 = FactoryGirl.create :exercise, exercise_group: exercise_group_4
       @ecosystem_exercise_4 = FactoryGirl.create :ecosystem_exercise,
-                                                 ecosystem_uuid: @ecosystem_4.uuid,
-                                                 exercise: exercise
+                                                 ecosystem: @ecosystem_4,
+                                                 exercise: exercise_4
 
       @response_1 = FactoryGirl.create :response,
                                        ecosystem_uuid: @ecosystem_exercise_1.ecosystem_uuid,

@@ -6,6 +6,5 @@ FactoryGirl.define do
     ecosystem
     exercise
     book_container_uuids { book_containers_count.times.map { SecureRandom.uuid } }
-    next_ecosystem_matrix_update_response_count 0
   end
 end

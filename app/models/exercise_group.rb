@@ -4,5 +4,6 @@ class ExerciseGroup < ApplicationRecord
                        dependent: :destroy,
                        inverse_of: :exercise_group
 
-  validates :response_count, presence: true, numericality: { only_integer: true }
+  validates :response_count, :next_update_response_count,
+            presence: true, numericality: { only_integer: true }
 end
