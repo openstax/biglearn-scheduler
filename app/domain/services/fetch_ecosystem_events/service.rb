@@ -148,7 +148,8 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
           exercise_groups << ExerciseGroup.new(
             uuid: group_uuid,
             response_count: 0,
-            used_in_ecosystem_matrix_updates: false
+            next_update_response_count: 1,
+            trigger_ecosystem_matrix_update: true
           )
         end
 
@@ -165,8 +166,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
               uuid: SecureRandom.uuid,
               ecosystem_uuid: ecosystem_uuid,
               exercise_uuid: exercise_uuid,
-              book_container_uuids: book_container_uuids,
-              next_ecosystem_matrix_update_response_count: 0
+              book_container_uuids: book_container_uuids
             )
           end
         end
@@ -178,7 +178,9 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
     end.compact
 
     results << ExerciseGroup.import(
-      exercise_groups, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+      exercise_groups, validate: false, on_duplicate_key_update: {
+        conflict_target: [ :uuid ], columns: [ :trigger_ecosystem_matrix_update ]
+      }
     )
 
     results << Exercise.import(

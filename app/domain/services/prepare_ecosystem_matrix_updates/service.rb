@@ -2,16 +2,17 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
   RESPONSE_BATCH_SIZE = 100
   EXERCISE_GROUP_BATCH_SIZE = 10
 
-  # Update once every time we have 10% new responses for any exercise in the ecosystem
+  # Update every time we have 10% new responses for any ExerciseGroup
   UPDATE_THRESHOLD = 0.1
 
   def process
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
-    ee = Ecosystem.arel_table
+    ec = Ecosystem.arel_table
     eex = EcosystemExercise.arel_table
     eg = ExerciseGroup.arel_table
+    ex = Exercise.arel_table
 
     # Check new responses and update the response count for each affected exercise group
     total_responses = 0
@@ -27,20 +28,31 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         num_responses = responses.size
         next 0 if num_responses == 0
 
-        # Update the global counts of responses per exercise group
+        # Check if any ExerciseGroups should trigger ecosystem matrix updates
         group_uuids = responses.map(&:group_uuid)
-        ExerciseGroup.where(uuid: group_uuids).update_all(
-          <<-UPDATE_SQL.strip_heredoc
-            "response_count" = (
-              SELECT COUNT(DISTINCT "responses"."trial_uuid")
-                FROM "exercises"
-                  INNER JOIN "responses"
-                    ON "responses"."exercise_uuid" = "exercises"."uuid"
-                WHERE "exercises"."group_uuid" = "exercise_groups"."uuid"
-            ),
-            "used_in_ecosystem_matrix_updates" = FALSE
-          UPDATE_SQL
-        )
+        group_uuids_array_string = group_uuids.map { |uuid| ExerciseGroup.sanitize uuid }.join(', ')
+        ExerciseGroup
+          .where(
+            <<-WHERE_SQL.strip_heredoc
+              "exercise_groups"."uuid" IN (#{group_uuids_array_string})
+                AND "response_counts"."group_uuid" = "exercise_groups"."uuid"
+            WHERE_SQL
+          )
+          .update_all(
+            <<-UPDATE_SQL.strip_heredoc
+              "response_count" = "response_counts"."count",
+                "trigger_ecosystem_matrix_update" = "response_counts"."count" >=
+                  "exercise_groups"."next_update_response_count"
+              FROM (
+                SELECT "exercises"."group_uuid", COUNT(DISTINCT "responses"."trial_uuid") AS "count"
+                  FROM "exercises"
+                    INNER JOIN "responses"
+                      ON "responses"."exercise_uuid" = "exercises"."uuid"
+                  WHERE "exercises"."group_uuid" IN (#{group_uuids_array_string})
+                  GROUP BY "exercises"."group_uuid"
+              ) AS "response_counts"
+            UPDATE_SQL
+          )
 
         # Mark the responses as used in response counts
         response_uuids = responses.map(&:uuid)
@@ -57,73 +69,84 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
     # Check updated exercise groups and their ecosystems to see if we triggered a new matrix update
     total_ecosystems = 0
     loop do
-      num_exercise_groups, num_ecosystems = ExerciseGroup.transaction do
-        group_uuids = ExerciseGroup.where(used_in_ecosystem_matrix_updates: false)
-                                   .lock('FOR NO KEY UPDATE SKIP LOCKED')
-                                   .limit(EXERCISE_GROUP_BATCH_SIZE)
-                                   .pluck(:uuid)
-        num_exercise_groups = group_uuids.size
-        next [ 0, 0 ] if num_exercise_groups == 0
+      begin
+        num_exercise_groups, num_ecosystems = ExerciseGroup.transaction do
+          group_uuids = ExerciseGroup.where(trigger_ecosystem_matrix_update: true)
+                                     .lock('FOR NO KEY UPDATE SKIP LOCKED')
+                                     .limit(EXERCISE_GROUP_BATCH_SIZE)
+                                     .pluck(:uuid)
+          num_exercise_groups = group_uuids.size
+          next [ 0, 0 ] if num_exercise_groups == 0
 
-        # Get Ecosystems with Exercises whose number of Responses that have not yet
-        # been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
-        # We order by id here to avoid deadlocks when locking the ecosystems
-        # Cannot use SKIP LOCKED here, otherwise we could miss an Ecosystem that needs to be updated
-        ecosystem_uuids = Ecosystem
-          .where(
-            EcosystemExercise.joins(exercise: :exercise_group).where(
-              eex[:ecosystem_uuid].eq(ee[:uuid])
-                .and(eg[:uuid].in(group_uuids))
-                .and(eg[:response_count].gteq(eex[:next_ecosystem_matrix_update_response_count]))
-            ).exists
+          # Get Ecosystems with Exercises whose number of Responses that have not yet
+          # been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
+          # We order by id here to avoid deadlocks when locking the ecosystems
+          # Cannot use SKIP LOCKED here,
+          # otherwise we could miss an Ecosystem that needs to be updated
+          ecosystem_uuids = Ecosystem
+            .where(
+              EcosystemExercise.joins(exercise: :exercise_group).where(
+                eex[:ecosystem_uuid].eq(ec[:uuid]).and(eg[:uuid].in(group_uuids))
+              ).exists
+            )
+            .order(:id)
+            .lock('FOR NO KEY UPDATE')
+            .pluck(:uuid)
+
+          num_ecosystems = ecosystem_uuids.size
+          next [ num_exercise_groups, 0 ] if num_ecosystems == 0
+
+          # Record the counts needed to trigger the next update and clear the trigger flag
+          # NOWAIT is needed to avoid the possibility of deadlocking due to different processes
+          # locking different ExerciseGroups in the same ecosystem in the very first query
+          group_uuids_to_update = ExerciseGroup
+            .where(
+              EcosystemExercise.joins(:exercise).where(
+                eex[:ecosystem_uuid].in(ecosystem_uuids).and(ex[:group_uuid].eq(eg[:uuid]))
+              ).exists
+            )
+            .order(:id)
+            .lock('FOR NO KEY UPDATE NOWAIT')
+            .pluck(:uuid)
+
+          ExerciseGroup
+            .where(uuid: group_uuids_to_update)
+            .update_all(
+              <<-UPDATE_SQL.strip_heredoc
+                "trigger_ecosystem_matrix_update" = FALSE,
+                "next_update_response_count" =
+                  FLOOR((1 + #{UPDATE_THRESHOLD}) * "exercise_groups"."response_count") + 1
+              UPDATE_SQL
+            )
+
+          ecosystem_matrix_updates = ecosystem_uuids.map do |ecosystem_uuid|
+            EcosystemMatrixUpdate.new(
+              uuid: SecureRandom.uuid,
+              ecosystem_uuid: ecosystem_uuid
+            )
+          end
+
+          # Record any new ecosystem matrix updates
+          EcosystemMatrixUpdate.import(
+            ecosystem_matrix_updates, validate: false, on_duplicate_key_update: {
+              conflict_target: [ :ecosystem_uuid ], columns: [ :uuid, :algorithm_names ]
+            }
           )
-          .order(:id)
-          .lock('FOR NO KEY UPDATE')
-          .pluck(:uuid)
 
-        ExerciseGroup.where(uuid: group_uuids).update_all(used_in_ecosystem_matrix_updates: true)
+          # Cleanup AlgorithmEcosystemMatrixUpdates that no longer have
+          # an associated EcosystemMatrixUpdate record
+          AlgorithmEcosystemMatrixUpdate.unassociated.delete_all
 
-        num_ecosystems = ecosystem_uuids.size
-        next [ num_exercise_groups, 0 ] if num_ecosystems == 0
-
-        # Record the counts needed to trigger the next update
-        EcosystemExercise
-          .where(ecosystem_uuid: ecosystem_uuids)
-          .where('"exercises"."uuid" = "ecosystem_exercises"."exercise_uuid"')
-          .update_all(
-            <<-UPDATE_SQL.strip_heredoc
-              "next_ecosystem_matrix_update_response_count" =
-                FLOOR((1 + #{UPDATE_THRESHOLD}) * "exercise_groups"."response_count") + 1
-                FROM "exercises"
-                  INNER JOIN "exercise_groups"
-                    ON "exercise_groups"."uuid" = "exercises"."group_uuid"
-            UPDATE_SQL
-          )
-
-        ecosystem_matrix_updates = ecosystem_uuids.map do |ecosystem_uuid|
-          EcosystemMatrixUpdate.new(
-            uuid: SecureRandom.uuid,
-            ecosystem_uuid: ecosystem_uuid
-          )
+          [ num_exercise_groups, num_ecosystems ]
         end
 
-        # Record any new ecosystem matrix updates
-        EcosystemMatrixUpdate.import(
-          ecosystem_matrix_updates, validate: false, on_duplicate_key_update: {
-            conflict_target: [ :ecosystem_uuid ], columns: [ :uuid, :algorithm_names ]
-          }
-        )
-
-        # Cleanup AlgorithmEcosystemMatrixUpdates that no longer have
-        # an associated EcosystemMatrixUpdate record
-        AlgorithmEcosystemMatrixUpdate.unassociated.delete_all
-
-        [ num_exercise_groups, num_ecosystems ]
+        total_ecosystems += num_ecosystems
+        # If we got less exercise groups than the batch size, then this is the last batch
+        break if num_exercise_groups < EXERCISE_GROUP_BATCH_SIZE
+      rescue ActiveRecord::StatementInvalid => ee
+        raise unless ee.cause.is_a? PG::LockNotAvailable
+        # Swallow PG::LockNotAvailable errors and retry
       end
-
-      total_ecosystems += num_ecosystems
-      # If we got less exercise groups than the batch size, then this is the last batch
-      break if num_exercise_groups < EXERCISE_GROUP_BATCH_SIZE
     end
 
     log(:debug) do
