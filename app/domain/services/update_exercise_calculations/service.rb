@@ -3,8 +3,9 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
     calculation_uuids = exercise_calculation_updates.map { |calc| calc[:calculation_uuid] }
 
     ExerciseCalculation.transaction do
-      exercise_calculations_by_uuid = ExerciseCalculation.where(uuid: calculation_uuids)
-                                                         .select(:uuid, :algorithm_names)
+      exercise_calculations_by_uuid = ExerciseCalculation.select(:uuid, :algorithm_names)
+                                                         .where(uuid: calculation_uuids)
+                                                         .order(:student_uuid, :ecosystem_uuid)
                                                          .lock('FOR NO KEY UPDATE')
                                                          .index_by(&:uuid)
 

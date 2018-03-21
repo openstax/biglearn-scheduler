@@ -4,13 +4,15 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
 
     ActiveRecord::Base.transaction do
       student_clue_calculations_by_uuid = StudentClueCalculation
-                                            .where(uuid: relevant_calculation_uuids)
                                             .select(:uuid, :student_uuid, :algorithm_names)
+                                            .where(uuid: relevant_calculation_uuids)
+                                            .order(:student_uuid, :book_container_uuid)
                                             .lock('FOR NO KEY UPDATE')
                                             .index_by(&:uuid)
       teacher_clue_calculations_by_uuid = TeacherClueCalculation
-                                            .where(uuid: relevant_calculation_uuids)
                                             .select(:uuid, :algorithm_names)
+                                            .where(uuid: relevant_calculation_uuids)
+                                            .order(:course_container_uuid, :book_container_uuid)
                                             .lock('FOR NO KEY UPDATE')
                                             .index_by(&:uuid)
 
