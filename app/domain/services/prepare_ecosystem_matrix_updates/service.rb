@@ -89,7 +89,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
                 eex[:ecosystem_uuid].eq(ec[:uuid]).and(eg[:uuid].in(group_uuids))
               ).exists
             )
-            .order(:id)
+            .order(:uuid)
             .lock('FOR NO KEY UPDATE')
             .pluck(:uuid)
 
@@ -105,7 +105,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
                 eex[:ecosystem_uuid].in(ecosystem_uuids).and(ex[:group_uuid].eq(eg[:uuid]))
               ).exists
             )
-            .order(:id)
+            .order(:uuid)
             .lock('FOR NO KEY UPDATE NOWAIT')
             .pluck(:uuid)
 
