@@ -28,7 +28,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     # Query events for all courses in chunks
     loop do
       num_courses = Course.transaction do
-        course_relation = Course.order(:id).lock('FOR NO KEY UPDATE SKIP LOCKED')
+        course_relation = Course.order(:uuid).lock('FOR NO KEY UPDATE SKIP LOCKED')
         course_relation = course_relation.where(co[:id].gt(last_id)) unless last_id.nil?
         courses = course_relation.take(BATCH_SIZE)
         next 0 if courses.empty?
