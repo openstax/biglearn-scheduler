@@ -439,7 +439,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               )
             end.compact
           end
-        end
+        end.sort_by { |calc| [ calc.student_uuid, calc.book_container_uuid ] }
 
         # Calculate teacher CLUes
         teacher_clue_calculations = teacher_clues_to_update
@@ -490,7 +490,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               )
             end.compact
           end
-        end
+        end.sort_by { |calc| [ calc.course_container_uuid, calc.book_container_uuid ] }
 
         # Record the ClueCalculations
         StudentClueCalculation.import(
