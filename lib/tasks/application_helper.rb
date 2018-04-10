@@ -47,6 +47,7 @@ module Tasks
         ActionController::Base.logger = logger
         ActionView::Base.logger = logger
         ActionMailer::Base.logger = logger
+        Raven.configuration.logger = logger
 
         Worker.new(task_name_string).run
       end
