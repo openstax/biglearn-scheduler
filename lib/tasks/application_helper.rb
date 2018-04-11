@@ -49,6 +49,13 @@ module Tasks
         ActionMailer::Base.logger = logger
         Raven.configuration.logger = logger
 
+        # Don't send SystemExit to Sentry
+        OpenStax::RescueFrom.register_exception(
+          SystemExit,
+          status: :service_unavailable,
+          notify: false
+        )
+
         Worker.new(task_name_string).run
       end
     end
