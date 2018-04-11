@@ -57,8 +57,8 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
       # Cleanup AssignmentSpes, AssignmentPes and StudentPes that no longer have
       # an associated AlgorithmExerciseCalculation record
       AssignmentPe.unassociated.delete_all
-      AssignmentSpe.unassociated.delete_all
-      StudentPe.unassociated.delete_all
+      AssignmentSpe.where(id: AssignmentSpe.unassociated.order(:id).lock).delete_all
+      StudentPe.where(id: StudentPe.unassociated.order(:id).lock).delete_all
 
       { exercise_calculation_update_responses: exercise_calculation_update_responses }
     end

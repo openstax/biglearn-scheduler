@@ -109,6 +109,8 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
         StudentPe
           .joins(algorithm_exercise_calculation: :exercise_calculation)
           .joins(student_pes_join_query)
+          .order(:id)
+          .lock
           .delete_all
       end
 
