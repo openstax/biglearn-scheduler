@@ -77,6 +77,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
 
         AssignmentSpe.joins(:assignment)
                      .where(assignments: { student_uuid: completed_assignment_student_uuids })
+                     .order(:id)
+                     .lock
                      .delete_all
 
         num_responses
@@ -119,6 +121,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
 
         AssignmentSpe.joins(:assignment)
                      .where(assignments: { student_uuid: due_assignment_student_uuids })
+                     .order(:id)
+                     .lock
                      .delete_all
 
         due_assignments.size

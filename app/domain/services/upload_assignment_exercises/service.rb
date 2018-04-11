@@ -530,6 +530,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
           AssignmentSpe.joins(:conflicting_assignment_pes)
                        .where(assignment_pes: { uuid: assignment_pe_uuids })
+                       .order(:id)
+                       .lock
                        .delete_all
         end
 
