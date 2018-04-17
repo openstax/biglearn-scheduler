@@ -1,6 +1,9 @@
 require 'json-schema'
 
 class JsonApiController < ApplicationController
+
+  include ScoutIgnore
+
   API_TOKEN_HEADER = 'Biglearn-Scheduler-Token'
   API_TOKEN = Rails.application.secrets.openstax['biglearn']['scheduler']['token']
   VALIDATE_JSON = false

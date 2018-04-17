@@ -1,6 +1,8 @@
 class EcosystemMatricesController < JsonApiController
 
   def fetch_ecosystem_matrix_updates
+    scout_ignore! 0.99
+
     respond_with_json_apis_and_service(
       input_schema: _fetch_ecosystem_matrix_updates_request_payload_schema,
       output_schema: _fetch_ecosystem_matrix_updates_response_payload_schema,
