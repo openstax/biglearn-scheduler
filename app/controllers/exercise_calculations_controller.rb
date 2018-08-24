@@ -13,6 +13,8 @@ class ExerciseCalculationsController < JsonApiController
   end
 
   def update_exercise_calculations
+    scout_ignore! 0.90
+
     respond_with_json_apis_and_service(
       input_schema: _update_exercise_calculations_request_payload_schema,
       output_schema: _update_exercise_calculations_response_payload_schema,
