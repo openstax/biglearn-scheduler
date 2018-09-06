@@ -65,7 +65,11 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
         end
 
         student_uuid_ecosystem_uuid_pairs = (course_pairs + assignment_pairs).uniq
-        next [ num_responses, 0, 0 ] if student_uuid_ecosystem_uuid_pairs.empty?
+        if student_uuid_ecosystem_uuid_pairs.empty?
+          # Check if we missed any assignments that already have calculations
+          mark_assignments_with_calculations(ec, st, aa)
+          next [ num_responses, 0, 0 ]
+        end
 
         # Create the ExerciseCalculations
         exercise_calculations = student_uuid_ecosystem_uuid_pairs
@@ -85,12 +89,8 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
           }
         )
 
-        # Check if any assignments with has_exercise_calculation: false need to be updated
-        Assignment.joins(:student).need_spes_or_pes.where(has_exercise_calculation: false).where(
-          ExerciseCalculation.where(
-            ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
-          ).exists
-        ).update_all(has_exercise_calculation: true)
+        # Mark assignments that got new calculations (and any others we might have missed)
+        mark_assignments_with_calculations(ec, st, aa)
 
         # Cleanup AlgorithmExerciseCalculations that no longer have
         # an associated ExerciseCalculation record
@@ -112,5 +112,15 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
       "#{total_responses} response(s), #{total_course_pairs} updated course(s)/new student(s) and #{
       total_assignment_pairs} assignment(s) processed in #{Time.current - start_time} second(s)"
     end
+  end
+
+  def mark_assignments_with_calculations(ec, st, aa)
+    # Check if any assignments with has_exercise_calculation: false
+    # already have calculations and need to be updated
+    Assignment.joins(:student).need_spes_or_pes.where(has_exercise_calculation: false).where(
+      ExerciseCalculation.where(
+        ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
+      ).exists
+    ).update_all(has_exercise_calculation: true)
   end
 end
