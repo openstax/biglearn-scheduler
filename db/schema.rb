@@ -34,7 +34,7 @@ ActiveRecord::Schema.define(version: 20180907195330) do
     t.datetime "created_at",                                    null: false
     t.datetime "updated_at",                                    null: false
     t.boolean  "is_uploaded_for_student",                       null: false
-    t.uuid     "is_uploaded_for_assignment_uuids", default: [], null: false, array: true
+    t.string   "is_uploaded_for_assignment_uuids", default: [], null: false, array: true
     t.index ["exercise_calculation_uuid", "algorithm_name"], name: "index_alg_ex_calc_on_ex_calc_uuid_and_alg_name", unique: true, using: :btree
     t.index ["is_uploaded_for_assignment_uuids"], name: "index_alg_ex_calc_on_is_uploaded_for_assignment_uuids", using: :gin
     t.index ["is_uploaded_for_student"], name: "index_alg_ex_calc_on_is_uploaded_for_student", using: :btree

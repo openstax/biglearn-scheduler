@@ -1,6 +1,6 @@
 class ChangeAecIsUploadedForAssignmentsToUuidArray < ActiveRecord::Migration[5.0]
   def up
-    add_column :algorithm_exercise_calculations, :is_uploaded_for_assignment_uuids, :uuid,
+    add_column :algorithm_exercise_calculations, :is_uploaded_for_assignment_uuids, :string,
                array: true, null: false, default: []
 
     AlgorithmExerciseCalculation.where(is_uploaded_for_assignments: true).update_all(
