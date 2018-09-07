@@ -626,7 +626,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     end
 
     AlgorithmExerciseCalculation.where(uuid: assignment_calc_uuids_to_recalculate)
-                                .update_all(is_uploaded_for_assignments: false) \
+                                .update_all(is_uploaded_for_assignment_uuids: []) \
       unless assignment_calc_uuids_to_recalculate.empty?
 
     results << Course.import(

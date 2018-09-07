@@ -73,7 +73,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         AlgorithmExerciseCalculation
           .joins(exercise_calculation: :assignments)
           .where(assignments: { student_uuid: completed_assignment_student_uuids })
-          .update_all(is_uploaded_for_assignments: false)
+          .update_all(is_uploaded_for_assignment_uuids: [])
 
         AssignmentSpe.joins(:assignment)
                      .where(assignments: { student_uuid: completed_assignment_student_uuids })
@@ -117,7 +117,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         AlgorithmExerciseCalculation
           .joins(exercise_calculation: :assignments)
           .where(assignments: { student_uuid: due_assignment_student_uuids })
-          .update_all(is_uploaded_for_assignments: false)
+          .update_all(is_uploaded_for_assignment_uuids: [])
 
         AssignmentSpe.joins(:assignment)
                      .where(assignments: { student_uuid: due_assignment_student_uuids })

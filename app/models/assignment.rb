@@ -22,15 +22,6 @@ class Assignment < ApplicationRecord
                        optional: true,
                        inverse_of: :assignments
 
-  scope :need_spes, -> do
-    where(
-      arel_table[:spes_are_assigned].eq(false).and(
-        arel_table[:goal_num_tutor_assigned_spes].eq(nil).or(
-          arel_table[:goal_num_tutor_assigned_spes].gt(0)
-        )
-      )
-    )
-  end
   scope :need_pes, -> do
     where(
       arel_table[:pes_are_assigned].eq(false).and(
@@ -40,8 +31,24 @@ class Assignment < ApplicationRecord
       )
     )
   end
-  scope :need_spes_or_pes, -> do
-    need_spes.or(need_pes)
+  scope :need_spes, -> do
+    where(
+      arel_table[:spes_are_assigned].eq(false).and(
+        arel_table[:goal_num_tutor_assigned_spes].eq(nil).or(
+          arel_table[:goal_num_tutor_assigned_spes].gt(0)
+        )
+      )
+    )
+  end
+  scope :need_pes_or_spes, -> do
+    need_pes.or(need_spes)
+  end
+
+  def needs_pes?
+    !pes_are_assigned && (goal_num_tutor_assigned_pes.nil? || goal_num_tutor_assigned_pes > 0)
+  end
+  def needs_spes?
+    !spes_are_assigned && (goal_num_tutor_assigned_spes.nil? || goal_num_tutor_assigned_spes > 0)
   end
 
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
