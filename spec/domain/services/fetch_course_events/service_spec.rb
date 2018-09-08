@@ -455,8 +455,9 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       end
 
       context 'with an existing assignment with SPE/PE calculations and associated records' do
+        let(:ecosystem)                      { FactoryGirl.create :ecosystem, uuid: ecosystem_uuid }
         let(:exercise_calculation)           do
-          FactoryGirl.create :exercise_calculation, student: student
+          FactoryGirl.create :exercise_calculation, student: student, ecosystem: ecosystem
         end
         let!(:existing_assignment)           do
           FactoryGirl.create :assignment, uuid: assignment_uuid, student_uuid: student_uuid

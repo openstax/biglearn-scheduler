@@ -411,9 +411,18 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
         pes_are_assigned: false
       )
 
-      [ @reading_1, @homework_1 ].each do |assignment|
-        FactoryGirl.create :assignment_spe, assignment: assignment
-      end
+      @exercise_calculation_1 = FactoryGirl.create :exercise_calculation,
+                                                   student_uuid: student.uuid,
+                                                   ecosystem_uuid: ecosystem_1.uuid
+      @exercise_calculation_2 = FactoryGirl.create :exercise_calculation,
+                                                   student_uuid: student.uuid,
+                                                   ecosystem_uuid: ecosystem_2.uuid
+
+      @aec_1 = FactoryGirl.create :algorithm_exercise_calculation,
+                                  exercise_calculation: @exercise_calculation_1,
+                                  is_uploaded_for_assignment_uuids: [ @reading_1.uuid ]
+      @aec_2 = FactoryGirl.create :algorithm_exercise_calculation,
+                                  exercise_calculation: @exercise_calculation_2
     end
 
     after(:all)  { DatabaseCleaner.clean }
@@ -457,7 +466,9 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
 
       it 'adds the assignments to the student history in the correct order' do
         expect { subject.process }.to  not_change { Assignment.count }
-                                  .and change     { AssignmentSpe.count }.by(-2)
+                                  .and not_change { AssignmentSpe.count  }
+                                  .and     change { @aec_1.reload.is_uploaded_for_assignment_uuids }
+                                  .and not_change { @aec_2.reload.is_uploaded_for_assignment_uuids }
 
         student_history_assignments = Assignment
           .where(uuid: all_assignment_uuids)
@@ -483,7 +494,9 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
 
       it 'adds the assignments to the student history in the correct order' do
         expect { subject.process }.to  not_change { Assignment.count }
-                                  .and change     { AssignmentSpe.count }.by(-2)
+                                  .and not_change { AssignmentSpe.count  }
+                                  .and     change { @aec_1.reload.is_uploaded_for_assignment_uuids }
+                                  .and not_change { @aec_2.reload.is_uploaded_for_assignment_uuids }
 
         student_history_assignments = Assignment
           .where(uuid: all_assignment_uuids)
@@ -509,7 +522,9 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
 
       it 'adds the assignments to the student history in the correct order' do
         expect { subject.process }.to  not_change { Assignment.count }
-                                  .and change { AssignmentSpe.count }.by(-2)
+                                  .and not_change { AssignmentSpe.count  }
+                                  .and     change { @aec_1.reload.is_uploaded_for_assignment_uuids }
+                                  .and not_change { @aec_2.reload.is_uploaded_for_assignment_uuids }
 
         student_history_assignments = Assignment
           .where(uuid: all_assignment_uuids)
@@ -543,7 +558,9 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
 
       it 'adds the assignments to the student history in the correct order' do
         expect { subject.process }.to  not_change { Assignment.count }
-                                  .and change     { AssignmentSpe.count }.by(-2)
+                                  .and not_change { AssignmentSpe.count  }
+                                  .and     change { @aec_1.reload.is_uploaded_for_assignment_uuids }
+                                  .and not_change { @aec_2.reload.is_uploaded_for_assignment_uuids }
 
         student_history_assignments = Assignment
           .where(uuid: all_assignment_uuids)

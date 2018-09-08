@@ -75,7 +75,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                   "values"."algorithm_exercise_calculation_uuid"
             )
           WHERE_SQL
-          AssignmentPe.where(assignment_pe_where_query).delete_all
+          AssignmentPe.where(
+            id: AssignmentPe.where(assignment_pe_where_query).order(:id).lock
+          ).delete_all
         end
         spe_assignments = assignments.select(&:needs_spes?)
         unless spe_assignments.empty?
@@ -93,7 +95,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                   "values"."algorithm_exercise_calculation_uuid"
             )
           WHERE_SQL
-          AssignmentSpe.where(assignment_spe_where_query).delete_all
+          AssignmentSpe.where(
+            id: AssignmentSpe.where(assignment_spe_where_query).order(:id).lock
+          ).delete_all
         end
 
         spe_student_uuids = spe_assignments.map(&:student_uuid)
