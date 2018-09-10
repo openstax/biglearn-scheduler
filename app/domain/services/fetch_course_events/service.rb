@@ -522,16 +522,16 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       # Anti-cheating: we don't allow StudentPes that have already been assigned elsewhere
       # Recalculate Student PEs that conflict with the AssignedExercises that were just created
       AlgorithmExerciseCalculation
-        .joins(:student_pes, exercise_calculation: { assignments: :assigned_exercises })
+        .joins(:student_pes,
+               exercise_calculation: { student: { assignments: :assigned_exercises } })
         .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
         .where(assigned_exercises: { uuid: assigned_exercise_uuids })
         .update_all(is_uploaded_for_student: false)
 
-      # Recalculate Assignment PEs and SPEs that conflict
-      # with the AssignedExercises that were just created
-      # to prevent assignments with 2 copies of an exercise
+      # Recalculate Assignment PEs and SPEs that conflict with the AssignedExercises that were just
+      # created to prevent any assignment from getting a PE or SPE that was already used elsewhere
       AlgorithmExerciseCalculation
-        .joins(exercise_calculation: { assignments: :assigned_exercises })
+        .joins(exercise_calculation: { student: { assignments: :assigned_exercises } })
         .where(assigned_exercises: { uuid: assigned_exercise_uuids })
         .update_all(
           <<-UPDATE_SQL.strip_heredoc
