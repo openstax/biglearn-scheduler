@@ -578,7 +578,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         assignments.each do |assignment|
           algorithm_exercise_calculation =
             algorithm_exercise_calculations_by_uuid[assignment.algorithm_exercise_calculation_uuid]
-          algorithm_exercise_calculation.is_uploaded_for_assignment_uuids << assignment.uuid
+          algorithm_exercise_calculation.is_uploaded_for_assignment_uuids =
+            algorithm_exercise_calculation.is_uploaded_for_assignment_uuids + [ assignment.uuid ]
         end
         algorithm_exercise_calculations = algorithm_exercise_calculations_by_uuid.values
         AlgorithmExerciseCalculation.import algorithm_exercise_calculations,
