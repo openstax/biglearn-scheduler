@@ -5,8 +5,8 @@ class ChangeAecIsUploadedForAssignmentsToUuidArray < ActiveRecord::Migration[5.0
 
     AlgorithmExerciseCalculation.where(is_uploaded_for_assignments: true).update_all(
       <<-UPDATE_SQL.strip_heredoc
-        "is_uploaded_for_assignment_uuids" = (
-          SELECT ARRAY_AGG("assignments"."uuid")
+        "is_uploaded_for_assignment_uuids" = ARRAY(
+          SELECT "assignments"."uuid"
           FROM "assignments"
           INNER JOIN "exercise_calculations"
             ON "exercise_calculations"."student_uuid" = "assignments"."student_uuid"
