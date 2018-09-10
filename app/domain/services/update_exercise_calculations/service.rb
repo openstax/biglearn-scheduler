@@ -26,7 +26,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
             exercise_calculation: exercise_calculation,
             algorithm_name: algorithm_name,
             exercise_uuids: exercise_calculation_update.fetch(:exercise_uuids),
-            is_uploaded_for_assignments: false,
+            is_uploaded_for_assignment_uuids: [],
             is_uploaded_for_student: false
           )
 
@@ -41,7 +41,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
         algorithm_exercise_calculations, validate: false, on_duplicate_key_update: {
           conflict_target: [ :exercise_calculation_uuid, :algorithm_name ],
           columns: [
-            :uuid, :exercise_uuids, :is_uploaded_for_assignments, :is_uploaded_for_student
+            :uuid, :exercise_uuids, :is_uploaded_for_assignment_uuids, :is_uploaded_for_student
           ]
         }
       )
@@ -56,7 +56,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
 
       # Cleanup AssignmentSpes, AssignmentPes and StudentPes that no longer have
       # an associated AlgorithmExerciseCalculation record
-      AssignmentPe.unassociated.delete_all
+      AssignmentPe.where(id: AssignmentPe.unassociated.order(:id).lock).delete_all
       AssignmentSpe.where(id: AssignmentSpe.unassociated.order(:id).lock).delete_all
       StudentPe.where(id: StudentPe.unassociated.order(:id).lock).delete_all
 

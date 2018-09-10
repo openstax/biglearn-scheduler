@@ -446,8 +446,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
       @algorithm_exercise_calculation_1 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_1,
-        exercise_uuids: old_exercise_uuids.shuffle,
-        is_uploaded_for_assignments: false
+        exercise_uuids: old_exercise_uuids.shuffle
       )
 
       exercise_calculation_2 = FactoryGirl.create(
@@ -458,8 +457,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
       @algorithm_exercise_calculation_2 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_2,
-        exercise_uuids: new_exercise_uuids.shuffle,
-        is_uploaded_for_assignments: false
+        exercise_uuids: new_exercise_uuids.shuffle
       )
     end
 

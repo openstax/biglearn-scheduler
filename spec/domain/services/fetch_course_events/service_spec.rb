@@ -455,17 +455,18 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       end
 
       context 'with an existing assignment with SPE/PE calculations and associated records' do
+        let(:ecosystem)                      { FactoryGirl.create :ecosystem, uuid: ecosystem_uuid }
         let(:exercise_calculation)           do
-          FactoryGirl.create :exercise_calculation, student: student
+          FactoryGirl.create :exercise_calculation, student: student, ecosystem: ecosystem
+        end
+        let!(:existing_assignment)           do
+          FactoryGirl.create :assignment, uuid: assignment_uuid, student_uuid: student_uuid
         end
         let(:algorithm_exercise_calculation) do
           FactoryGirl.create :algorithm_exercise_calculation,
             exercise_calculation: exercise_calculation,
             is_uploaded_for_student: true,
-            is_uploaded_for_assignments: true
-        end
-        let!(:existing_assignment)           do
-          FactoryGirl.create :assignment, uuid: assignment_uuid, student_uuid: student_uuid
+            is_uploaded_for_assignment_uuids: [ existing_assignment.uuid ]
         end
         let!(:existing_assignment_pes)       do
           assigned_exercise_uuids.map do |assigned_exercise_uuid|
@@ -526,7 +527,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
 
           algorithm_exercise_calculation.reload
           expect(algorithm_exercise_calculation.is_uploaded_for_student).to eq false
-          expect(algorithm_exercise_calculation.is_uploaded_for_assignments).to eq false
+          expect(algorithm_exercise_calculation.is_uploaded_for_assignment_uuids).to eq []
         end
       end
     end

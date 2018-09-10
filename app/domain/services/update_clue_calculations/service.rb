@@ -99,19 +99,17 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
             StudentPe::CLUE_TO_EXERCISE_ALGORITHM_NAME[calculation.algorithm_name]
           ]
         end
-        student_pes_join_query = <<-JOIN_SQL.strip_heredoc
+        algorithm_exercise_calculation_join_query = <<-JOIN_SQL.strip_heredoc
           INNER JOIN (#{ValuesTable.new(student_pes_values_array)})
             AS "values" ("student_uuid", "algorithm_name")
               ON "exercise_calculations"."student_uuid" = "values"."student_uuid"
                 AND "algorithm_exercise_calculations"."algorithm_name" = "values"."algorithm_name"
         JOIN_SQL
 
-        StudentPe
-          .joins(algorithm_exercise_calculation: :exercise_calculation)
-          .joins(student_pes_join_query)
-          .order(:id)
-          .lock
-          .delete_all
+        AlgorithmExerciseCalculation
+          .joins(:exercise_calculation)
+          .joins(algorithm_exercise_calculation_join_query)
+          .update_all(is_uploaded_for_student: false)
       end
 
       { clue_calculation_update_responses: clue_calculation_update_responses }

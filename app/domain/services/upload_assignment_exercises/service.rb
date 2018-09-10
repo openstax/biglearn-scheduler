@@ -17,6 +17,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     log(:debug) { "Started at #{start_time}" }
 
     aa = Assignment.arel_table
+    ec = ExerciseCalculation.arel_table
     aec = AlgorithmExerciseCalculation.arel_table
     ape = AssignmentPe.arel_table
     aspe = AssignmentSpe.arel_table
@@ -26,40 +27,78 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       num_algorithm_exercise_calculations = AlgorithmExerciseCalculation.transaction do
         # Find algorithm_exercise_calculations with assignments that need PEs or SPEs
         algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
-          .select([:uuid, :algorithm_name, :exercise_uuids])
-          .where(is_uploaded_for_assignments: false)
+          .joins(:exercise_calculation)
+          .where(
+            Assignment.need_pes_or_spes.where(
+              aa[:student_uuid].eq(ec[:student_uuid]).and(
+                aa[:ecosystem_uuid].eq(ec[:ecosystem_uuid])
+              )
+            )
+            .where.not(
+              <<-NOT_SQL.strip_heredoc
+                "algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids" @>
+                ARRAY["assignments"."uuid"::varchar]
+              NOT_SQL
+            ).exists
+          )
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .limit(BATCH_SIZE)
           .index_by(&:uuid)
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
 
-        pe_assignments = Assignment
-          .need_pes
+        assignments = Assignment
+          .need_pes_or_spes
           .select([ aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
           .joins(exercise_calculation: :algorithm_exercise_calculations)
           .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
-          .where(
-            AssignmentPe.where(
-              ape[:assignment_uuid].eq(aa[:uuid]).and(
-                ape[:algorithm_exercise_calculation_uuid].eq aec[:uuid]
-              )
-            ).exists.not
+          .where.not(
+            <<-NOT_SQL.strip_heredoc
+              "algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids" @>
+              ARRAY["assignments"."uuid"::varchar]
+            NOT_SQL
           )
 
-        spe_assignments = Assignment
-          .need_spes
-          .select([ aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
-          .joins(exercise_calculation: :algorithm_exercise_calculations)
-          .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
-          .where(
-            AssignmentSpe.where(
-              aspe[:assignment_uuid].eq(aa[:uuid]).and(
-                aspe[:algorithm_exercise_calculation_uuid].eq aec[:uuid]
-              )
-            ).exists.not
-          )
-
-        assignments = (pe_assignments + spe_assignments).uniq
+        # Delete relevant AssignmentPe and AssignmentSpes, since we are about to reupload them
+        pe_assignments = assignments.select(&:needs_pes?)
+        unless pe_assignments.empty?
+          assignment_pe_values = pe_assignments.map do |pe_assignment|
+            [ pe_assignment.uuid, pe_assignment.algorithm_exercise_calculation_uuid ]
+          end
+          assignment_pe_where_query = <<-WHERE_SQL.strip_heredoc
+            "assignment_pes"."id" IN (
+              SELECT "assignment_pes"."id"
+              FROM "assignment_pes"
+              INNER JOIN (#{ValuesTable.new(assignment_pe_values)}) AS "values"
+                ("assignment_uuid", "algorithm_exercise_calculation_uuid")
+                ON "assignment_pes"."assignment_uuid" = "values"."assignment_uuid"
+                AND "assignment_pes"."algorithm_exercise_calculation_uuid" =
+                  "values"."algorithm_exercise_calculation_uuid"
+            )
+          WHERE_SQL
+          AssignmentPe.where(
+            id: AssignmentPe.where(assignment_pe_where_query).order(:id).lock
+          ).delete_all
+        end
+        spe_assignments = assignments.select(&:needs_spes?)
+        unless spe_assignments.empty?
+          assignment_spe_values = spe_assignments.map do |spe_assignment|
+            [ spe_assignment.uuid, spe_assignment.algorithm_exercise_calculation_uuid ]
+          end
+          assignment_spe_where_query = <<-WHERE_SQL.strip_heredoc
+            "assignment_spes"."id" IN (
+              SELECT "assignment_spes"."id"
+              FROM "assignment_spes"
+              INNER JOIN (#{ValuesTable.new(assignment_spe_values)}) AS "values"
+                ("assignment_uuid", "algorithm_exercise_calculation_uuid")
+                ON "assignment_spes"."assignment_uuid" = "values"."assignment_uuid"
+                AND "assignment_spes"."algorithm_exercise_calculation_uuid" =
+                  "values"."algorithm_exercise_calculation_uuid"
+            )
+          WHERE_SQL
+          AssignmentSpe.where(
+            id: AssignmentSpe.where(assignment_spe_where_query).order(:id).lock
+          ).delete_all
+        end
 
         spe_student_uuids = spe_assignments.map(&:student_uuid)
         spe_assignment_types = spe_assignments.map(&:assignment_type)
@@ -536,10 +575,18 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         end
 
         # Mark the AlgorithmExerciseCalculations as uploaded
-        AlgorithmExerciseCalculation.where(uuid: algorithm_exercise_calculation_uuids)
-                                    .update_all(is_uploaded_for_assignments: true)
+        assignments.each do |assignment|
+          algorithm_exercise_calculation =
+            algorithm_exercise_calculations_by_uuid[assignment.algorithm_exercise_calculation_uuid]
+          algorithm_exercise_calculation.is_uploaded_for_assignment_uuids << assignment.uuid
+        end
+        algorithm_exercise_calculations = algorithm_exercise_calculations_by_uuid.values
+        AlgorithmExerciseCalculation.import algorithm_exercise_calculations,
+                                            validate: false, on_duplicate_key_update: {
+          conflict_target: [ :id ], columns: [ :is_uploaded_for_assignment_uuids ]
+        }
 
-        algorithm_exercise_calculation_uuids.size
+        algorithm_exercise_calculations.size
       end
 
       # If we got less records than both batch sizes, then this is the last batch

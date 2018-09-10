@@ -52,7 +52,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
             )
           )
           .joins(:student)
-          .need_spes_or_pes
+          .need_pes_or_spes
           .lock('FOR NO KEY UPDATE OF "students" SKIP LOCKED')
           .limit(BATCH_SIZE)
           .pluck('"students"."uuid"', :ecosystem_uuid)
@@ -117,7 +117,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
   def mark_assignments_with_calculations(ec, st, aa)
     # Check if any assignments with has_exercise_calculation: false
     # already have calculations and need to be updated
-    Assignment.joins(:student).need_spes_or_pes.where(has_exercise_calculation: false).where(
+    Assignment.joins(:student).need_pes_or_spes.where(has_exercise_calculation: false).where(
       ExerciseCalculation.where(
         ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
       ).exists
