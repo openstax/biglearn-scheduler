@@ -79,7 +79,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
             ecosystem_uuid: ecosystem_uuid,
             student_uuid: student_uuid
           )
-        end
+        end.sort_by { |calc| [ calc.student_uuid, calc.ecosystem_uuid ] }
 
         # Record the ExerciseCalculations
         ExerciseCalculation.import(
