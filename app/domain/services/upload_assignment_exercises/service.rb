@@ -465,7 +465,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         OpenStax::Biglearn::Api.update_assignment_pes(assignment_pe_requests) \
           if assignment_pe_requests.any?
 
-        AssignmentPe.import assignment_pes.sort_by(&AssignmentPe.sort_proc), validate: false
+        # No sort needed because no conflict clause
+        AssignmentPe.import assignment_pes, validate: false
 
         excluded_pe_uuids_by_assignment_uuid = Hash.new { |hash, key| hash[key] = [] }
         AssignmentPe
@@ -558,7 +559,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         OpenStax::Biglearn::Api.update_assignment_spes(assignment_spe_requests) \
           if assignment_spe_requests.any?
 
-        AssignmentSpe.import assignment_spes.sort_by(&AssignmentSpe.sort_proc), validate: false
+        # No sort needed because no conflict clause
+        AssignmentSpe.import assignment_spes, validate: false
 
         # Remove SPEs for any assignments that are using the PEs above (PEs have priority over SPEs)
         unless assignment_pes.empty?

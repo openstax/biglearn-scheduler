@@ -219,7 +219,8 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         OpenStax::Biglearn::Api.update_practice_worst_areas(student_pe_requests) \
           if student_pe_requests.any?
 
-        StudentPe.import student_pes.sort_by(&StudentPe.sort_proc), validate: false
+        # No sort needed because no conflict clause
+        StudentPe.import student_pes, validate: false
 
         # Mark the AlgorithmExerciseCalculations as uploaded
         # No order needed because already locked above
