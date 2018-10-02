@@ -21,7 +21,7 @@ class EcosystemExercise < ApplicationRecord
       where(
         <<-WHERE_SQL.strip_heredoc
           "student_clue_calculations"."exercise_uuids" @>
-          ARRAY["ecosystem_exercises"."exercise_uuid"]
+          ARRAY["ecosystem_exercises"."exercise_uuid"]::varchar[]
         WHERE_SQL
       )
     end,
@@ -29,9 +29,11 @@ class EcosystemExercise < ApplicationRecord
     foreign_key: :ecosystem_uuid,
     inverse_of: :ecosystem_exercises
   def student_clue_calculations
-    sanitized_exercise_uuid = "#{self.class.sanitize exercise_uuid}::uuid"
+    sanitized_exercise_uuid = self.class.sanitize exercise_uuid
     StudentClueCalculation.where(ecosystem_uuid: ecosystem_uuid).where(
-      "\"student_clue_calculations\".\"exercise_uuids\" @> ARRAY[#{sanitized_exercise_uuid}]"
+      <<-WHERE_SQL.strip_heredoc
+        "student_clue_calculations"."exercise_uuids" @> ARRAY[#{sanitized_exercise_uuid}]::varchar[]
+      WHERE_SQL
     )
   end
 
@@ -40,7 +42,7 @@ class EcosystemExercise < ApplicationRecord
       where(
         <<-WHERE_SQL.strip_heredoc
           "teacher_clue_calculations"."exercise_uuids" @>
-          ARRAY["ecosystem_exercises"."exercise_uuid"]
+          ARRAY["ecosystem_exercises"."exercise_uuid"]::varchar[]
         WHERE_SQL
       )
     end,
@@ -48,9 +50,11 @@ class EcosystemExercise < ApplicationRecord
     foreign_key: :ecosystem_uuid,
     inverse_of: :ecosystem_exercises
   def teacher_clue_calculations
-    sanitized_exercise_uuid = "#{self.class.sanitize exercise_uuid}::uuid"
+    sanitized_exercise_uuid = self.class.sanitize exercise_uuid
     TeacherClueCalculation.where(ecosystem_uuid: ecosystem_uuid).where(
-      "\"teacher_clue_calculations\".\"exercise_uuids\" @> ARRAY[#{sanitized_exercise_uuid}]"
+      <<-WHERE_SQL.strip_heredoc
+        "teacher_clue_calculations"."exercise_uuids" @> ARRAY[#{sanitized_exercise_uuid}]::varchar[]
+      WHERE_SQL
     )
   end
 

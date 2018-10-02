@@ -38,7 +38,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             .where.not(
               <<-NOT_SQL.strip_heredoc
                 "algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids" @>
-                ARRAY["assignments"."uuid"::varchar]
+                ARRAY["assignments"."uuid"]::varchar[]
               NOT_SQL
             ).exists
           )
@@ -55,7 +55,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           .where.not(
             <<-NOT_SQL.strip_heredoc
               "algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids" @>
-              ARRAY["assignments"."uuid"::varchar]
+              ARRAY["assignments"."uuid"]::varchar[]
             NOT_SQL
           )
 
