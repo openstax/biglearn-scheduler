@@ -13,11 +13,19 @@ class ApplicationRecord < ActiveRecord::Base
     end
 
     # Deadlock-resistant update_all and delete_all
-    define_singleton_method :ordered_update_all do |*args|
-      unscoped.where(uuid: ordered.lock('FOR NO KEY UPDATE').pluck(:uuid)).update_all(*args)
+    define_singleton_method :ordered_update_all do |*pargs, lock_sql: 'FOR NO KEY UPDATE', **kwargs|
+      uuids = ordered.lock(lock_sql).pluck(:uuid)
+      next 0 if uuids.empty?
+
+      args = kwargs.empty? ? pargs : pargs + [kwargs]
+      unscoped.where(uuid: uuids).update_all(*args)
     end
-    define_singleton_method :ordered_delete_all do |*args|
-      unscoped.where(uuid: ordered.lock.pluck(:uuid)).delete_all(*args)
+    define_singleton_method :ordered_delete_all do |*pargs, lock_sql: 'FOR UPDATE', **kwargs|
+      uuids = ordered.lock(lock_sql).pluck(:uuid)
+      next 0 if uuids.empty?
+
+      args = kwargs.empty? ? pargs : pargs + [kwargs]
+      unscoped.where(uuid: uuids).delete_all(*args)
     end
 
     last_column = columns.last
