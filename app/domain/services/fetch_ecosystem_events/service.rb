@@ -173,7 +173,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         end
       end
 
-      ecosystem.sequence_number = events.map{ |event| event.fetch(:sequence_number) }.max + 1
+      ecosystem.sequence_number = events.map { |event| event.fetch(:sequence_number) }.max + 1
 
       ecosystem
     end.compact

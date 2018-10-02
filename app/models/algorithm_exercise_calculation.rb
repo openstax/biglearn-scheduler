@@ -18,7 +18,7 @@ class AlgorithmExerciseCalculation < ApplicationRecord
 
   unique_index :exercise_calculation_uuid, :algorithm_name
 
-  validates :exercise_uuids,       presence: true
+  validates :exercise_uuids, presence: true
 
   scope :unassociated, -> do
     where.not(

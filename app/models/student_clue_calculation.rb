@@ -11,12 +11,22 @@ class StudentClueCalculation < ApplicationRecord
   has_many :ecosystem_exercises,
     -> do
       where(
-        '"ecosystem_exercises"."exercise_uuid" = ANY("student_clue_calculations"."exercise_uuids")'
+        <<-WHERE_SQL.strip_heredoc
+          "student_clue_calculations"."exercise_uuids" @>
+          ARRAY["ecosystem_exercises"."exercise_uuid"]
+        WHERE_SQL
       )
     end,
     primary_key: :ecosystem_uuid,
     foreign_key: :ecosystem_uuid,
     inverse_of: :student_clue_calculations
+  def ecosystem_exercises
+    sanitized_exercise_uuids = exercise_uuids.map { |uuid| "#{self.class.sanitize uuid}" }
+                                             .join(', ')
+    EcosystemExercise.where(ecosystem_uuid: ecosystem_uuid).where(
+      "\"ecosystem_exercises\".\"exercise_uuid\" IN (#{sanitized_exercise_uuids})"
+    )
+  end
 
   unique_index :student_uuid, :book_container_uuid
 

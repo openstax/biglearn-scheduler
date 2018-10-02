@@ -574,7 +574,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             SELECT UNNEST("algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids")
             EXCEPT
             SELECT "values"."uuid"::varchar
-            FROM (#{ValuesTable.new(assignment_uuids.map{ |uuid| [uuid] })}) AS "values" ("uuid")
+            FROM (#{ValuesTable.new(assignment_uuids.map { |uuid| [uuid] })}) AS "values" ("uuid")
           )
         UPDATE_SQL
       ) unless assignment_uuids.empty?

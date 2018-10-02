@@ -366,8 +366,8 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           response_join_query = <<-JOIN_SQL.strip_heredoc
             INNER JOIN (#{ValuesTable.new(response_values_array)})
               AS "values" ("student_uuids", "exercise_uuids")
-            ON "responses"."student_uuid" = ANY ("values"."student_uuids")
-              AND "responses"."exercise_uuid" = ANY ("values"."exercise_uuids")
+            ON "values"."student_uuids" @> ARRAY["responses"."student_uuid"]
+              AND "values"."exercise_uuids" @> ARRAY["responses"."exercise_uuid"]
           JOIN_SQL
           Response
             .joins(assigned_exercise: :assignment)

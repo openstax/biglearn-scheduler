@@ -9,6 +9,9 @@ class ExerciseCalculation < ApplicationRecord
     primary_key: :student_uuid,
     foreign_key: :student_uuid,
     inverse_of: :exercise_calculation
+  def assignments
+    Assignment.where student_uuid: student_uuid, ecosystem_uuid: ecosystem_uuid
+  end
 
   belongs_to :ecosystem, primary_key: :uuid,
                          foreign_key: :ecosystem_uuid,

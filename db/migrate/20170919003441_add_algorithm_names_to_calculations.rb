@@ -15,8 +15,7 @@ class AddAlgorithmNamesToCalculations < ActiveRecord::Migration[5.0]
           <<-UPDATE_SQL.strip_heredoc
             "algorithm_names" = (
               SELECT COALESCE(
-                ARRAY_AGG("algorithm_ecosystem_matrix_updates"."algorithm_name"),
-                ARRAY[]::varchar[]
+                ARRAY["algorithm_ecosystem_matrix_updates"."algorithm_name"], ARRAY[]::varchar[]
               )
               FROM "algorithm_ecosystem_matrix_updates"
               WHERE "algorithm_ecosystem_matrix_updates"."ecosystem_matrix_update_uuid" =
@@ -29,8 +28,7 @@ class AddAlgorithmNamesToCalculations < ActiveRecord::Migration[5.0]
           <<-UPDATE_SQL.strip_heredoc
             "algorithm_names" = (
               SELECT COALESCE(
-                ARRAY_AGG("algorithm_exercise_calculations"."algorithm_name"),
-                ARRAY[]::varchar[]
+                ARRAY["algorithm_exercise_calculations"."algorithm_name"], ARRAY[]::varchar[]
               )
               FROM "algorithm_exercise_calculations"
               WHERE "algorithm_exercise_calculations"."exercise_calculation_uuid" =
@@ -43,8 +41,7 @@ class AddAlgorithmNamesToCalculations < ActiveRecord::Migration[5.0]
           <<-UPDATE_SQL.strip_heredoc
             "algorithm_names" = (
               SELECT COALESCE(
-                ARRAY_AGG("algorithm_student_clue_calculations"."algorithm_name"),
-                ARRAY[]::varchar[]
+                ARRAY["algorithm_student_clue_calculations"."algorithm_name"], ARRAY[]::varchar[]
               )
               FROM "algorithm_student_clue_calculations"
               WHERE "algorithm_student_clue_calculations"."student_clue_calculation_uuid" =
@@ -57,8 +54,7 @@ class AddAlgorithmNamesToCalculations < ActiveRecord::Migration[5.0]
           <<-UPDATE_SQL.strip_heredoc
             "algorithm_names" = (
               SELECT COALESCE(
-                ARRAY_AGG("algorithm_teacher_clue_calculations"."algorithm_name"),
-                ARRAY[]::varchar[]
+                ARRAY["algorithm_teacher_clue_calculations"."algorithm_name"], ARRAY[]::varchar[]
               )
               FROM "algorithm_teacher_clue_calculations"
               WHERE "algorithm_teacher_clue_calculations"."teacher_clue_calculation_uuid" =

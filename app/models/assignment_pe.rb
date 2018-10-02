@@ -13,6 +13,9 @@ class AssignmentPe < ApplicationRecord
            primary_key: :assignment_uuid,
            foreign_key: :assignment_uuid,
            inverse_of: :conflicting_assignment_pes
+  def conflicting_assignment_spes
+    AssignmentSpe.where assignment_uuid: assignment_uuid, exercise_uuid: exercise_uuid
+  end
 
   unique_index :assignment_uuid, :algorithm_exercise_calculation_uuid, :exercise_uuid
 

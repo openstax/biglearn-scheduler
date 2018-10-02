@@ -16,8 +16,8 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
       wheres << if student_uuids.empty?
         'FALSE'
       else
-        "student_clue_calculations.student_uuid IN (#{
-          student_uuids.map { |uuid| "'#{uuid}'" }.join(', ')
+        "\"student_clue_calculations\".\"student_uuid\" IN (#{
+          student_uuids.map { |uuid| sanitize uuid }.join(', ')
         })"
       end
     end
@@ -25,8 +25,8 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
       wheres << if algorithm_names.empty?
         'FALSE'
       else
-        "algorithm_student_clue_calculations.algorithm_name IN (#{
-          algorithm_names.map { |name| "'#{name}'" }.join(', ')
+        "\"algorithm_student_clue_calculations\".\"algorithm_name\" IN (#{
+          algorithm_names.map { |name| sanitize uuid }.join(', ')
         })"
       end
     end
