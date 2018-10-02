@@ -26,6 +26,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     loop do
       num_algorithm_exercise_calculations = AlgorithmExerciseCalculation.transaction do
         # Find algorithm_exercise_calculations with assignments that need PEs or SPEs
+        # No order needed because of SKIP LOCKED
         algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
           .joins(:exercise_calculation)
           .where(
@@ -41,7 +42,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               NOT_SQL
             ).exists
           )
-          .lock('FOR NO KEY UPDATE SKIP LOCKED')
+          .lock('FOR NO KEY UPDATE OF "algorithm_exercise_calculations" SKIP LOCKED')
           .limit(BATCH_SIZE)
           .index_by(&:uuid)
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
@@ -75,9 +76,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                   "values"."algorithm_exercise_calculation_uuid"
             )
           WHERE_SQL
-          AssignmentPe.where(
-            id: AssignmentPe.where(assignment_pe_where_query).order(:id).lock
-          ).delete_all
+          AssignmentPe.where(assignment_pe_where_query).ordered_delete_all
         end
         spe_assignments = assignments.select(&:needs_spes?)
         unless spe_assignments.empty?
@@ -95,9 +94,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                   "values"."algorithm_exercise_calculation_uuid"
             )
           WHERE_SQL
-          AssignmentSpe.where(
-            id: AssignmentSpe.where(assignment_spe_where_query).order(:id).lock
-          ).delete_all
+          AssignmentSpe.where(assignment_spe_where_query).ordered_delete_all
         end
 
         spe_student_uuids = spe_assignments.map(&:student_uuid)
@@ -468,7 +465,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         OpenStax::Biglearn::Api.update_assignment_pes(assignment_pe_requests) \
           if assignment_pe_requests.any?
 
-        AssignmentPe.import assignment_pes, validate: false
+        AssignmentPe.import assignment_pes.sort_by(&AssignmentPe.sort_proc), validate: false
 
         excluded_pe_uuids_by_assignment_uuid = Hash.new { |hash, key| hash[key] = [] }
         AssignmentPe
@@ -561,7 +558,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         OpenStax::Biglearn::Api.update_assignment_spes(assignment_spe_requests) \
           if assignment_spe_requests.any?
 
-        AssignmentSpe.import assignment_spes, validate: false
+        AssignmentSpe.import assignment_spes.sort_by(&AssignmentSpe.sort_proc), validate: false
 
         # Remove SPEs for any assignments that are using the PEs above (PEs have priority over SPEs)
         unless assignment_pes.empty?
@@ -569,9 +566,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
           AssignmentSpe.joins(:conflicting_assignment_pes)
                        .where(assignment_pes: { uuid: assignment_pe_uuids })
-                       .order(:id)
-                       .lock
-                       .delete_all
+                       .ordered_delete_all
         end
 
         # Mark the AlgorithmExerciseCalculations as uploaded
@@ -582,10 +577,13 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             algorithm_exercise_calculation.is_uploaded_for_assignment_uuids + [ assignment.uuid ]
         end
         algorithm_exercise_calculations = algorithm_exercise_calculations_by_uuid.values
-        AlgorithmExerciseCalculation.import algorithm_exercise_calculations,
-                                            validate: false, on_duplicate_key_update: {
-          conflict_target: [ :id ], columns: [ :is_uploaded_for_assignment_uuids ]
-        }
+        # No sort needed because already locked above
+        AlgorithmExerciseCalculation.import(
+          algorithm_exercise_calculations,
+          validate: false, on_duplicate_key_update: {
+            conflict_target: [ :uuid ], columns: [ :is_uploaded_for_assignment_uuids ]
+          }
+        )
 
         algorithm_exercise_calculations.size
       end

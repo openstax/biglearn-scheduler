@@ -22,6 +22,8 @@ class Assignment < ApplicationRecord
                        optional: true,
                        inverse_of: :assignments
 
+  unique_index :uuid
+
   scope :need_pes, -> do
     where(
       arel_table[:pes_are_assigned].eq(false).and(

@@ -7,6 +7,8 @@ class StudentPe < ApplicationRecord
                                               foreign_key: :algorithm_exercise_calculation_uuid,
                                               inverse_of: :student_pes
 
+  unique_index :algorithm_exercise_calculation_uuid, :exercise_uuid
+
   validates :exercise_uuid, presence: true,
                             uniqueness: { scope: :algorithm_exercise_calculation_uuid }
 

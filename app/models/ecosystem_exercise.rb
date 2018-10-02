@@ -33,6 +33,8 @@ class EcosystemExercise < ApplicationRecord
     foreign_key: :ecosystem_uuid,
     inverse_of: :ecosystem_exercises
 
+  unique_index :exercise_uuid, :ecosystem_uuid
+
   validates :book_container_uuids, presence: true
 
   scope :with_group_uuids, -> do

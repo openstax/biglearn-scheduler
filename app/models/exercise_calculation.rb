@@ -18,7 +18,7 @@ class ExerciseCalculation < ApplicationRecord
                        foreign_key: :student_uuid,
                        inverse_of: :exercise_calculations
 
-  validates :student_uuid, uniqueness: { scope: :ecosystem_uuid }
+  unique_index :student_uuid, :ecosystem_uuid
 
   scope :with_exercise_uuids, -> do
     joins(:ecosystem).select('"exercise_calculations".*, "ecosystems"."exercise_uuids"')

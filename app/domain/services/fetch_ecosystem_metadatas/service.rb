@@ -14,8 +14,10 @@ class Services::FetchEcosystemMetadatas::Service < Services::ApplicationService
         Ecosystem.new uuid: ecosystem_uuid, sequence_number: 0, exercise_uuids: []
       end
 
-      result = Ecosystem.import ecosystems, validate: false,
-                                            on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+      # No sort needed because of on_duplicate_key_ignore
+      result = Ecosystem.import(
+        ecosystems, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+      )
       log(:debug) do
         response_count = ecosystem_responses.size
         existing_count = existing_ecosystem_uuids.size

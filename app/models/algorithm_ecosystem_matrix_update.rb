@@ -3,7 +3,7 @@ class AlgorithmEcosystemMatrixUpdate < ApplicationRecord
                                        foreign_key: :ecosystem_matrix_update_uuid,
                                        inverse_of: :algorithm_ecosystem_matrix_updates
 
-  validates :algorithm_name, presence: true, uniqueness: { scope: :ecosystem_matrix_update_uuid }
+  unique_index :ecosystem_matrix_update_uuid, :algorithm_name
 
   scope :unassociated, -> do
     where.not(

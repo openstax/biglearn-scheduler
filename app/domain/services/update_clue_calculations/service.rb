@@ -6,13 +6,13 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
       student_clue_calculations_by_uuid = StudentClueCalculation
                                             .select(:uuid, :student_uuid, :algorithm_names)
                                             .where(uuid: relevant_calculation_uuids)
-                                            .order(:student_uuid, :book_container_uuid)
+                                            .ordered
                                             .lock('FOR NO KEY UPDATE')
                                             .index_by(&:uuid)
       teacher_clue_calculations_by_uuid = TeacherClueCalculation
                                             .select(:uuid, :algorithm_names)
                                             .where(uuid: relevant_calculation_uuids)
-                                            .order(:course_container_uuid, :book_container_uuid)
+                                            .ordered
                                             .lock('FOR NO KEY UPDATE')
                                             .index_by(&:uuid)
 
@@ -62,14 +62,16 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
       end
 
       AlgorithmStudentClueCalculation.import(
-        algorithm_student_clue_calculations, validate: false, on_duplicate_key_update: {
+        algorithm_student_clue_calculations.sort_by(&AlgorithmStudentClueCalculation.sort_proc),
+        validate: false, on_duplicate_key_update: {
           conflict_target: [ :student_clue_calculation_uuid, :algorithm_name ],
           columns: [ :uuid, :clue_data, :clue_value, :is_uploaded ]
         }
       )
 
       AlgorithmTeacherClueCalculation.import(
-        algorithm_teacher_clue_calculations, validate: false, on_duplicate_key_update: {
+        algorithm_teacher_clue_calculations.sort_by(&AlgorithmTeacherClueCalculation.sort_proc),
+        validate: false, on_duplicate_key_update: {
           conflict_target: [ :teacher_clue_calculation_uuid, :algorithm_name ],
           columns: [ :uuid, :clue_data, :is_uploaded ]
         }
@@ -78,6 +80,7 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
       student_clue_calculation_uuids_by_algorithm_names.each do |algorithm_name, uuids|
         sanitized_algorithm_name = StudentClueCalculation.sanitize(algorithm_name.downcase)
 
+        # No order needed because already locked above
         StudentClueCalculation.where(uuid: uuids).update_all(
           "\"algorithm_names\" = \"algorithm_names\" || #{sanitized_algorithm_name}::varchar"
         )
@@ -86,6 +89,7 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
       teacher_clue_calculation_uuids_by_algorithm_names.each do |algorithm_name, uuids|
         sanitized_algorithm_name = TeacherClueCalculation.sanitize(algorithm_name.downcase)
 
+        # No order needed because already locked above
         TeacherClueCalculation.where(uuid: uuids).update_all(
           "\"algorithm_names\" = \"algorithm_names\" || #{sanitized_algorithm_name}::varchar"
         )
@@ -109,7 +113,7 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
         AlgorithmExerciseCalculation
           .joins(:exercise_calculation)
           .joins(algorithm_exercise_calculation_join_query)
-          .update_all(is_uploaded_for_student: false)
+          .ordered_update_all(is_uploaded_for_student: false)
       end
 
       { clue_calculation_update_responses: clue_calculation_update_responses }

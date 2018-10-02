@@ -18,6 +18,8 @@ class TeacherClueCalculation < ApplicationRecord
     foreign_key: :ecosystem_uuid,
     inverse_of: :teacher_clue_calculations
 
+  unique_index :course_container_uuid, :book_container_uuid
+
   validates :ecosystem_uuid,      presence: true
   validates :book_container_uuid, presence: true
   validates :student_uuids,       presence: true

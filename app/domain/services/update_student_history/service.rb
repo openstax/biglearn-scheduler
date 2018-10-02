@@ -11,6 +11,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
     loop do
       num_responses = Response.transaction do
         # Find responses not yet used in the student history
+        # No order needed because of SKIP LOCKED
         responses = Response
           .select(:uuid, :assignment_uuid)
           .joins(assigned_exercise: :assignment)
@@ -23,9 +24,11 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
 
         # Mark the above responses as used in the student history
         response_uuids = responses.map(&:uuid)
+        # No order needed because already locked above
         Response.where(uuid: response_uuids).update_all(used_in_student_history: true)
 
         # Find assignments that correspond to the above responses and check if they are complete
+        # No order needed because already locked above
         responded_assignment_uuids = responses.map(&:assignment_uuid)
         completed_assignments = Assignment
           .select(:uuid, :student_uuid)
@@ -53,6 +56,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
 
         # Add the completed assignments to the student history
         completed_assignment_uuids = completed_assignments.map(&:uuid)
+        # No order needed because already locked above
         Assignment.where(uuid: completed_assignment_uuids).update_all(
           <<-SQL.strip_heredoc
             "student_history_at" = (
@@ -72,7 +76,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         AlgorithmExerciseCalculation
           .joins(exercise_calculation: :assignments)
           .where(assignments: { student_uuid: completed_assignments.map(&:student_uuid) })
-          .update_all(is_uploaded_for_assignment_uuids: [])
+          .ordered_update_all(is_uploaded_for_assignment_uuids: [])
 
         num_responses
       end
@@ -93,6 +97,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         # So we disable sequential scans for this query
         Assignment.connection.execute 'SET LOCAL enable_seqscan = OFF'
 
+        # No order needed because of SKIP LOCKED
         due_assignments = Assignment
           .select(:uuid, :student_uuid)
           .where(student_history_at: nil)
@@ -104,13 +109,14 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         Assignment.connection.execute 'SET LOCAL enable_seqscan = ON'
 
         due_assignment_uuids = due_assignments.map(&:uuid)
+        # No order needed because already locked above
         Assignment.where(uuid: due_assignment_uuids).update_all('"student_history_at" = "due_at"')
 
         # Recalculate all SPEs for affected students
         AlgorithmExerciseCalculation
           .joins(exercise_calculation: :assignments)
           .where(assignments: { student_uuid: due_assignments.map(&:student_uuid) })
-          .update_all(is_uploaded_for_assignment_uuids: [])
+          .ordered_update_all(is_uploaded_for_assignment_uuids: [])
 
         due_assignments.size
       end

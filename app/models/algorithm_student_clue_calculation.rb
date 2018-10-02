@@ -3,6 +3,11 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
                                         foreign_key: :student_clue_calculation_uuid,
                                         inverse_of: :algorithm_student_clue_calculations
 
+  unique_index :student_clue_calculation_uuid, :algorithm_name
+
+  validates :clue_data, presence: true
+  validates :clue_value, presence: true
+
   # https://blog.codeship.com/folding-postgres-window-functions-into-rails/
   scope :with_student_clue_calculation_attributes_and_partitioned_rank,
         ->(student_uuids: nil, algorithm_names: nil) do
@@ -48,10 +53,6 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
       SQL
     )
   end
-
-  validates :algorithm_name, presence: true, uniqueness: { scope: :student_clue_calculation_uuid }
-  validates :clue_data, presence: true
-  validates :clue_value, presence: true
 
   scope :unassociated, -> do
     where.not(

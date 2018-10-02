@@ -4,5 +4,5 @@ class EcosystemMatrixUpdate < ApplicationRecord
                                                 dependent: :destroy,
                                                 inverse_of: :ecosystem_matrix_update
 
-  validates :ecosystem_uuid, presence: true, uniqueness: true
+  unique_index :ecosystem_uuid
 end

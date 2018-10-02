@@ -12,6 +12,8 @@ class Exercise < ApplicationRecord
                               foreign_key: :group_uuid,
                               inverse_of: :exercises
 
+  unique_index :uuid
+
   validates :group_uuid, presence: true
   validates :version,    presence: true
 end

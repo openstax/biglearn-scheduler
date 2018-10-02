@@ -15,11 +15,13 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
       num_responses, num_sccs, num_tccs = Response.transaction do
         # Get Responses that have not yet been used in CLUes
         # Responses with no AssignedExercise or Assignment are completely ignored
+        # No order needed because of SKIP LOCKED
         responses = Response.joins(assigned_exercise: :assignment)
                             .where(used_in_clue_calculations: false)
                             .lock('FOR NO KEY UPDATE OF "responses" SKIP LOCKED')
                             .take(BATCH_SIZE)
         # Get any ClueCalculations that need to be recalculated
+        # No order needed because of SKIP LOCKED
         sccs = StudentClueCalculation
           .where(scc[:recalculate_at].lteq(start_time))
           .lock('FOR UPDATE SKIP LOCKED')
@@ -401,6 +403,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           # Successfully locked ones are marked as used in CLUe calculations at the end
           # Currently locked responses will be reprocessed at a later time
           # This is a separate query because we cannot use SKIP LOCKED in the query above
+          # No order needed because of SKIP LOCKED
           response_uuids.concat(
             Response.where(uuid: new_response_uuids)
                     .lock('FOR NO KEY UPDATE OF "responses" SKIP LOCKED')
@@ -439,7 +442,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               )
             end.compact
           end
-        end.sort_by { |calc| [ calc.student_uuid, calc.book_container_uuid ] }
+        end
 
         # Calculate teacher CLUes
         teacher_clue_calculations = teacher_clues_to_update
@@ -490,11 +493,12 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               )
             end.compact
           end
-        end.sort_by { |calc| [ calc.course_container_uuid, calc.book_container_uuid ] }
+        end
 
         # Record the ClueCalculations
         StudentClueCalculation.import(
-          student_clue_calculations, validate: false, on_duplicate_key_update: {
+          student_clue_calculations.sort_by(&StudentClueCalculation.sort_proc),
+          validate: false, on_duplicate_key_update: {
             conflict_target: [ :student_uuid, :book_container_uuid ],
             columns: [
               :uuid,
@@ -506,7 +510,8 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           }
         )
         TeacherClueCalculation.import(
-          teacher_clue_calculations, validate: false, on_duplicate_key_update: {
+          teacher_clue_calculations.sort_by(&TeacherClueCalculation.sort_proc),
+          validate: false, on_duplicate_key_update: {
             conflict_target: [ :course_container_uuid, :book_container_uuid ],
             columns: [
               :uuid,
@@ -523,15 +528,17 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         # have their recalculate_ats cleared
         # Just so we don't keep retrying to update ClueCalculations that will never succeed
         # (for example, due to an Ecosystem update)
+        # No order needed because already locked above
         StudentClueCalculation.where(uuid: scc_uuids).update_all(recalculate_at: nil)
         TeacherClueCalculation.where(uuid: tcc_uuids).update_all(recalculate_at: nil)
 
         # Cleanup AlgorithmClueCalculations that no longer have
         # an associated ClueCalculation record
-        AlgorithmStudentClueCalculation.unassociated.delete_all
-        AlgorithmTeacherClueCalculation.unassociated.delete_all
+        AlgorithmStudentClueCalculation.unassociated.ordered_delete_all
+        AlgorithmTeacherClueCalculation.unassociated.ordered_delete_all
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
+        # No order needed because already locked above
         Response.where(uuid: response_uuids).update_all(used_in_clue_calculations: true)
 
         [ responses.size, sccs.size, tccs.size ]

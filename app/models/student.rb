@@ -16,5 +16,7 @@ class Student < ApplicationRecord
                       foreign_key: :course_uuid,
                       inverse_of: :students
 
+  unique_index :uuid
+
   validates :course_container_uuids, presence: true
 end

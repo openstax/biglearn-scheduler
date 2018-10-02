@@ -20,6 +20,8 @@ class Response < ApplicationRecord
     foreign_key: :ecosystem_uuid,
     inverse_of: :responses
 
+  unique_index :uuid
+
   validates :ecosystem_uuid,     presence: true
   validates :trial_uuid,         presence: true
   validates :student_uuid,       presence: true

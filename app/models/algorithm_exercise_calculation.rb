@@ -16,7 +16,8 @@ class AlgorithmExerciseCalculation < ApplicationRecord
                                     foreign_key: :exercise_calculation_uuid,
                                     inverse_of: :algorithm_exercise_calculations
 
-  validates :algorithm_name,       presence: true, uniqueness: { scope: :exercise_calculation_uuid }
+  unique_index :exercise_calculation_uuid, :algorithm_name
+
   validates :exercise_uuids,       presence: true
 
   scope :unassociated, -> do

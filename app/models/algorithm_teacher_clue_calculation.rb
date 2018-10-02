@@ -3,7 +3,8 @@ class AlgorithmTeacherClueCalculation < ApplicationRecord
                                         foreign_key: :teacher_clue_calculation_uuid,
                                         inverse_of: :algorithm_teacher_clue_calculations
 
-  validates :algorithm_name, presence: true, uniqueness: { scope: :teacher_clue_calculation_uuid }
+  unique_index :teacher_clue_calculation_uuid, :algorithm_name
+
   validates :clue_data, presence: true
 
   scope :unassociated, -> do
