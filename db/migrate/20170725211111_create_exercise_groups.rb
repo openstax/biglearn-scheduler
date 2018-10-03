@@ -25,6 +25,7 @@ class CreateExerciseGroups < ActiveRecord::Migration[5.0]
               ExerciseGroup.new(uuid: group_uuid, response_count: 0)
             end
 
+            # No sort needed because no conflict clause
             ExerciseGroup.import exercise_groups, validate: false
 
             group_uuids.size

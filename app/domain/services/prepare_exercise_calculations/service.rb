@@ -17,6 +17,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
       num_responses, num_course_pairs, num_assignment_pairs = Response.transaction do
         # Get responses that have not yet been used in exercise calculations,
         # their students' uuids and their courses' latest ecosystem_uuids
+        # No order needed because of SKIP LOCKED
         responses = Response
           .joins(:student)
           .where(used_in_exercise_calculations: false)
@@ -27,6 +28,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
 
         # Get the latest course ecosystem UUID for each student above and also include other
         # students that don't have an ExerciseCalculation for their courses' latest ecosystem
+        # No order needed because of SKIP LOCKED
         course_pairs = Student
           .where(uuid: response_student_uuids).or(
             Student.where(
@@ -42,6 +44,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
 
         # Get the ecosystem UUIDs for assignments that need SPEs or PEs for each student above
         # and also include other students that are missing assignment ExerciseCalculations
+        # No order needed because of SKIP LOCKED
         assignment_pairs = Assignment
           .where(student_uuid: response_student_uuids)
           .or(
@@ -61,6 +64,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
         if num_responses > 0
           # Record the fact that the CLUes are up-to-date with the latest Responses
           response_uuids = responses.map(&:first)
+          # No order needed because already locked above
           Response.where(uuid: response_uuids).update_all(used_in_exercise_calculations: true)
         end
 
@@ -83,7 +87,8 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
 
         # Record the ExerciseCalculations
         ExerciseCalculation.import(
-          exercise_calculations, validate: false, on_duplicate_key_update: {
+          exercise_calculations.sort_by(&ExerciseCalculation.sort_proc),
+          validate: false, on_duplicate_key_update: {
             conflict_target: [ :student_uuid, :ecosystem_uuid ],
             columns: [ :uuid, :algorithm_names ]
           }
@@ -94,7 +99,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
 
         # Cleanup AlgorithmExerciseCalculations that no longer have
         # an associated ExerciseCalculation record
-        AlgorithmExerciseCalculation.unassociated.delete_all
+        AlgorithmExerciseCalculation.unassociated.ordered_delete_all
 
         [ num_responses, course_pairs.size, assignment_pairs.size ]
       end
@@ -121,6 +126,6 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
       ExerciseCalculation.where(
         ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
       ).exists
-    ).update_all(has_exercise_calculation: true)
+    ).ordered_update_all(has_exercise_calculation: true)
   end
 end

@@ -1,8 +1,5 @@
 class BookContainerMapping < ApplicationRecord
-  validates :uuid,                     presence: true
-  validates :from_ecosystem_uuid,      presence: true
-  validates :to_ecosystem_uuid,        presence: true
-  validates :from_book_container_uuid, presence: true, uniqueness: { scope: [ :from_ecosystem_uuid,
-                                                                              :to_ecosystem_uuid ] }
-  validates :to_book_container_uuid,   presence: true
+  unique_index :from_book_container_uuid, :from_ecosystem_uuid, :to_ecosystem_uuid
+
+  validates :to_book_container_uuid, presence: true
 end

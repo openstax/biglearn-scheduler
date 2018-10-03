@@ -11,8 +11,8 @@ RSpec.describe BookContainerMapping, type: :model do
 
   it do
     is_expected.to(
-      validate_uniqueness_of(:from_book_container_uuid)
-        .scoped_to(:from_ecosystem_uuid, :to_ecosystem_uuid)
+      validate_uniqueness_of(:to_ecosystem_uuid)
+        .scoped_to(:from_book_container_uuid, :from_ecosystem_uuid)
         .case_insensitive
     )
   end

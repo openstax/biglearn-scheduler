@@ -12,26 +12,53 @@ class EcosystemExercise < ApplicationRecord
     primary_key: :ecosystem_uuid,
     foreign_key: :ecosystem_uuid,
     inverse_of: :ecosystem_exercises
+  def responses
+    Response.where ecosystem_uuid: ecosystem_uuid, exercise_uuid: exercise_uuid
+  end
 
   has_many :student_clue_calculations,
     -> do
       where(
-        '"ecosystem_exercises"."exercise_uuid" = ANY("student_clue_calculations"."exercise_uuids")'
+        <<-WHERE_SQL.strip_heredoc
+          "student_clue_calculations"."exercise_uuids" @>
+          ARRAY["ecosystem_exercises"."exercise_uuid"]::varchar[]
+        WHERE_SQL
       )
     end,
     primary_key: :ecosystem_uuid,
     foreign_key: :ecosystem_uuid,
     inverse_of: :ecosystem_exercises
+  def student_clue_calculations
+    sanitized_exercise_uuid = self.class.sanitize exercise_uuid
+    StudentClueCalculation.where(ecosystem_uuid: ecosystem_uuid).where(
+      <<-WHERE_SQL.strip_heredoc
+        "student_clue_calculations"."exercise_uuids" @> ARRAY[#{sanitized_exercise_uuid}]::varchar[]
+      WHERE_SQL
+    )
+  end
 
   has_many :teacher_clue_calculations,
     -> do
       where(
-        '"ecosystem_exercises"."exercise_uuid" = ANY("teacher_clue_calculations"."exercise_uuids")'
+        <<-WHERE_SQL.strip_heredoc
+          "teacher_clue_calculations"."exercise_uuids" @>
+          ARRAY["ecosystem_exercises"."exercise_uuid"]::varchar[]
+        WHERE_SQL
       )
     end,
     primary_key: :ecosystem_uuid,
     foreign_key: :ecosystem_uuid,
     inverse_of: :ecosystem_exercises
+  def teacher_clue_calculations
+    sanitized_exercise_uuid = self.class.sanitize exercise_uuid
+    TeacherClueCalculation.where(ecosystem_uuid: ecosystem_uuid).where(
+      <<-WHERE_SQL.strip_heredoc
+        "teacher_clue_calculations"."exercise_uuids" @> ARRAY[#{sanitized_exercise_uuid}]::varchar[]
+      WHERE_SQL
+    )
+  end
+
+  unique_index :exercise_uuid, :ecosystem_uuid
 
   validates :book_container_uuids, presence: true
 

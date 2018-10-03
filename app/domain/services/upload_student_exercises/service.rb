@@ -19,9 +19,10 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
     loop do
       num_students = Student.transaction do
         # Find algorithm_exercise_calculations with students that need PEs
+        # No order needed because of SKIP LOCKED
         algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
-          .where(is_uploaded_for_student: false)
           .select([:uuid, :algorithm_name, :exercise_uuids])
+          .where(is_uploaded_for_student: false)
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .limit(BATCH_SIZE)
           .index_by(&:uuid)
@@ -36,11 +37,9 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         student_uuids = students.map(&:uuid)
 
         # Delete all StudentPes for the above calculations
-        StudentPe.where(
-          id: StudentPe.joins(:algorithm_exercise_calculation).where(
-                algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids }
-              ).order(:id).lock
-        ).delete_all
+        StudentPe.joins(:algorithm_exercise_calculation).where(
+          algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids }
+        ).ordered_delete_all
 
         # Get the worst clues for each student
         worst_clues_by_student_uuid_and_algorithm_name = Hash.new do |hash, key|
@@ -220,9 +219,11 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         OpenStax::Biglearn::Api.update_practice_worst_areas(student_pe_requests) \
           if student_pe_requests.any?
 
+        # No sort needed because no conflict clause
         StudentPe.import student_pes, validate: false
 
         # Mark the AlgorithmExerciseCalculations as uploaded
+        # No order needed because already locked above
         AlgorithmExerciseCalculation.where(uuid: algorithm_exercise_calculation_uuids)
                                     .update_all(is_uploaded_for_student: true)
 

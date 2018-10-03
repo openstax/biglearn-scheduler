@@ -11,4 +11,10 @@ RSpec.describe EcosystemExercise, type: :model do
   it { is_expected.to have_many(:teacher_clue_calculations) }
 
   it { is_expected.to validate_presence_of :book_container_uuids }
+
+  it do
+    is_expected.to(
+      validate_uniqueness_of(:ecosystem_uuid).scoped_to(:exercise_uuid).case_insensitive
+    )
+  end
 end

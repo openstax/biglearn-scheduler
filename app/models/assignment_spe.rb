@@ -15,12 +15,11 @@ class AssignmentSpe < ApplicationRecord
            primary_key: :assignment_uuid,
            foreign_key: :assignment_uuid,
            inverse_of: :conflicting_assignment_spes
+  def conflicting_assignment_pes
+    AssignmentPe.where assignment_uuid: assignment_uuid, exercise_uuid: exercise_uuid
+  end
 
-  validates :assignment_uuid, presence: true
-  validates :exercise_uuid, presence: true, uniqueness: {
-    scope: [ :assignment_uuid, :algorithm_exercise_calculation_uuid, :history_type ]
-  }
-  validates :history_type, presence: true
+  unique_index :assignment_uuid, :algorithm_exercise_calculation_uuid, :history_type, :exercise_uuid
 
   scope :unassociated, -> do
     where.not(

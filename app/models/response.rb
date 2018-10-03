@@ -19,6 +19,11 @@ class Response < ApplicationRecord
     primary_key: :ecosystem_uuid,
     foreign_key: :ecosystem_uuid,
     inverse_of: :responses
+  def ecosystem_exercises
+    EcosystemExercise.where ecosystem_uuid: ecosystem_uuid, exercise_uuid: exercise_uuid
+  end
+
+  unique_index :uuid
 
   validates :ecosystem_uuid,     presence: true
   validates :trial_uuid,         presence: true

@@ -11,4 +11,12 @@ RSpec.describe TeacherClueCalculation, type: :model do
   it { is_expected.to validate_presence_of :student_uuids       }
   it { is_expected.to validate_presence_of :exercise_uuids      }
   it { is_expected.to validate_presence_of :responses           }
+
+  it do
+    is_expected.to(
+      validate_uniqueness_of(:book_container_uuid)
+        .scoped_to(:course_container_uuid)
+        .case_insensitive
+    )
+  end
 end

@@ -19,6 +19,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
     loop do
       num_responses = Response.transaction do
         # Find responses not yet used in the response counts
+        # No order needed because of SKIP LOCKED
         responses = Response
           .select(:uuid, '"exercise_groups"."uuid" AS "group_uuid"')
           .joins(exercise: :exercise_group)
@@ -31,6 +32,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         # Check if any ExerciseGroups should trigger ecosystem matrix updates
         group_uuids = responses.map(&:group_uuid)
         group_uuids_array_string = group_uuids.map { |uuid| ExerciseGroup.sanitize uuid }.join(', ')
+        # No order needed because already locked above
         ExerciseGroup
           .where(
             <<-WHERE_SQL.strip_heredoc
@@ -55,6 +57,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
           )
 
         # Mark the responses as used in response counts
+        # No order needed because already locked above
         response_uuids = responses.map(&:uuid)
         Response.where(uuid: response_uuids).update_all(used_in_response_count: true)
 
@@ -71,6 +74,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
     loop do
       begin
         num_exercise_groups, num_ecosystems = ExerciseGroup.transaction do
+          # No order needed because of SKIP LOCKED
           group_uuids = ExerciseGroup.where(trigger_ecosystem_matrix_update: true)
                                      .lock('FOR NO KEY UPDATE SKIP LOCKED')
                                      .limit(EXERCISE_GROUP_BATCH_SIZE)
@@ -80,7 +84,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
 
           # Get Ecosystems with Exercises whose number of Responses that have not yet
           # been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
-          # We order by id here to avoid deadlocks when locking the ecosystems
+          # We order by uuid here to avoid deadlocks when locking the ecosystems
           # Cannot use SKIP LOCKED here,
           # otherwise we could miss an Ecosystem that needs to be updated
           ecosystem_uuids = Ecosystem
@@ -89,7 +93,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
                 eex[:ecosystem_uuid].eq(ec[:uuid]).and(eg[:uuid].in(group_uuids))
               ).exists
             )
-            .order(:uuid)
+            .ordered
             .lock('FOR NO KEY UPDATE')
             .pluck(:uuid)
 
@@ -97,21 +101,13 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
           next [ num_exercise_groups, 0 ] if num_ecosystems == 0
 
           # Record the counts needed to trigger the next update and clear the trigger flag
-          # NOWAIT is needed to avoid the possibility of deadlocking due to different processes
-          # locking different ExerciseGroups in the same ecosystem in the very first query
-          group_uuids_to_update = ExerciseGroup
+          ExerciseGroup
             .where(
               EcosystemExercise.joins(:exercise).where(
                 eex[:ecosystem_uuid].in(ecosystem_uuids).and(ex[:group_uuid].eq(eg[:uuid]))
               ).exists
             )
-            .order(:uuid)
-            .lock('FOR NO KEY UPDATE NOWAIT')
-            .pluck(:uuid)
-
-          ExerciseGroup
-            .where(uuid: group_uuids_to_update)
-            .update_all(
+            .ordered_update_all(
               <<-UPDATE_SQL.strip_heredoc
                 "trigger_ecosystem_matrix_update" = FALSE,
                 "next_update_response_count" =
@@ -128,14 +124,15 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
 
           # Record any new ecosystem matrix updates
           EcosystemMatrixUpdate.import(
-            ecosystem_matrix_updates, validate: false, on_duplicate_key_update: {
+            ecosystem_matrix_updates.sort_by(&EcosystemMatrixUpdate.sort_proc),
+            validate: false, on_duplicate_key_update: {
               conflict_target: [ :ecosystem_uuid ], columns: [ :uuid, :algorithm_names ]
             }
           )
 
           # Cleanup AlgorithmEcosystemMatrixUpdates that no longer have
           # an associated EcosystemMatrixUpdate record
-          AlgorithmEcosystemMatrixUpdate.unassociated.delete_all
+          AlgorithmEcosystemMatrixUpdate.unassociated.ordered_delete_all
 
           [ num_exercise_groups, num_ecosystems ]
         end

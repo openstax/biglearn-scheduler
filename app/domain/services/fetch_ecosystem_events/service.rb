@@ -8,8 +8,8 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
     log(:debug) { "Started at #{start_time}" }
 
     ec = Ecosystem.arel_table
-    last_id = nil
-    ecosystem_ids_to_requery = []
+    last_uuid = nil
+    ecosystem_uuids_to_requery = []
     results = []
     total_events = 0
     total_ecosystems = 0
@@ -19,19 +19,20 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
       num_ecosystems = Ecosystem.transaction do
         # Since create_ecosystem is our only event here right now,
         # we can ignore all ecosystems that already processed it (sequence_number > 0)
+        # Order needed because we are processing the ecosystems in chunks
         ecosystem_relation = Ecosystem.where(sequence_number: 0)
-                                      .order(:uuid)
+                                      .ordered
                                       .lock('FOR NO KEY UPDATE SKIP LOCKED')
-        ecosystem_relation = ecosystem_relation.where(ec[:id].gt(last_id)) unless last_id.nil?
+        ecosystem_relation = ecosystem_relation.where(ec[:uuid].gt(last_uuid)) unless last_uuid.nil?
         ecosystems = ecosystem_relation.take(BATCH_SIZE)
         next 0 if ecosystems.empty?
 
-        last_id = ecosystems.last.id
+        last_uuid = ecosystems.last.uuid
 
-        partial_ecosystem_ids_to_requery, partial_results, num_events =
+        partial_ecosystem_uuids_to_requery, partial_results, num_events =
           fetch_and_process_ecosystem_events(ecosystems)
 
-        ecosystem_ids_to_requery.concat partial_ecosystem_ids_to_requery
+        ecosystem_uuids_to_requery.concat partial_ecosystem_uuids_to_requery
         results.concat partial_results
         total_events += num_events
 
@@ -47,20 +48,20 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
     # This is done so we can catch up with ecosystems emitting a lot of events
     loop do
       Ecosystem.transaction do
-        ecosystems = Ecosystem.where(id: ecosystem_ids_to_requery.shift(BATCH_SIZE))
+        ecosystems = Ecosystem.where(uuid: ecosystem_uuids_to_requery.shift(BATCH_SIZE))
                               .lock('FOR NO KEY UPDATE SKIP LOCKED')
                               .to_a
         next if ecosystems.empty?
 
-        partial_ecosystem_ids_to_requery, partial_results, num_events =
+        partial_ecosystem_uuids_to_requery, partial_results, num_events =
           fetch_and_process_ecosystem_events(ecosystems)
 
-        ecosystem_ids_to_requery.concat partial_ecosystem_ids_to_requery
+        ecosystem_uuids_to_requery.concat partial_ecosystem_uuids_to_requery
         results.concat partial_results
         total_events += num_events
       end
 
-      break if ecosystem_ids_to_requery.empty?
+      break if ecosystem_uuids_to_requery.empty?
     end
 
     log(:debug) do
@@ -75,7 +76,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
   protected
 
   def fetch_and_process_ecosystem_events(ecosystems)
-    ecosystem_ids_to_requery = []
+    ecosystem_uuids_to_requery = []
     results = []
     total_events = 0
 
@@ -105,7 +106,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
       ecosystem_uuid = ecosystem_event_response.fetch :ecosystem_uuid
       ecosystem = ecosystems_by_ecosystem_uuid.fetch ecosystem_uuid
 
-      ecosystem_ids_to_requery << ecosystem.id \
+      ecosystem_uuids_to_requery << ecosystem.id \
         unless ecosystem_event_response.fetch(:is_gap) ||
                ecosystem_event_response.fetch(:is_end)
 
@@ -172,39 +173,39 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         end
       end
 
-      ecosystem.sequence_number = events.map{ |event| event.fetch(:sequence_number) }.max + 1
+      ecosystem.sequence_number = events.map { |event| event.fetch(:sequence_number) }.max + 1
 
       ecosystem
     end.compact
 
     results << ExerciseGroup.import(
-      exercise_groups, validate: false, on_duplicate_key_update: {
+      exercise_groups.sort_by(&ExerciseGroup.sort_proc), validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ], columns: [ :trigger_ecosystem_matrix_update ]
       }
     )
 
+    # No sort needed because of on_duplicate_key_ignore
     results << Exercise.import(
       exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
     )
 
+    # No sort needed because of on_duplicate_key_ignore
     results << EcosystemExercise.import(
-      ecosystem_exercises, validate: false, on_duplicate_key_ignore: {
-        conflict_target: [ :uuid ]
-      }
+      ecosystem_exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
     )
 
+    # No sort needed because of on_duplicate_key_ignore
     results << ExercisePool.import(
-      exercise_pools, validate: false, on_duplicate_key_ignore: {
-        conflict_target: [ :uuid ]
-      }
+      exercise_pools, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
     )
 
+    # No sort needed because already locked above
     results << Ecosystem.import(
       ecosystems, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ], columns: [ :sequence_number, :exercise_uuids ]
       }
     )
 
-    [ ecosystem_ids_to_requery, results, total_events ]
+    [ ecosystem_uuids_to_requery, results, total_events ]
   end
 end

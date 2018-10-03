@@ -20,8 +20,10 @@ class Services::FetchCourseMetadatas::Service < Services::ApplicationService
                  global_excluded_exercise_group_uuids: []
     end.compact
 
-    result = Course.import courses, validate: false,
-                                    on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+    # No sort needed because of on_duplicate_key_ignore
+    result = Course.import(
+      courses, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+    )
     log(:debug) do
       response_count = course_responses.size
       existing_count = existing_course_uuids.size

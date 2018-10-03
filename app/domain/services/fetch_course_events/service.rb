@@ -19,8 +19,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     log(:debug) { "Started at #{start_time}" }
 
     co = Course.arel_table
-    last_id = nil
-    course_ids_to_requery = []
+    last_uuid = nil
+    course_uuids_to_requery = []
     results = []
     total_events = 0
     total_courses = 0
@@ -28,17 +28,18 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     # Query events for all courses in chunks
     loop do
       num_courses = Course.transaction do
-        course_relation = Course.order(:uuid).lock('FOR NO KEY UPDATE SKIP LOCKED')
-        course_relation = course_relation.where(co[:id].gt(last_id)) unless last_id.nil?
+        # Order needed because we are processing the courses in chunks
+        course_relation = Course.ordered.lock('FOR NO KEY UPDATE SKIP LOCKED')
+        course_relation = course_relation.where(co[:uuid].gt(last_uuid)) unless last_uuid.nil?
         courses = course_relation.take(BATCH_SIZE)
         next 0 if courses.empty?
 
-        last_id = courses.last.id
+        last_uuid = courses.last.uuid
 
-        partial_course_ids_to_requery, partial_results, num_events =
+        partial_course_uuids_to_requery, partial_results, num_events =
           fetch_and_process_course_events(courses, start_time)
 
-        course_ids_to_requery.concat partial_course_ids_to_requery
+        course_uuids_to_requery.concat partial_course_uuids_to_requery
         results.concat partial_results
         total_events += num_events
 
@@ -53,20 +54,20 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     # This is done so we can catch up with courses emitting a lot of events
     loop do
       Course.transaction do
-        courses = Course.where(id: course_ids_to_requery.shift(BATCH_SIZE))
+        courses = Course.where(uuid: course_uuids_to_requery.shift(BATCH_SIZE))
                         .lock('FOR NO KEY UPDATE SKIP LOCKED')
                         .to_a
         next if courses.empty?
 
-        partial_course_ids_to_requery, partial_results, num_events =
+        partial_course_uuids_to_requery, partial_results, num_events =
           fetch_and_process_course_events(courses, start_time)
 
-        course_ids_to_requery.concat partial_course_ids_to_requery
+        course_uuids_to_requery.concat partial_course_uuids_to_requery
         results.concat partial_results
         total_events += num_events
       end
 
-      break if course_ids_to_requery.empty?
+      break if course_uuids_to_requery.empty?
     end
 
     log(:debug) do
@@ -81,7 +82,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
   protected
 
   def fetch_and_process_course_events(courses, current_time)
-    course_ids_to_requery = []
+    course_uuids_to_requery = []
     results = []
     total_events = 0
 
@@ -117,7 +118,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       course_uuid = course_event_response.fetch :course_uuid
       course = courses_by_course_uuid.fetch course_uuid
 
-      course_ids_to_requery << course.id \
+      course_uuids_to_requery << course.uuid \
         unless course_event_response.fetch(:is_gap) || course_event_response.fetch(:is_end)
 
       events_by_type = events.group_by { |event| event.fetch(:event_type) }
@@ -429,20 +430,22 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     )
 
     results << CourseContainer.import(
-      course_containers_hash.values, validate: false, on_duplicate_key_update: {
+      course_containers_hash.values.sort_by(&CourseContainer.sort_proc),
+      validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ], columns: [ :course_uuid, :student_uuids ]
       }
     )
 
     results << Student.import(
-      students_hash.values, validate: false, on_duplicate_key_update: {
+      students_hash.values.sort_by(&Student.sort_proc), validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
         columns: [ :course_uuid, :course_container_uuids ]
       }
     )
 
     results << Assignment.import(
-      assignments_hash.values, validate: false, on_duplicate_key_update: {
+      assignments_hash.values.sort_by(&Assignment.sort_proc),
+      validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
         columns: [
           :course_uuid,
@@ -474,7 +477,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     #       used_in_clue_calculations is here because the CLUes need to be recalculated
     #       exercise calculations, response counts and student history are unaffected
     results << Response.import(
-      responses_hash.values, validate: false, on_duplicate_key_update: {
+      responses_hash.values.sort_by(&Response.sort_proc), validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
         columns: [
           :trial_uuid,
@@ -497,7 +500,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
       # Mark student CLUes for recalculation for students in courses with updated ecosystems
       StudentClueCalculation.where(student_uuid: changed_student_uuids)
-                            .update_all(recalculate_at: current_time)
+                            .ordered_update_all(recalculate_at: current_time)
     end
 
     unless course_uuids_with_changed_rosters.empty?
@@ -508,7 +511,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
       # Mark teacher CLUes for recalculation for course containers in courses with updated rosters
       TeacherClueCalculation.where(course_container_uuid: changed_course_container_uuids)
-                            .update_all(recalculate_at: current_time)
+                            .ordered_update_all(recalculate_at: current_time)
     end
 
     unless assigned_exercises.empty?
@@ -526,14 +529,14 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                exercise_calculation: { student: { assignments: :assigned_exercises } })
         .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
         .where(assigned_exercises: { uuid: assigned_exercise_uuids })
-        .update_all(is_uploaded_for_student: false)
+        .ordered_update_all(is_uploaded_for_student: false)
 
       # Recalculate Assignment PEs and SPEs that conflict with the AssignedExercises that were just
       # created to prevent any assignment from getting a PE or SPE that was already used elsewhere
       AlgorithmExerciseCalculation
         .joins(exercise_calculation: { student: { assignments: :assigned_exercises } })
         .where(assigned_exercises: { uuid: assigned_exercise_uuids })
-        .update_all(
+        .ordered_update_all(
           <<-UPDATE_SQL.strip_heredoc
             "is_uploaded_for_assignment_uuids" = ARRAY(
               SELECT UNNEST("algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids")
@@ -565,17 +568,18 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     AlgorithmExerciseCalculation
       .joins(exercise_calculation: :assignments)
       .where(assignments: { uuid: assignment_uuids })
-      .update_all(
+      .ordered_update_all(
         <<-UPDATE_SQL.strip_heredoc
           "is_uploaded_for_assignment_uuids" = ARRAY(
             SELECT UNNEST("algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids")
             EXCEPT
             SELECT "values"."uuid"::varchar
-            FROM (#{ValuesTable.new(assignment_uuids.map{ |uuid| [uuid] })}) AS "values" ("uuid")
+            FROM (#{ValuesTable.new(assignment_uuids.map { |uuid| [uuid] })}) AS "values" ("uuid")
           )
         UPDATE_SQL
       ) unless assignment_uuids.empty?
 
+    # No sort needed because already locked above
     results << Course.import(
       courses, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
@@ -590,6 +594,6 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       }
     )
 
-    [ course_ids_to_requery, results, total_events ]
+    [ course_uuids_to_requery, results, total_events ]
   end
 end

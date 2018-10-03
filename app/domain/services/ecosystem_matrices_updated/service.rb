@@ -2,8 +2,10 @@ class Services::EcosystemMatricesUpdated::Service < Services::ApplicationService
   def process(ecosystem_matrices_updated:)
     relevant_update_uuids = ecosystem_matrices_updated.map { |update| update[:calculation_uuid] }
     EcosystemMatrixUpdate.transaction do
-      ecosystem_matrix_updates_by_uuid = EcosystemMatrixUpdate.where(uuid: relevant_update_uuids)
-                                                              .select(:uuid, :algorithm_names)
+      ecosystem_matrix_updates_by_uuid = EcosystemMatrixUpdate.select(:uuid, :algorithm_names)
+                                                              .where(uuid: relevant_update_uuids)
+                                                              .ordered
+                                                              .lock('FOR NO KEY UPDATE')
                                                               .index_by(&:uuid)
 
       algorithm_ecosystem_matrix_updates = []
@@ -32,7 +34,8 @@ class Services::EcosystemMatricesUpdated::Service < Services::ApplicationService
       end
 
       AlgorithmEcosystemMatrixUpdate.import(
-        algorithm_ecosystem_matrix_updates, validate: false, on_duplicate_key_update: {
+        algorithm_ecosystem_matrix_updates.sort_by(&AlgorithmEcosystemMatrixUpdate.sort_proc),
+        validate: false, on_duplicate_key_update: {
           conflict_target: [ :ecosystem_matrix_update_uuid, :algorithm_name ],
           columns: [ :uuid ]
         }
@@ -41,6 +44,7 @@ class Services::EcosystemMatricesUpdated::Service < Services::ApplicationService
       ecosystem_matrix_update_uuids_by_algorithm_names.each do |algorithm_name, uuids|
         sanitized_algorithm_name = EcosystemMatrixUpdate.sanitize(algorithm_name.downcase)
 
+        # No order needed because already locked above
         EcosystemMatrixUpdate.where(uuid: uuids).update_all(
           "\"algorithm_names\" = \"algorithm_names\" || #{sanitized_algorithm_name}::varchar"
         )

@@ -7,5 +7,7 @@ class AssignedExercise < ApplicationRecord
                        foreign_key: :trial_uuid,
                        inverse_of: :assigned_exercise
 
-  validates :exercise_uuid,   presence: true
+  unique_index :uuid
+
+  validates :exercise_uuid, presence: true
 end

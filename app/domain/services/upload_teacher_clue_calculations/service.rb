@@ -13,6 +13,7 @@ class Services::UploadTeacherClueCalculations::Service < Services::ApplicationSe
         # join is used so AlgorithmTeacherClueCalculations
         # with no TeacherClueCalculation are not returned
         # eager_load is used because it's basically free with the join
+        # No order needed because of SKIP LOCKED
         algorithm_calculations = AlgorithmTeacherClueCalculation
           .joins(:teacher_clue_calculation)
           .eager_load(:teacher_clue_calculation)
@@ -35,6 +36,7 @@ class Services::UploadTeacherClueCalculations::Service < Services::ApplicationSe
           unless teacher_clue_requests.empty?
 
         algorithm_calculation_uuids = algorithm_calculations.map(&:uuid)
+        # No order needed because already locked above
         AlgorithmTeacherClueCalculation.where(uuid: algorithm_calculation_uuids)
                                        .update_all(is_uploaded: true)
 

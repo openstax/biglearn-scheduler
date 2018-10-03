@@ -5,7 +5,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
     ExerciseCalculation.transaction do
       exercise_calculations_by_uuid = ExerciseCalculation.select(:uuid, :algorithm_names)
                                                          .where(uuid: calculation_uuids)
-                                                         .order(:student_uuid, :ecosystem_uuid)
+                                                         .ordered
                                                          .lock('FOR NO KEY UPDATE')
                                                          .index_by(&:uuid)
 
@@ -38,7 +38,8 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
       end
 
       AlgorithmExerciseCalculation.import(
-        algorithm_exercise_calculations, validate: false, on_duplicate_key_update: {
+        algorithm_exercise_calculations.sort_by(&AlgorithmExerciseCalculation.sort_proc),
+        validate: false, on_duplicate_key_update: {
           conflict_target: [ :exercise_calculation_uuid, :algorithm_name ],
           columns: [
             :uuid, :exercise_uuids, :is_uploaded_for_assignment_uuids, :is_uploaded_for_student
@@ -49,6 +50,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
       exercise_calculation_uuids_by_algorithm_names.each do |algorithm_name, uuids|
         sanitized_algorithm_name = ExerciseCalculation.sanitize(algorithm_name.downcase)
 
+        # No order needed because already locked above
         ExerciseCalculation.where(uuid: uuids).update_all(
           "\"algorithm_names\" = \"algorithm_names\" || #{sanitized_algorithm_name}::varchar"
         )
@@ -56,9 +58,9 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
 
       # Cleanup AssignmentSpes, AssignmentPes and StudentPes that no longer have
       # an associated AlgorithmExerciseCalculation record
-      AssignmentPe.where(id: AssignmentPe.unassociated.order(:id).lock).delete_all
-      AssignmentSpe.where(id: AssignmentSpe.unassociated.order(:id).lock).delete_all
-      StudentPe.where(id: StudentPe.unassociated.order(:id).lock).delete_all
+      AssignmentPe.unassociated.ordered_delete_all
+      AssignmentSpe.unassociated.ordered_delete_all
+      StudentPe.unassociated.ordered_delete_all
 
       { exercise_calculation_update_responses: exercise_calculation_update_responses }
     end

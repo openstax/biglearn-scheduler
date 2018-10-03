@@ -10,7 +10,7 @@ RSpec.describe ExerciseCalculation, type: :model do
 
   it do
     is_expected.to(
-      validate_uniqueness_of(:student_uuid).scoped_to(:ecosystem_uuid).case_insensitive
+      validate_uniqueness_of(:ecosystem_uuid).scoped_to(:student_uuid).case_insensitive
     )
   end
 end
