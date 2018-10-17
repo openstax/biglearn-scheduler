@@ -171,6 +171,11 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
             )
           end
         end
+
+        ecosystem_matrix_updates << EcosystemMatrixUpdate.new(
+          uuid: SecureRandom.uuid,
+          ecosystem_uuid: ecosystem_uuid
+        )
       end
 
       ecosystem.sequence_number = events.map { |event| event.fetch(:sequence_number) }.max + 1
@@ -203,6 +208,13 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
     results << Ecosystem.import(
       ecosystems, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ], columns: [ :sequence_number, :exercise_uuids ]
+      }
+    )
+
+    # No sort needed because of on_duplicate_key_ignore
+    results << EcosystemMatrixUpdate.import(
+      ecosystem_matrix_updates, validate: false, on_duplicate_key_ignore: {
+        conflict_target: [ :ecosystem_uuid ]
       }
     )
 
