@@ -7,8 +7,4 @@ Rails.application.routes.draw do
 
   post '/fetch_exercise_calculations' => 'exercise_calculations#fetch_exercise_calculations'
   post '/update_exercise_calculations' => 'exercise_calculations#update_exercise_calculations'
-
-  # Redirect invalid requests to the 404 page
-  match :/       , to: redirect('/404.html'), via: [:get, :post, :put, :patch, :delete]
-  match :'*other', to: redirect('/404.html'), via: [:get, :post, :put, :patch, :delete]
 end
