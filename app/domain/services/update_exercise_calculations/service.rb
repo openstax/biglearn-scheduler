@@ -3,11 +3,12 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
     calculation_uuids = exercise_calculation_updates.map { |calc| calc[:calculation_uuid] }
 
     ExerciseCalculation.transaction do
-      exercise_calculations_by_uuid = ExerciseCalculation.select(:uuid, :algorithm_names)
-                                                         .where(uuid: calculation_uuids)
-                                                         .ordered
-                                                         .lock('FOR NO KEY UPDATE')
-                                                         .index_by(&:uuid)
+      exercise_calculations_by_uuid = ExerciseCalculation
+        .select(:uuid, :student_uuid, :ecosystem_uuid, :algorithm_names)
+        .where(uuid: calculation_uuids)
+        .ordered
+        .lock('FOR NO KEY UPDATE')
+        .index_by(&:uuid)
 
       algorithm_exercise_calculations = []
       exercise_calculation_uuids_by_algorithm_names = Hash.new { |hash, key| hash[key] = [] }
