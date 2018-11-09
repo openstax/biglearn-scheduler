@@ -1,4 +1,9 @@
 class Course < ApplicationRecord
+  has_many :course_containers, primary_key: :uuid,
+                               foreign_key: :course_uuid,
+                               dependent: :destroy,
+                               inverse_of: :course
+
   has_many :students, primary_key: :uuid,
                       foreign_key: :course_uuid,
                       dependent: :destroy,

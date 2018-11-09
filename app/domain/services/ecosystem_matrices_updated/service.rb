@@ -2,11 +2,12 @@ class Services::EcosystemMatricesUpdated::Service < Services::ApplicationService
   def process(ecosystem_matrices_updated:)
     relevant_update_uuids = ecosystem_matrices_updated.map { |update| update[:calculation_uuid] }
     EcosystemMatrixUpdate.transaction do
-      ecosystem_matrix_updates_by_uuid = EcosystemMatrixUpdate.select(:uuid, :algorithm_names)
-                                                              .where(uuid: relevant_update_uuids)
-                                                              .ordered
-                                                              .lock('FOR NO KEY UPDATE')
-                                                              .index_by(&:uuid)
+      ecosystem_matrix_updates_by_uuid = EcosystemMatrixUpdate
+        .select(:uuid, :ecosystem_uuid, :algorithm_names)
+        .where(uuid: relevant_update_uuids)
+        .ordered
+        .lock('FOR NO KEY UPDATE')
+        .index_by(&:uuid)
 
       algorithm_ecosystem_matrix_updates = []
       ecosystem_matrix_update_uuids_by_algorithm_names = Hash.new { |hash, key| hash[key] = [] }
