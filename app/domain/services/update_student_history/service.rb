@@ -18,9 +18,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
           .where(used_in_student_history: false)
           .lock('FOR NO KEY UPDATE OF "responses", "assignments" SKIP LOCKED')
           .take(BATCH_SIZE)
-        next 0 if responses.empty?
-
-        num_responses = responses.size
+        responses_size = responses.size
+        next 0 if responses_size == 0
 
         # Mark the above responses as used in the student history
         response_uuids = responses.map(&:uuid)
@@ -78,7 +77,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
           .where(assignments: { student_uuid: completed_assignments.map(&:student_uuid) })
           .ordered_update_all(is_uploaded_for_assignment_uuids: [])
 
-        num_responses
+        responses_size
       end
 
       # If we got less responses than the batch size, then this is the last batch
@@ -104,7 +103,8 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
           .where(aa[:due_at].lteq(start_time))
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .take(BATCH_SIZE)
-        next 0 if due_assignments.empty?
+        due_assignments_size = due_assignments.size
+        next 0 if due_assignments_size == 0
 
         Assignment.connection.execute 'SET LOCAL enable_seqscan = ON'
 
@@ -118,7 +118,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
           .where(assignments: { student_uuid: due_assignments.map(&:student_uuid) })
           .ordered_update_all(is_uploaded_for_assignment_uuids: [])
 
-        due_assignments.size
+        due_assignments_size
       end
 
       total_due_assignments += num_due_assignments

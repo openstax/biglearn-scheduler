@@ -3,11 +3,11 @@ class OpenStax::Biglearn::Api::FakeClient
   def initialize(biglearn_configuration)
   end
 
-  def fetch_ecosystem_metadatas
+  def fetch_ecosystem_metadatas(request)
     { ecosystem_responses: [] }
   end
 
-  def fetch_course_metadatas
+  def fetch_course_metadatas(request)
     { course_responses: [] }
   end
 

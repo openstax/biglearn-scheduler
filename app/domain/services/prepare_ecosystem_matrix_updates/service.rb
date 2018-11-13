@@ -26,8 +26,8 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
           .where(used_in_response_count: false)
           .lock('FOR NO KEY UPDATE OF "responses", "exercise_groups" SKIP LOCKED')
           .take(RESPONSE_BATCH_SIZE)
-        num_responses = responses.size
-        next 0 if num_responses == 0
+        responses_size = responses.size
+        next 0 if responses_size == 0
 
         # Check if any ExerciseGroups should trigger ecosystem matrix updates
         group_uuids = responses.map(&:group_uuid)
@@ -61,7 +61,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         response_uuids = responses.map(&:uuid)
         Response.where(uuid: response_uuids).update_all(used_in_response_count: true)
 
-        num_responses
+        responses_size
       end
 
       total_responses += num_responses

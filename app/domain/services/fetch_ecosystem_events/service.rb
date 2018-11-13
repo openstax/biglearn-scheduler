@@ -25,7 +25,8 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
                                       .lock('FOR NO KEY UPDATE SKIP LOCKED')
         ecosystem_relation = ecosystem_relation.where(ec[:uuid].gt(last_uuid)) unless last_uuid.nil?
         ecosystems = ecosystem_relation.take(BATCH_SIZE)
-        next 0 if ecosystems.empty?
+        ecosystems_size = ecosystems.size
+        next 0 if ecosystems_size == 0
 
         last_uuid = ecosystems.last.uuid
 
@@ -36,7 +37,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         results.concat partial_results
         total_events += num_events
 
-        ecosystems.size
+        ecosystems_size
       end
 
       total_ecosystems += num_ecosystems

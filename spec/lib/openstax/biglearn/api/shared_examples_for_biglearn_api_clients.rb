@@ -74,12 +74,12 @@ RSpec.shared_examples 'a biglearn api client' do
   [
     [
       :fetch_ecosystem_metadatas,
-      nil,
+      { max_num_metadatas: 1000 },
       { ecosystem_responses: [] }
     ],
     [
       :fetch_course_metadatas,
-      nil,
+      { max_num_metadatas: 1000 },
       { course_responses: [] }
     ],
     [
