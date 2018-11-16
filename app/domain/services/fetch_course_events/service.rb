@@ -32,7 +32,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         course_relation = Course.ordered.lock('FOR NO KEY UPDATE SKIP LOCKED')
         course_relation = course_relation.where(co[:uuid].gt(last_uuid)) unless last_uuid.nil?
         courses = course_relation.take(BATCH_SIZE)
-        next 0 if courses.empty?
+        courses_size = courses.size
+        next 0 if courses_size == 0
 
         last_uuid = courses.last.uuid
 
@@ -43,7 +44,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         results.concat partial_results
         total_events += num_events
 
-        courses.size
+        courses_size
       end
 
       total_courses += num_courses

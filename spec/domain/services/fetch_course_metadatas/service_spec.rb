@@ -14,14 +14,23 @@ RSpec.describe Services::FetchCourseMetadatas::Service, type: :service do
     let!(:course_2)                 { FactoryGirl.create :course }
 
     let(:existing_course_metadatas) do
-      [ course_1, course_2 ].map do |course|
-        { uuid: course.uuid, initial_ecosystem_uuid: course.ecosystem_uuid }
+      [ course_1, course_2 ].each_with_index.map do |course, index|
+        {
+          uuid: course.uuid,
+          initial_ecosystem_uuid: course.ecosystem_uuid,
+          metadata_sequence_number: index
+        }
       end
     end
+    let(:num_existing_courses)      { existing_course_metadatas.size }
     let(:num_new_courses)           { 2 }
     let(:new_course_metadatas)      do
-      num_new_courses.times.map do
-        { uuid: SecureRandom.uuid, initial_ecosystem_uuid: SecureRandom.uuid }
+      num_new_courses.times.map do |new_index|
+        {
+          uuid: SecureRandom.uuid,
+          initial_ecosystem_uuid: SecureRandom.uuid,
+          metadata_sequence_number: new_index + num_existing_courses
+        }
       end
     end
     let(:course_metadatas)          { existing_course_metadatas + new_course_metadatas }

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20181002193441) do
+ActiveRecord::Schema.define(version: 20181112212315) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -178,7 +178,9 @@ ActiveRecord::Schema.define(version: 20181002193441) do
     t.uuid     "global_excluded_exercise_group_uuids", null: false, array: true
     t.datetime "created_at",                           null: false
     t.datetime "updated_at",                           null: false
+    t.integer  "metadata_sequence_number",             null: false
     t.index ["ecosystem_uuid"], name: "index_courses_on_ecosystem_uuid", using: :btree
+    t.index ["metadata_sequence_number"], name: "index_courses_on_metadata_sequence_number", unique: true, using: :btree
     t.index ["uuid"], name: "index_courses_on_uuid", unique: true, using: :btree
   end
 
@@ -217,11 +219,13 @@ ActiveRecord::Schema.define(version: 20181002193441) do
   end
 
   create_table "ecosystems", force: :cascade do |t|
-    t.uuid     "uuid",            null: false
-    t.integer  "sequence_number", null: false
-    t.uuid     "exercise_uuids",  null: false, array: true
-    t.datetime "created_at",      null: false
-    t.datetime "updated_at",      null: false
+    t.uuid     "uuid",                     null: false
+    t.integer  "sequence_number",          null: false
+    t.uuid     "exercise_uuids",           null: false, array: true
+    t.datetime "created_at",               null: false
+    t.datetime "updated_at",               null: false
+    t.integer  "metadata_sequence_number", null: false
+    t.index ["metadata_sequence_number"], name: "index_ecosystems_on_metadata_sequence_number", unique: true, using: :btree
     t.index ["uuid"], name: "index_ecosystems_on_uuid", unique: true, using: :btree
   end
 

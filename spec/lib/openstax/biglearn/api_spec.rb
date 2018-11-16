@@ -59,12 +59,12 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
     [
       [
         :fetch_ecosystem_metadatas,
-        nil,
+        -> { { max_num_metadatas: 1000 } },
         Hash
       ],
       [
         :fetch_course_metadatas,
-        nil,
+        -> { { max_num_metadatas: 1000 } },
         Hash
       ],
       [

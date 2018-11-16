@@ -1,37 +1,43 @@
 class Services::FetchCourseMetadatas::Service < Services::ApplicationService
+  BATCH_SIZE = 1000
+
   def process
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
-    course_responses = OpenStax::Biglearn::Api.fetch_course_metadatas.fetch(:course_responses)
-    course_uuids = course_responses.map { |course_hash| course_hash.fetch(:uuid) }
-    existing_course_uuids = Set.new Course.where(uuid: course_uuids).pluck(:uuid)
+    total_courses = 0
 
-    courses = course_responses.map do |course_hash|
-      course_uuid = course_hash.fetch(:uuid)
-      next if existing_course_uuids.include? course_uuid
+    loop do
+      num_courses = Course.transaction do
+        course_responses = OpenStax::Biglearn::Api.fetch_course_metadatas(
+          max_num_metadatas: BATCH_SIZE
+        ).fetch(:course_responses)
+        courses_size = course_responses.size
+        next 0 if courses_size == 0
 
-      Course.new uuid: course_uuid,
-                 ecosystem_uuid: course_hash.fetch(:initial_ecosystem_uuid),
-                 sequence_number: 0,
-                 course_excluded_exercise_uuids: [],
-                 course_excluded_exercise_group_uuids: [],
-                 global_excluded_exercise_uuids: [],
-                 global_excluded_exercise_group_uuids: []
-    end.compact
+        courses = course_responses.map do |course_hash|
+          Course.new uuid: course_hash.fetch(:uuid),
+                     ecosystem_uuid: course_hash.fetch(:initial_ecosystem_uuid),
+                     sequence_number: 0,
+                     metadata_sequence_number: course_hash.fetch(:metadata_sequence_number),
+                     course_excluded_exercise_uuids: [],
+                     course_excluded_exercise_group_uuids: [],
+                     global_excluded_exercise_uuids: [],
+                     global_excluded_exercise_group_uuids: []
+        end
 
-    # No sort needed because of on_duplicate_key_ignore
-    result = Course.import(
-      courses, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
-    )
-    log(:debug) do
-      response_count = course_responses.size
-      existing_count = existing_course_uuids.size
-      new_count = response_count - existing_count
-      time = Time.current - start_time
+        # No sort needed because of on_duplicate_key_ignore
+        Course.import(
+          courses, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
+        )
 
-      "Received: #{response_count} - Existing: #{existing_count}" +
-      " - New: #{new_count} - Took: #{time} second(s)"
+        courses_size
+      end
+
+      total_courses += num_courses
+      break if num_courses < BATCH_SIZE
     end
+
+    log(:debug) { "Received: #{total_courses} - Took: #{Time.current - start_time} second(s)" }
   end
 end

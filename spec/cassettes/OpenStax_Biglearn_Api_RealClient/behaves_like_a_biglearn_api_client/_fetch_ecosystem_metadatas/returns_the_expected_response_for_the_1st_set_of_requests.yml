@@ -5,7 +5,7 @@ http_interactions:
     uri: http://localhost:3000/fetch_ecosystem_metadatas
     body:
       encoding: UTF-8
-      string: ''
+      string: '{"metadata_sequence_number_offset":0,"max_num_metadatas":1000}'
     headers:
       User-Agent:
       - Faraday v0.11.0
@@ -13,8 +13,6 @@ http_interactions:
       - application/json
       Biglearn-Api-Token:
       - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
-      Content-Length:
-      - '0'
       Accept-Encoding:
       - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
       Accept:
@@ -25,7 +23,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 27 Jun 2017 23:16:57 GMT
+      - Thu, 24 Aug 2017 15:54:43 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -41,12 +39,12 @@ http_interactions:
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - eccfdb61-0082-4c80-ba91-7d0b11648169
+      - 9f194dc2-5f7f-43cb-979e-c0b6d8996b85
       X-Runtime:
-      - '0.016208'
+      - '0.503733'
     body:
       encoding: UTF-8
       string: '{"ecosystem_responses":[]}'
     http_version: 
-  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
+  recorded_at: Thu, 24 Aug 2017 15:54:43 GMT
 recorded_with: VCR 3.0.3
