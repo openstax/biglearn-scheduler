@@ -12,7 +12,7 @@ class StudentClueCalculation < ApplicationRecord
     -> do
       where(
         <<-WHERE_SQL.strip_heredoc
-          "student_clue_calculations"."exercise_uuids" @>
+          "student_clue_calculations"."exercise_uuids" &&
           ARRAY["ecosystem_exercises"."exercise_uuid"]
         WHERE_SQL
       )

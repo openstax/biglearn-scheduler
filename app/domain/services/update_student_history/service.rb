@@ -72,10 +72,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         )
 
         # Recalculate all SPEs for affected students
-        AlgorithmExerciseCalculation
-          .joins(exercise_calculation: :assignments)
-          .where(assignments: { student_uuid: completed_assignments.map(&:student_uuid) })
-          .ordered_update_all(is_uploaded_for_assignment_uuids: [])
+        reset_pending_assignment_uuids_for_student_uuids completed_assignments.map(&:student_uuid)
 
         responses_size
       end
@@ -113,10 +110,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         Assignment.where(uuid: due_assignment_uuids).update_all('"student_history_at" = "due_at"')
 
         # Recalculate all SPEs for affected students
-        AlgorithmExerciseCalculation
-          .joins(exercise_calculation: :assignments)
-          .where(assignments: { student_uuid: due_assignments.map(&:student_uuid) })
-          .ordered_update_all(is_uploaded_for_assignment_uuids: [])
+        reset_pending_assignment_uuids_for_student_uuids due_assignments.map(&:student_uuid)
 
         due_assignments_size
       end
@@ -133,5 +127,44 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
       total_completed_assignments} completed and #{total_due_assignments
       } past-due) processed in #{Time.current - start_time} second(s)"
     end
+  end
+
+  protected
+
+  def reset_pending_assignment_uuids_for_student_uuids(student_uuids)
+    # The ExerciseCalculation lock ensures we don't miss updates on
+    # concurrent Assignment and AlgorithmExerciseCalculation inserts
+    exercise_calculation_uuids = ExerciseCalculation
+      .joins(:assignments)
+      .where(assignments: { student_uuid: student_uuids })
+      .ordered
+      .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
+      .pluck(:uuid)
+      .uniq
+
+    assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
+    Assignment
+      .joins(:exercise_calculation)
+      .where(exercise_calculations: { uuid: exercise_calculation_uuids })
+      .pluck('"exercise_calculations"."uuid"', :uuid)
+      .each do |exercise_calculation_uuid, uuid|
+        assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
+      end
+
+    algorithm_exercise_calculations = AlgorithmExerciseCalculation
+      .where(exercise_calculation_uuid: exercise_calculation_uuids)
+      .to_a
+
+    algorithm_exercise_calculations.each do |algorithm_exercise_calculation|
+      calculation_uuid = algorithm_exercise_calculation.exercise_calculation_uuid
+      assignment_uuids = assignment_uuids_by_exercise_calculation_uuid[calculation_uuid]
+      algorithm_exercise_calculation.pending_assignment_uuids = assignment_uuids
+    end
+
+    AlgorithmExerciseCalculation.import(
+      algorithm_exercise_calculations, validate: false, on_duplicate_key_update: {
+        conflict_target: [ :uuid ], columns: [ :pending_assignment_uuids ]
+      }
+    )
   end
 end

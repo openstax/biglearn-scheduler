@@ -22,7 +22,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         # No order needed because of SKIP LOCKED
         algorithm_exercise_calculations = AlgorithmExerciseCalculation
           .select([:uuid, :algorithm_name, :exercise_uuids])
-          .where(is_uploaded_for_student: false)
+          .where(is_pending_for_student: true)
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .take(BATCH_SIZE)
         algorithm_exercise_calculations_size = algorithm_exercise_calculations.size
@@ -228,7 +228,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         # Mark the AlgorithmExerciseCalculations as uploaded
         # No order needed because already locked above
         AlgorithmExerciseCalculation.where(uuid: algorithm_exercise_calculation_uuids)
-                                    .update_all(is_uploaded_for_student: true)
+                                    .update_all(is_pending_for_student: false)
 
         algorithm_exercise_calculations_size
       end

@@ -343,14 +343,14 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
         exercise_calculation: exercise_calculation_1,
         algorithm_name: 'local_query',
         exercise_uuids: old_exercise_uuids.shuffle,
-        is_uploaded_for_student: false
+        is_pending_for_student: true
       )
       @algorithm_exercise_calculation_2 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_1,
         algorithm_name: 'tesr',
         exercise_uuids: old_exercise_uuids.shuffle,
-        is_uploaded_for_student: false
+        is_pending_for_student: true
       )
 
       exercise_calculation_2 = FactoryGirl.create(
@@ -363,14 +363,14 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
         exercise_calculation: exercise_calculation_2,
         algorithm_name: 'local_query',
         exercise_uuids: new_exercise_uuids.shuffle,
-        is_uploaded_for_student: false
+        is_pending_for_student: true
       )
       @algorithm_exercise_calculation_4 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_2,
         algorithm_name: 'tesr',
         exercise_uuids: new_exercise_uuids.shuffle,
-        is_uploaded_for_student: false
+        is_pending_for_student: true
       )
     end
 

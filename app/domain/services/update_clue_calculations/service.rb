@@ -113,7 +113,7 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
         AlgorithmExerciseCalculation
           .joins(:exercise_calculation)
           .joins(algorithm_exercise_calculation_join_query)
-          .ordered_update_all(is_uploaded_for_student: false)
+          .ordered_update_all(is_pending_for_student: true)
       end
 
       { clue_calculation_update_responses: clue_calculation_update_responses }

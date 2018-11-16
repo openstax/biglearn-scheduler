@@ -3,12 +3,24 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
     calculation_uuids = exercise_calculation_updates.map { |calc| calc[:calculation_uuid] }
 
     ExerciseCalculation.transaction do
+      # The ExerciseCalculation lock ensures we don't miss updates on
+      # concurrent Assignment and AlgorithmExerciseCalculation inserts
       exercise_calculations_by_uuid = ExerciseCalculation
         .select(:uuid, :student_uuid, :ecosystem_uuid, :algorithm_names)
         .where(uuid: calculation_uuids)
         .ordered
         .lock('FOR NO KEY UPDATE')
         .index_by(&:uuid)
+      exercise_calculation_uuids = exercise_calculations_by_uuid.keys
+
+      assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
+      Assignment
+        .joins(:exercise_calculation)
+        .where(exercise_calculations: { uuid: exercise_calculation_uuids })
+        .pluck('"exercise_calculations"."uuid"', :uuid)
+        .each do |exercise_calculation_uuid, uuid|
+          assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
+        end
 
       algorithm_exercise_calculations = []
       exercise_calculation_uuids_by_algorithm_names = Hash.new { |hash, key| hash[key] = [] }
@@ -21,14 +33,15 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
           { calculation_uuid: calculation_uuid, calculation_status: 'calculation_unknown' }
         else
           algorithm_name = exercise_calculation_update.fetch(:algorithm_name)
+          assignment_uuids = assignment_uuids_by_exercise_calculation_uuid[calculation_uuid]
 
           algorithm_exercise_calculations << AlgorithmExerciseCalculation.new(
             uuid: SecureRandom.uuid,
             exercise_calculation: exercise_calculation,
             algorithm_name: algorithm_name,
             exercise_uuids: exercise_calculation_update.fetch(:exercise_uuids),
-            is_uploaded_for_assignment_uuids: [],
-            is_uploaded_for_student: false
+            pending_assignment_uuids: assignment_uuids,
+            is_pending_for_student: true
           )
 
           exercise_calculation_uuids_by_algorithm_names[algorithm_name] << calculation_uuid \
@@ -43,7 +56,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
         validate: false, on_duplicate_key_update: {
           conflict_target: [ :exercise_calculation_uuid, :algorithm_name ],
           columns: [
-            :uuid, :exercise_uuids, :is_uploaded_for_assignment_uuids, :is_uploaded_for_student
+            :uuid, :exercise_uuids, :pending_assignment_uuids, :is_pending_for_student
           ]
         }
       )

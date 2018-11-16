@@ -6,7 +6,7 @@ class Services::FetchExerciseCalculations::Service < Services::ApplicationServic
 
     exercise_calculations = ExerciseCalculation
       .with_exercise_uuids
-      .where.not("\"algorithm_names\" && ARRAY[#{sanitized_algorithm_name}]::varchar[]")
+      .where.not("\"algorithm_names\" @> ARRAY[#{sanitized_algorithm_name}]::varchar[]")
       .take(BATCH_SIZE)
 
     exercise_calculation_responses = exercise_calculations.map do |exercise_calculation|

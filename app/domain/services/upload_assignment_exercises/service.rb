@@ -28,21 +28,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         # Find algorithm_exercise_calculations with assignments that need PEs or SPEs
         # No order needed because of SKIP LOCKED
         algorithm_exercise_calculations = AlgorithmExerciseCalculation
-          .joins(:exercise_calculation)
-          .where(
-            Assignment.need_pes_or_spes.where(
-              aa[:student_uuid].eq(ec[:student_uuid]).and(
-                aa[:ecosystem_uuid].eq(ec[:ecosystem_uuid])
-              )
-            )
-            .where.not(
-              <<-NOT_SQL.strip_heredoc
-                "algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids" @>
-                ARRAY["assignments"."uuid"]::varchar[]
-              NOT_SQL
-            ).exists
-          )
-          .lock('FOR NO KEY UPDATE OF "algorithm_exercise_calculations" SKIP LOCKED')
+          .where('CARDINALITY("algorithm_exercise_calculations"."pending_assignment_uuids") > 0')
+          .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .take(BATCH_SIZE)
         algorithm_exercise_calculations_size = algorithm_exercise_calculations.size
         next 0 if algorithm_exercise_calculations_size == 0
@@ -51,16 +38,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
 
         assignments = Assignment
-          .need_pes_or_spes
           .select([ aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
           .joins(exercise_calculation: :algorithm_exercise_calculations)
+          .where(uuid: algorithm_exercise_calculations.flat_map(&:pending_assignment_uuids))
           .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
-          .where.not(
-            <<-NOT_SQL.strip_heredoc
-              "algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids" @>
-              ARRAY["assignments"."uuid"]::varchar[]
-            NOT_SQL
-          )
 
         # Delete relevant AssignmentPe and AssignmentSpes, since we are about to reupload them
         pe_assignments = assignments.select(&:needs_pes?)
@@ -575,17 +556,16 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         end
 
         # Mark the AlgorithmExerciseCalculations as uploaded
-        assignments.each do |assignment|
-          algorithm_exercise_calculation =
-            algorithm_exercise_calculations_by_uuid[assignment.algorithm_exercise_calculation_uuid]
-          algorithm_exercise_calculation.is_uploaded_for_assignment_uuids =
-            algorithm_exercise_calculation.is_uploaded_for_assignment_uuids + [ assignment.uuid ]
+        assignments.group_by(&:algorithm_exercise_calculation_uuid).each do |calc_uuid, assignments|
+          algorithm_exercise_calculation = algorithm_exercise_calculations_by_uuid[calc_uuid]
+          algorithm_exercise_calculation.pending_assignment_uuids -= assignments.map(&:uuid)
         end
+
         # No sort needed because already locked above
         AlgorithmExerciseCalculation.import(
           algorithm_exercise_calculations_by_uuid.values,
           validate: false, on_duplicate_key_update: {
-            conflict_target: [ :uuid ], columns: [ :is_uploaded_for_assignment_uuids ]
+            conflict_target: [ :uuid ], columns: [ :pending_assignment_uuids ]
           }
         )
 
