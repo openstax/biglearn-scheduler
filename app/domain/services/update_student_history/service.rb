@@ -121,6 +121,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         due_assignments_size
       end
 
+      # If we got less assignments than the batch size, then this is the last batch
       total_due_assignments += num_due_assignments
       break if num_due_assignments < BATCH_SIZE
     end

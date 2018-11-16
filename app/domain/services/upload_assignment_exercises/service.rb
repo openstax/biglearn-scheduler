@@ -27,7 +27,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       num_algorithm_exercise_calculations = AlgorithmExerciseCalculation.transaction do
         # Find algorithm_exercise_calculations with assignments that need PEs or SPEs
         # No order needed because of SKIP LOCKED
-        algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
+        algorithm_exercise_calculations = AlgorithmExerciseCalculation
           .joins(:exercise_calculation)
           .where(
             Assignment.need_pes_or_spes.where(
@@ -43,8 +43,11 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             ).exists
           )
           .lock('FOR NO KEY UPDATE OF "algorithm_exercise_calculations" SKIP LOCKED')
-          .limit(BATCH_SIZE)
-          .index_by(&:uuid)
+          .take(BATCH_SIZE)
+        algorithm_exercise_calculations_size = algorithm_exercise_calculations.size
+        next 0 if algorithm_exercise_calculations_size == 0
+
+        algorithm_exercise_calculations_by_uuid = algorithm_exercise_calculations.index_by(&:uuid)
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
 
         assignments = Assignment
@@ -578,19 +581,18 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           algorithm_exercise_calculation.is_uploaded_for_assignment_uuids =
             algorithm_exercise_calculation.is_uploaded_for_assignment_uuids + [ assignment.uuid ]
         end
-        algorithm_exercise_calculations = algorithm_exercise_calculations_by_uuid.values
         # No sort needed because already locked above
         AlgorithmExerciseCalculation.import(
-          algorithm_exercise_calculations,
+          algorithm_exercise_calculations_by_uuid.values,
           validate: false, on_duplicate_key_update: {
             conflict_target: [ :uuid ], columns: [ :is_uploaded_for_assignment_uuids ]
           }
         )
 
-        algorithm_exercise_calculations.size
+        algorithm_exercise_calculations_size
       end
 
-      # If we got less records than both batch sizes, then this is the last batch
+      # If we got less calculations than the batch size, then this is the last batch
       total_algorithm_exercise_calculations += num_algorithm_exercise_calculations
       break if num_algorithm_exercise_calculations < BATCH_SIZE
     end

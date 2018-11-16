@@ -15,17 +15,20 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
     ascc = AlgorithmStudentClueCalculation.arel_table
     aa = Assignment.arel_table
 
-    total_students = 0
+    total_algorithm_exercise_calculations = 0
     loop do
-      num_students = Student.transaction do
+      num_algorithm_exercise_calculations = AlgorithmExerciseCalculation.transaction do
         # Find algorithm_exercise_calculations with students that need PEs
         # No order needed because of SKIP LOCKED
-        algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
+        algorithm_exercise_calculations = AlgorithmExerciseCalculation
           .select([:uuid, :algorithm_name, :exercise_uuids])
           .where(is_uploaded_for_student: false)
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
-          .limit(BATCH_SIZE)
-          .index_by(&:uuid)
+          .take(BATCH_SIZE)
+        algorithm_exercise_calculations_size = algorithm_exercise_calculations.size
+        next 0 if algorithm_exercise_calculations_size == 0
+
+        algorithm_exercise_calculations_by_uuid = algorithm_exercise_calculations.index_by(&:uuid)
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
 
         # Don't bother updating calculations for old ecosystems
@@ -227,16 +230,17 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         AlgorithmExerciseCalculation.where(uuid: algorithm_exercise_calculation_uuids)
                                     .update_all(is_uploaded_for_student: true)
 
-        students.size
+        algorithm_exercise_calculations_size
       end
 
-      # If we got less students than the batch size, then this is the last batch
-      total_students += num_students
-      break if num_students < BATCH_SIZE
+      # If we got less calculations than the batch size, then this is the last batch
+      total_algorithm_exercise_calculations += num_algorithm_exercise_calculations
+      break if num_algorithm_exercise_calculations < BATCH_SIZE
     end
 
     log(:debug) do
-      "#{total_students} student(s) processed in #{Time.current - start_time} second(s)"
+      "#{total_algorithm_exercise_calculations} algorithm exercise calculations(s) processed in #{
+      Time.current - start_time} second(s)"
     end
   end
 
