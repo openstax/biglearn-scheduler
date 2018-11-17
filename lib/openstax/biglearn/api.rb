@@ -20,12 +20,14 @@ module OpenStax::Biglearn::Api
 
     def fetch_ecosystem_metadatas(max_num_metadatas: 1000)
       single_api_request method: :fetch_ecosystem_metadatas,
-                         request: { max_num_metadatas: max_num_metadatas }
+                         request: { max_num_metadatas: max_num_metadatas },
+                         keys: [ :max_num_metadatas ]
     end
 
     def fetch_course_metadatas(max_num_metadatas: 1000)
       single_api_request method: :fetch_course_metadatas,
-                         request: { max_num_metadatas: max_num_metadatas }
+                         request: { max_num_metadatas: max_num_metadatas },
+                         keys: [ :max_num_metadatas ]
     end
 
     def fetch_ecosystem_events(ecosystem_event_requests)
