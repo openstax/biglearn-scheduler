@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20181112212315) do
+ActiveRecord::Schema.define(version: 20181116223917) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -27,17 +27,17 @@ ActiveRecord::Schema.define(version: 20181112212315) do
   end
 
   create_table "algorithm_exercise_calculations", force: :cascade do |t|
-    t.uuid     "uuid",                                          null: false
-    t.uuid     "exercise_calculation_uuid",                     null: false
-    t.citext   "algorithm_name",                                null: false
-    t.uuid     "exercise_uuids",                                null: false, array: true
-    t.datetime "created_at",                                    null: false
-    t.datetime "updated_at",                                    null: false
-    t.boolean  "is_uploaded_for_student",                       null: false
-    t.string   "is_uploaded_for_assignment_uuids", default: [], null: false, array: true
+    t.uuid     "uuid",                                     null: false
+    t.uuid     "exercise_calculation_uuid",                null: false
+    t.citext   "algorithm_name",                           null: false
+    t.uuid     "exercise_uuids",                           null: false, array: true
+    t.datetime "created_at",                               null: false
+    t.datetime "updated_at",                               null: false
+    t.boolean  "is_pending_for_student",    default: true, null: false
+    t.string   "pending_assignment_uuids",                 null: false, array: true
+    t.index "cardinality(pending_assignment_uuids)", name: "index_alg_ex_calc_on_cardinality_of_pending_assignment_uuids", using: :btree
     t.index ["exercise_calculation_uuid", "algorithm_name"], name: "index_alg_ex_calc_on_ex_calc_uuid_and_alg_name", unique: true, using: :btree
-    t.index ["is_uploaded_for_assignment_uuids"], name: "index_alg_ex_calc_on_is_uploaded_for_assignment_uuids", using: :gin
-    t.index ["is_uploaded_for_student"], name: "index_alg_ex_calc_on_is_uploaded_for_student", using: :btree
+    t.index ["is_pending_for_student"], name: "index_algorithm_exercise_calculations_on_is_pending_for_student", using: :btree
     t.index ["uuid"], name: "index_algorithm_exercise_calculations_on_uuid", unique: true, using: :btree
   end
 

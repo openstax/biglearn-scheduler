@@ -515,13 +515,24 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                             .ordered_update_all(recalculate_at: current_time)
     end
 
-    unless assigned_exercises.empty?
-      # Find conflicting SPEs and PEs for students with updated assignments
-      # (with the same exercise_uuids) and mark them for recalculation
+    unless assignments_hash.empty? && assigned_exercises.empty?
+      assignment_uuids = assignments_hash.keys
       assigned_exercise_uuids = assigned_exercises.map(&:uuid)
-      assigned_exercise_uuids_string = assigned_exercise_uuids.map do |uuid|
-        AssignedExercise.sanitize uuid
-      end.join(', ')
+
+      # The ExerciseCalculation lock ensures we don't miss updates on
+      # concurrent Assignment and AlgorithmExerciseCalculation inserts
+      exercise_calculation_uuids = ExerciseCalculation
+        .references(:assignments, :student)
+        .where(student: { assignments: { assigned_exercises: { uuid: assigned_exercise_uuids } } })
+        .or(
+          ExerciseCalculation
+            .references(:assignments, :student)
+            .where(assignments: { uuid: assignment_uuids })
+        )
+        .left_outer_joins(:assignments, student: { assignments: :assigned_exercises })
+        .ordered
+        .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
+        .pluck(:uuid)
 
       # Anti-cheating: we don't allow StudentPes that have already been assigned elsewhere
       # Recalculate Student PEs that conflict with the AssignedExercises that were just created
@@ -529,56 +540,44 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         .joins(:student_pes,
                exercise_calculation: { student: { assignments: :assigned_exercises } })
         .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
-        .where(assigned_exercises: { uuid: assigned_exercise_uuids })
-        .ordered_update_all(is_uploaded_for_student: false)
+        .where(exercise_calculations: { uuid: exercise_calculation_uuids },
+               assigned_exercises: { uuid: assigned_exercise_uuids })
+        .ordered_update_all(is_pending_for_student: true) unless assigned_exercise_uuids.empty?
 
-      # Recalculate Assignment PEs and SPEs that conflict with the AssignedExercises that were just
+      assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
+      Assignment
+        .references(:assigned_exercises)
+        .where(uuid: assignment_uuids)
+        .or(Assignment.where(assigned_exercises: { uuid: assigned_exercise_uuids }))
+        .left_outer_joins(:assigned_exercises)
+        .joins(:exercise_calculation)
+        .where(exercise_calculations: { uuid: exercise_calculation_uuids })
+        .pluck('"exercise_calculations"."uuid"', :uuid)
+        .each do |exercise_calculation_uuid, uuid|
+        assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
+      end
+
+      # Recalculate Assignment PEs and SPEs for updated assignments and
+      # Assignment PEs and SPEs that conflict with the AssignedExercises that were just
       # created to prevent any assignment from getting a PE or SPE that was already used elsewhere
-      AlgorithmExerciseCalculation
-        .joins(exercise_calculation: { student: { assignments: :assigned_exercises } })
-        .where(assigned_exercises: { uuid: assigned_exercise_uuids })
-        .ordered_update_all(
-          <<-UPDATE_SQL.strip_heredoc
-            "is_uploaded_for_assignment_uuids" = ARRAY(
-              SELECT UNNEST("algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids")
-              EXCEPT
-              SELECT "assignment_pes"."assignment_uuid"::varchar
-              FROM "assignment_pes"
-              INNER JOIN "assigned_exercises"
-                ON "assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"
-                AND "assigned_exercises"."assignment_uuid" = "assignment_pes"."assignment_uuid"
-              WHERE "assignment_pes"."algorithm_exercise_calculation_uuid" =
-                "algorithm_exercise_calculations"."uuid"
-              AND "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids_string})
-              EXCEPT
-              SELECT "assignment_spes"."assignment_uuid"::varchar
-              FROM "assignment_spes"
-              INNER JOIN "assigned_exercises"
-                ON "assigned_exercises"."exercise_uuid" = "assignment_spes"."exercise_uuid"
-                AND "assigned_exercises"."assignment_uuid" = "assignment_spes"."assignment_uuid"
-              WHERE "assignment_spes"."algorithm_exercise_calculation_uuid" =
-                "algorithm_exercise_calculations"."uuid"
-              AND "assigned_exercises"."uuid" IN (#{assigned_exercise_uuids_string})
-            )
-          UPDATE_SQL
-        )
-    end
+      algorithm_exercise_calculations = AlgorithmExerciseCalculation
+        .where(exercise_calculation_uuid: exercise_calculation_uuids)
+        .to_a
 
-    # Recalculate Assignment PEs and SPEs for updated assignments
-    assignment_uuids = assignments_hash.keys
-    AlgorithmExerciseCalculation
-      .joins(exercise_calculation: :assignments)
-      .where(assignments: { uuid: assignment_uuids })
-      .ordered_update_all(
-        <<-UPDATE_SQL.strip_heredoc
-          "is_uploaded_for_assignment_uuids" = ARRAY(
-            SELECT UNNEST("algorithm_exercise_calculations"."is_uploaded_for_assignment_uuids")
-            EXCEPT
-            SELECT "values"."uuid"::varchar
-            FROM (#{ValuesTable.new(assignment_uuids.map { |uuid| [uuid] })}) AS "values" ("uuid")
-          )
-        UPDATE_SQL
-      ) unless assignment_uuids.empty?
+      algorithm_exercise_calculations.each do |algorithm_exercise_calculation|
+        calculation_uuid = algorithm_exercise_calculation.exercise_calculation_uuid
+        assignment_uuids = assignment_uuids_by_exercise_calculation_uuid[calculation_uuid]
+        algorithm_exercise_calculation.pending_assignment_uuids = (
+          algorithm_exercise_calculation.pending_assignment_uuids + assignment_uuids
+        ).uniq
+      end
+
+      AlgorithmExerciseCalculation.import(
+        algorithm_exercise_calculations, validate: false, on_duplicate_key_update: {
+          conflict_target: [ :uuid ], columns: [ :pending_assignment_uuids ]
+        }
+      )
+    end
 
     # No sort needed because already locked above
     results << Course.import(

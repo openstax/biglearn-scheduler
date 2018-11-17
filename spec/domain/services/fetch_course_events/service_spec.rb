@@ -465,8 +465,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         let(:algorithm_exercise_calculation) do
           FactoryGirl.create :algorithm_exercise_calculation,
             exercise_calculation: exercise_calculation,
-            is_uploaded_for_student: true,
-            is_uploaded_for_assignment_uuids: [ existing_assignment.uuid ]
+            is_pending_for_student: false,
+            pending_assignment_uuids: []
         end
         let!(:existing_assignment_pes)       do
           assigned_exercise_uuids.map do |assigned_exercise_uuid|
@@ -526,8 +526,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           expect(assignment.pes_are_assigned).to eq pes_are_assigned
 
           algorithm_exercise_calculation.reload
-          expect(algorithm_exercise_calculation.is_uploaded_for_student).to eq false
-          expect(algorithm_exercise_calculation.is_uploaded_for_assignment_uuids).to eq []
+          expect(algorithm_exercise_calculation.is_pending_for_student).to eq true
+          expect(algorithm_exercise_calculation.pending_assignment_uuids).to eq [ assignment.uuid ]
         end
       end
     end

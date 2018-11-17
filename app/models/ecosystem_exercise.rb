@@ -20,7 +20,7 @@ class EcosystemExercise < ApplicationRecord
     -> do
       where(
         <<-WHERE_SQL.strip_heredoc
-          "student_clue_calculations"."exercise_uuids" @>
+          "student_clue_calculations"."exercise_uuids" &&
           ARRAY["ecosystem_exercises"."exercise_uuid"]::varchar[]
         WHERE_SQL
       )
@@ -32,7 +32,7 @@ class EcosystemExercise < ApplicationRecord
     sanitized_exercise_uuid = self.class.sanitize exercise_uuid
     StudentClueCalculation.where(ecosystem_uuid: ecosystem_uuid).where(
       <<-WHERE_SQL.strip_heredoc
-        "student_clue_calculations"."exercise_uuids" @> ARRAY[#{sanitized_exercise_uuid}]::varchar[]
+        "student_clue_calculations"."exercise_uuids" && ARRAY[#{sanitized_exercise_uuid}]::varchar[]
       WHERE_SQL
     )
   end
@@ -41,7 +41,7 @@ class EcosystemExercise < ApplicationRecord
     -> do
       where(
         <<-WHERE_SQL.strip_heredoc
-          "teacher_clue_calculations"."exercise_uuids" @>
+          "teacher_clue_calculations"."exercise_uuids" &&
           ARRAY["ecosystem_exercises"."exercise_uuid"]::varchar[]
         WHERE_SQL
       )
@@ -53,7 +53,7 @@ class EcosystemExercise < ApplicationRecord
     sanitized_exercise_uuid = self.class.sanitize exercise_uuid
     TeacherClueCalculation.where(ecosystem_uuid: ecosystem_uuid).where(
       <<-WHERE_SQL.strip_heredoc
-        "teacher_clue_calculations"."exercise_uuids" @> ARRAY[#{sanitized_exercise_uuid}]::varchar[]
+        "teacher_clue_calculations"."exercise_uuids" && ARRAY[#{sanitized_exercise_uuid}]::varchar[]
       WHERE_SQL
     )
   end

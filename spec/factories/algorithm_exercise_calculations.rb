@@ -1,12 +1,16 @@
 FactoryGirl.define do
   factory :algorithm_exercise_calculation do
-    transient                        { num_exercise_uuids { rand(10) + 1 } }
+    transient              { num_exercise_uuids { rand(10) + 1 } }
 
-    uuid                             { SecureRandom.uuid }
+    uuid                   { SecureRandom.uuid }
     exercise_calculation
-    algorithm_name                   { [ 'local_query', 'tesr' ].sample }
-    exercise_uuids                   { num_exercise_uuids.times.map { SecureRandom.uuid } }
-    is_uploaded_for_assignment_uuids { [] }
-    is_uploaded_for_student          { [ true, false ].sample }
+    algorithm_name         { [ 'local_query', 'tesr' ].sample }
+    exercise_uuids         { num_exercise_uuids.times.map { SecureRandom.uuid } }
+    is_pending_for_student { [ true, false ].sample }
+
+    after(:build) do |algorithm_exercise_calculation|
+      algorithm_exercise_calculation.pending_assignment_uuids ||=
+        algorithm_exercise_calculation.exercise_calculation.assignments.map(&:uuid)
+    end
   end
 end

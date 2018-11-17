@@ -20,6 +20,8 @@ class Services::UploadStudentClueCalculations::Service < Services::ApplicationSe
           .where(is_uploaded: false)
           .lock('FOR NO KEY UPDATE OF "algorithm_student_clue_calculations" SKIP LOCKED')
           .take(BATCH_SIZE)
+        algorithm_calculations_size = algorithm_calculations.size
+        next 0 if algorithm_calculations_size == 0
 
         student_clue_requests = algorithm_calculations.map do |algorithm_calculation|
           calculation = algorithm_calculation.student_clue_calculation
@@ -40,7 +42,7 @@ class Services::UploadStudentClueCalculations::Service < Services::ApplicationSe
         AlgorithmStudentClueCalculation.where(uuid: algorithm_calculation_uuids)
                                        .update_all(is_uploaded: true)
 
-        algorithm_calculations.size
+        algorithm_calculations_size
       end
 
       # If we got less calculations than the batch size, then this is the last batch
