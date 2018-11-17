@@ -19,7 +19,7 @@ class OpenStax::Biglearn::Api::RealClient
 
   def fetch_ecosystem_metadatas(request)
     request = request.slice(:max_num_metadatas).merge(
-      metadata_sequence_number_offset: (Ecosystem.maximum(:metadata_sequence_number) || -1) + 1,
+      metadata_sequence_number_offset: (Ecosystem.maximum(:metadata_sequence_number) || -1) + 1
     )
 
     single_api_request url: :fetch_ecosystem_metadatas, request: request
@@ -27,7 +27,7 @@ class OpenStax::Biglearn::Api::RealClient
 
   def fetch_course_metadatas(request)
     request = request.slice(:max_num_metadatas).merge(
-      metadata_sequence_number_offset: (Course.maximum(:metadata_sequence_number) || -1) + 1,
+      metadata_sequence_number_offset: (Course.maximum(:metadata_sequence_number) || -1) + 1
     )
 
     single_api_request url: :fetch_course_metadatas, request: request
