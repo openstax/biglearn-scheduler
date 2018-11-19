@@ -3,7 +3,7 @@ class AddMetadataSequenceNumbersToEcosystemsAndCourses < ActiveRecord::Migration
     add_column :ecosystems, :metadata_sequence_number, :integer
 
     Ecosystem.connection.execute(
-      <<-CTE_SQL
+      <<-CTE_SQL.strip_heredoc
         WITH "ecosystem_row_numbers" AS (
           SELECT "ecosystems"."id", ROW_NUMBER() OVER (
             ORDER BY "ecosystems"."created_at", "ecosystems"."id"
@@ -23,7 +23,7 @@ class AddMetadataSequenceNumbersToEcosystemsAndCourses < ActiveRecord::Migration
     add_column :courses, :metadata_sequence_number, :integer
 
     Course.connection.execute(
-      <<-CTE_SQL
+      <<-CTE_SQL.strip_heredoc
         WITH "course_row_numbers" AS (
           SELECT "courses"."id", ROW_NUMBER() OVER (
             ORDER BY "courses"."created_at", "courses"."id"
