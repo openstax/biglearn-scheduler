@@ -49,7 +49,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
             WHERE_SQL
           )
           .to_a
-        next num_responses if completed_assignments.empty?
+        next responses_size if completed_assignments.empty?
 
         total_completed_assignments += completed_assignments.size
 

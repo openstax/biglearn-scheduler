@@ -106,7 +106,7 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
         algorithm_exercise_calculation_join_query = <<-JOIN_SQL.strip_heredoc
           INNER JOIN (#{ValuesTable.new(student_pes_values_array)})
             AS "values" ("student_uuid", "algorithm_name")
-              ON "exercise_calculations"."student_uuid" = "values"."student_uuid"
+              ON "exercise_calculations"."student_uuid"::text = "values"."student_uuid"
                 AND "algorithm_exercise_calculations"."algorithm_name" = "values"."algorithm_name"
         JOIN_SQL
 
