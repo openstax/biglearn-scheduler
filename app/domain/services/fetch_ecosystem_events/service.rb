@@ -20,8 +20,8 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         # Since create_ecosystem is our only event here right now,
         # we can ignore all ecosystems that already processed it (sequence_number > 0)
         # Order needed because we are processing the ecosystems in chunks
-        ecosystem_relation = restart ? Ecosystem.all : Ecosystem.where(sequence_number: 0)
-        ecosystem_relation = ecosystem_relation.ordered.lock('FOR NO KEY UPDATE SKIP LOCKED')
+        ecosystem_relation = Ecosystem.ordered.lock('FOR NO KEY UPDATE SKIP LOCKED')
+        ecosystem_relation = ecosystem_relation.where(sequence_number: 0) unless restart
         ecosystem_relation = ecosystem_relation.where(ec[:uuid].gt(last_uuid)) unless last_uuid.nil?
         ecosystems = ecosystem_relation.take(BATCH_SIZE)
         ecosystems_size = ecosystems.size
