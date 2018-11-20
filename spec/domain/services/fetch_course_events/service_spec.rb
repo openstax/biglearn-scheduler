@@ -105,6 +105,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     .and change     { course.reload.sequence_number }
                                                       .from(0).to(sequence_number + 1)
                                     .and not_change { course.ecosystem_uuid }
+                                    .and not_change { course.starts_at }
+                                    .and not_change { course.ends_at }
                                     .and not_change { course.course_excluded_exercise_uuids }
                                     .and not_change { course.course_excluded_exercise_group_uuids }
                                     .and not_change { course.global_excluded_exercise_uuids }
@@ -152,6 +154,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     .and change     { course.reload.sequence_number }
                                                       .from(0).to(sequence_number + 1)
                                     .and not_change { course.ecosystem_uuid }
+                                    .and not_change { course.starts_at }
+                                    .and not_change { course.ends_at }
                                     .and not_change { course.course_excluded_exercise_uuids }
                                     .and not_change { course.course_excluded_exercise_group_uuids }
                                     .and not_change { course.global_excluded_exercise_uuids }
@@ -191,6 +195,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { course.reload.sequence_number }
                                                     .from(0).to(sequence_number + 1)
                                   .and change     { course.ecosystem_uuid }.to(new_ecosystem_uuid)
+                                  .and not_change { course.starts_at }
+                                  .and not_change { course.ends_at }
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
                                   .and not_change { course.global_excluded_exercise_uuids }
@@ -245,6 +251,47 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { course.reload.sequence_number }
                                                     .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
+                                  .and not_change { course.starts_at }
+                                  .and not_change { course.ends_at }
+                                  .and not_change { course.course_excluded_exercise_uuids }
+                                  .and not_change { course.course_excluded_exercise_group_uuids }
+                                  .and not_change { course.global_excluded_exercise_uuids }
+                                  .and not_change { course.global_excluded_exercise_group_uuids }
+      end
+    end
+
+    context 'update_course_active_dates events' do
+      let(:current_time)       { Time.current }
+      let(:starts_at)          { (current_time - 1.day).iso8601 }
+      let(:ends_at)            { (current_time + 1.day).iso8601 }
+
+      let(:event_type)         { 'update_course_active_dates' }
+      let(:event_data)         do
+        {
+          request_uuid: event_uuid,
+          course_uuid: course.uuid,
+          sequence_number: sequence_number,
+          starts_at: starts_at,
+          ends_at: ends_at
+        }
+      end
+
+      it "updates the Course's starts_at and ends_at dates" do
+        expect { subject.process }.to  not_change { Course.count }
+                                  .and not_change { EcosystemPreparation.count }
+                                  .and not_change { BookContainerMapping.count }
+                                  .and not_change { CourseContainer.count }
+                                  .and not_change { Student.count }
+                                  .and not_change { Assignment.count }
+                                  .and not_change { AssignedExercise.count }
+                                  .and not_change { Response.count }
+                                  .and change     { course.reload.sequence_number }
+                                                    .from(0).to(sequence_number + 1)
+                                  .and not_change { course.ecosystem_uuid }
+                                  .and change     { course.starts_at }
+                                                    .from(nil).to(DateTime.iso8601(starts_at))
+                                  .and change     { course.ends_at }
+                                                    .from(nil).to(DateTime.iso8601(ends_at))
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
                                   .and not_change { course.global_excluded_exercise_uuids }
@@ -292,6 +339,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { course.reload.sequence_number }
                                                     .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
+                                  .and not_change { course.starts_at }
+                                  .and not_change { course.ends_at }
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
                                   .and change     { course.global_excluded_exercise_uuids }
@@ -344,6 +393,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { course.reload.sequence_number }
                                                     .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
+                                  .and not_change { course.starts_at }
+                                  .and not_change { course.ends_at }
                                   .and change     { course.course_excluded_exercise_uuids }
                                   .and change     { course.course_excluded_exercise_group_uuids }
                                   .and not_change { course.global_excluded_exercise_uuids }
@@ -435,6 +486,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { course.reload.sequence_number }
                                                     .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
+                                  .and not_change { course.starts_at }
+                                  .and not_change { course.ends_at }
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
                                   .and not_change { course.global_excluded_exercise_uuids }
@@ -507,6 +560,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     .and change     { course.reload.sequence_number }
                                                       .from(0).to(sequence_number + 1)
                                     .and not_change { course.ecosystem_uuid }
+                                    .and not_change { course.starts_at }
+                                    .and not_change { course.ends_at }
                                     .and not_change { course.course_excluded_exercise_uuids }
                                     .and not_change { course.course_excluded_exercise_group_uuids }
                                     .and not_change { course.global_excluded_exercise_uuids }
@@ -566,6 +621,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { course.reload.sequence_number }
                                                     .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
+                                  .and not_change { course.starts_at }
+                                  .and not_change { course.ends_at }
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
                                   .and not_change { course.global_excluded_exercise_uuids }

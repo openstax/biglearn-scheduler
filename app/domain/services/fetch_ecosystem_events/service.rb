@@ -3,7 +3,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
   RELEVANT_EVENT_TYPES = [ :create_ecosystem ]
 
-  def process
+  def process(event_types: RELEVANT_EVENT_TYPES, restart: false)
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
@@ -20,9 +20,8 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         # Since create_ecosystem is our only event here right now,
         # we can ignore all ecosystems that already processed it (sequence_number > 0)
         # Order needed because we are processing the ecosystems in chunks
-        ecosystem_relation = Ecosystem.where(sequence_number: 0)
-                                      .ordered
-                                      .lock('FOR NO KEY UPDATE SKIP LOCKED')
+        ecosystem_relation = restart ? Ecosystem.all : Ecosystem.where(sequence_number: 0)
+        ecosystem_relation = ecosystem_relation.ordered.lock('FOR NO KEY UPDATE SKIP LOCKED')
         ecosystem_relation = ecosystem_relation.where(ec[:uuid].gt(last_uuid)) unless last_uuid.nil?
         ecosystems = ecosystem_relation.take(BATCH_SIZE)
         ecosystems_size = ecosystems.size
@@ -31,7 +30,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         last_uuid = ecosystems.last.uuid
 
         partial_ecosystem_uuids_to_requery, partial_results, num_events =
-          fetch_and_process_ecosystem_events(ecosystems)
+          fetch_and_process_ecosystem_events(ecosystems, event_types, restart)
 
         ecosystem_uuids_to_requery.concat partial_ecosystem_uuids_to_requery
         results.concat partial_results
@@ -55,7 +54,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         next if ecosystems.empty?
 
         partial_ecosystem_uuids_to_requery, partial_results, num_events =
-          fetch_and_process_ecosystem_events(ecosystems)
+          fetch_and_process_ecosystem_events(ecosystems, event_types, restart)
 
         ecosystem_uuids_to_requery.concat partial_ecosystem_uuids_to_requery
         results.concat partial_results
@@ -76,14 +75,16 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
   protected
 
-  def fetch_and_process_ecosystem_events(ecosystems)
+  def fetch_and_process_ecosystem_events(ecosystems, event_types, restart)
     ecosystem_uuids_to_requery = []
     results = []
     total_events = 0
 
     ecosystem_event_requests = []
     ecosystems_by_ecosystem_uuid = ecosystems.map do |ecosystem|
-      ecosystem_event_requests << { ecosystem: ecosystem, event_types: RELEVANT_EVENT_TYPES }
+      ecosystem_event_requests << {
+        ecosystem: ecosystem, event_types: event_types, restart: restart
+      }
 
       [ ecosystem.uuid, ecosystem ]
     end.to_h
@@ -174,7 +175,9 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         end
       end
 
-      ecosystem.sequence_number = events.map { |event| event.fetch(:sequence_number) }.max + 1
+      ecosystem.sequence_number = [
+        ecosystem.sequence_number, events.map { |event| event.fetch(:sequence_number) }.max + 1
+      ].max
 
       ecosystem
     end.compact

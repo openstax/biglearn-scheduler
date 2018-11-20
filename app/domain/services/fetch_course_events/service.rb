@@ -1,8 +1,9 @@
 class Services::FetchCourseEvents::Service < Services::ApplicationService
   BATCH_SIZE = 1000
+  GRACE_PERIOD = 1.month
 
   # create_course is already included in the metadata
-  # and would not be useful to look at besides error-checking
+  # and would not be useful to look at except for error-checking
   RELEVANT_EVENT_TYPES = [
     :prepare_course_ecosystem,
     :update_course_ecosystem,
@@ -14,7 +15,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     :record_response
   ]
 
-  def process
+  def process(event_types: RELEVANT_EVENT_TYPES, restart: false)
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
@@ -29,7 +30,21 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     loop do
       num_courses = Course.transaction do
         # Order needed because we are processing the courses in chunks
-        course_relation = Course.ordered.lock('FOR NO KEY UPDATE SKIP LOCKED')
+        course_relation = Course.where(
+          co.grouping(
+            co[:ends_at].gt(start_time - GRACE_PERIOD).and(
+              co[:starts_at].lt(start_time + GRACE_PERIOD)
+            )
+          ).or(
+            co.grouping(
+              co[:ends_at].eq(nil).and(
+                co[:starts_at].eq(nil).and(
+                  co[:updated_at].gt(start_time - GRACE_PERIOD)
+                )
+              )
+            )
+          )
+        ).ordered.lock('FOR NO KEY UPDATE SKIP LOCKED')
         course_relation = course_relation.where(co[:uuid].gt(last_uuid)) unless last_uuid.nil?
         courses = course_relation.take(BATCH_SIZE)
         courses_size = courses.size
@@ -38,7 +53,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         last_uuid = courses.last.uuid
 
         partial_course_uuids_to_requery, partial_results, num_events =
-          fetch_and_process_course_events(courses, start_time)
+          fetch_and_process_course_events(courses, event_types, restart, start_time)
 
         course_uuids_to_requery.concat partial_course_uuids_to_requery
         results.concat partial_results
@@ -61,7 +76,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         next if courses.empty?
 
         partial_course_uuids_to_requery, partial_results, num_events =
-          fetch_and_process_course_events(courses, start_time)
+          fetch_and_process_course_events(courses, event_types, restart, start_time)
 
         course_uuids_to_requery.concat partial_course_uuids_to_requery
         results.concat partial_results
@@ -82,14 +97,14 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
   protected
 
-  def fetch_and_process_course_events(courses, current_time)
+  def fetch_and_process_course_events(courses, event_types, restart, current_time)
     course_uuids_to_requery = []
     results = []
     total_events = 0
 
     course_event_requests = []
     courses_by_course_uuid = courses.map do |course|
-      course_event_requests << { course: course, event_types: RELEVANT_EVENT_TYPES }
+      course_event_requests << { course: course, event_types: event_types, restart: restart }
 
       [ course.uuid, course ]
     end.to_h
@@ -216,7 +231,15 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
       # Update course active dates is used to exclude past courses from calculations
       update_course_active_dates = events_by_type['update_course_active_dates'] || []
-      # TODO: Handle updating course active dates
+      last_course_active_date_update = update_course_active_dates.last
+      if last_course_active_date_update.present?
+        course.starts_at = DateTime.iso8601(
+          last_course_active_date_update.fetch(:event_data).fetch(:starts_at)
+        )
+        course.ends_at = DateTime.iso8601(
+          last_course_active_date_update.fetch(:event_data).fetch(:ends_at)
+        )
+      end
 
       # Update globally excluded exercises and update course excluded exercises
       # mark some exercises as unavailable for PE/SPE/PracticeWorstAreas
@@ -278,9 +301,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           ecosystem_uuid: ecosystem_uuid,
           student_uuid: student_uuid,
           assignment_type: data.fetch(:assignment_type),
-          opens_at: opens_at.nil? ? nil : DateTime.parse(opens_at),
-          due_at: due_at.nil? ? nil : DateTime.parse(due_at),
-          feedback_at: feedback_at.nil? ? nil : DateTime.parse(feedback_at),
+          opens_at: opens_at.nil? ? nil : DateTime.iso8601(opens_at),
+          due_at: due_at.nil? ? nil : DateTime.iso8601(due_at),
+          feedback_at: feedback_at.nil? ? nil : DateTime.iso8601(feedback_at),
           assigned_book_container_uuids: data.fetch(:assigned_book_container_uuids),
           assigned_exercise_uuids: exercise_uuids,
           goal_num_tutor_assigned_spes: data[:goal_num_tutor_assigned_spes],
@@ -328,7 +351,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         )
       end
 
-      course.sequence_number = events.map { |event| event.fetch(:sequence_number) }.max + 1
+      course.sequence_number = [
+        course.sequence_number, events.map { |event| event.fetch(:sequence_number) }.max + 1
+      ].max
 
       course
     end.compact
@@ -356,8 +381,10 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     from_ecosystem_uuids = book_container_mappings.map(&:from_ecosystem_uuid)
     to_ecosystem_uuids = book_container_mappings.map(&:to_ecosystem_uuid)
 
-    to_from_mappings = BookContainerMapping.where(to_ecosystem_uuid: from_ecosystem_uuids)
-    from_to_mappings = BookContainerMapping.where(from_ecosystem_uuid: to_ecosystem_uuids)
+    to_from_mappings = from_ecosystem_uuids.empty? ?
+                         [] : BookContainerMapping.where(to_ecosystem_uuid: from_ecosystem_uuids)
+    from_to_mappings = to_ecosystem_uuids.empty? ?
+                         [] : BookContainerMapping.where(from_ecosystem_uuid: to_ecosystem_uuids)
 
     grouped_to_from_mappings = Hash.new do |hash, key|
       hash[key] = Hash.new { |hash, key| hash[key] = [] }
@@ -586,6 +613,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         columns: [
           :sequence_number,
           :ecosystem_uuid,
+          :starts_at,
+          :ends_at,
           :course_excluded_exercise_uuids,
           :course_excluded_exercise_group_uuids,
           :global_excluded_exercise_uuids,
