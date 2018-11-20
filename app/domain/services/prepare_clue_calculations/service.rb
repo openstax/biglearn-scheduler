@@ -149,12 +149,12 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           forward_mapping_join_query = <<-JOIN_SQL.strip_heredoc
             INNER JOIN (#{ValuesTable.new(forward_mapping_values_array)}) AS "values"
               ("from_ecosystem_uuid", "to_ecosystem_uuid", "from_book_container_uuids")
-              ON "book_container_mappings"."from_ecosystem_uuid"::text =
-                "values"."from_ecosystem_uuid"
-                AND "book_container_mappings"."to_ecosystem_uuid"::text =
-                  "values"."to_ecosystem_uuid"
-                AND "book_container_mappings"."from_book_container_uuid"::text =
-                  ANY("values"."from_book_container_uuids")
+              ON "book_container_mappings"."from_ecosystem_uuid" =
+                "values"."from_ecosystem_uuid"::uuid
+                AND "book_container_mappings"."to_ecosystem_uuid" =
+                  "values"."to_ecosystem_uuid"::uuid
+                AND "book_container_mappings"."from_book_container_uuid" =
+                  ANY("values"."from_book_container_uuids"::uuid[])
           JOIN_SQL
           BookContainerMapping.joins(forward_mapping_join_query)
                               .pluck(
@@ -276,9 +276,9 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           reverse_mapping_join_query = <<-JOIN_SQL.strip_heredoc
             INNER JOIN (#{ValuesTable.new(reverse_mapping_values_array)})
               AS "values" ("to_ecosystem_uuid", "to_book_container_uuid")
-              ON "book_container_mappings"."to_ecosystem_uuid"::text = "values"."to_ecosystem_uuid"
-                AND "book_container_mappings"."to_book_container_uuid"::text =
-                  "values"."to_book_container_uuid"
+              ON "book_container_mappings"."to_ecosystem_uuid" = "values"."to_ecosystem_uuid"::uuid
+                AND "book_container_mappings"."to_book_container_uuid" =
+                  "values"."to_book_container_uuid"::uuid
           JOIN_SQL
           BookContainerMapping.joins(reverse_mapping_join_query)
                               .pluck(
@@ -368,8 +368,8 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           response_join_query = <<-JOIN_SQL.strip_heredoc
             INNER JOIN (#{ValuesTable.new(response_values_array)})
               AS "values" ("student_uuids", "exercise_uuids")
-            ON "values"."student_uuids" && ARRAY["responses"."student_uuid"]::text[]
-              AND "values"."exercise_uuids" && ARRAY["responses"."exercise_uuid"]::text[]
+            ON "values"."student_uuids"::uuid[] && ARRAY["responses"."student_uuid"]
+              AND "values"."exercise_uuids"::uuid[] && ARRAY["responses"."exercise_uuid"]
           JOIN_SQL
           Response
             .joins(assigned_exercise: :assignment)
