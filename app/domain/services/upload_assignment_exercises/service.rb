@@ -55,9 +55,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               FROM "assignment_pes"
               INNER JOIN (#{ValuesTable.new(assignment_pe_values)}) AS "values"
                 ("assignment_uuid", "algorithm_exercise_calculation_uuid")
-                ON "assignment_pes"."assignment_uuid"::text = "values"."assignment_uuid"
-                AND "assignment_pes"."algorithm_exercise_calculation_uuid"::text =
-                  "values"."algorithm_exercise_calculation_uuid"
+                ON "assignment_pes"."assignment_uuid" = "values"."assignment_uuid"::uuid
+                AND "assignment_pes"."algorithm_exercise_calculation_uuid" =
+                  "values"."algorithm_exercise_calculation_uuid"::uuid
             )
           WHERE_SQL
           AssignmentPe.where(assignment_pe_where_query).ordered_delete_all
@@ -73,9 +73,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               FROM "assignment_spes"
               INNER JOIN (#{ValuesTable.new(assignment_spe_values)}) AS "values"
                 ("assignment_uuid", "algorithm_exercise_calculation_uuid")
-                ON "assignment_spes"."assignment_uuid"::text = "values"."assignment_uuid"
-                AND "assignment_spes"."algorithm_exercise_calculation_uuid"::text =
-                  "values"."algorithm_exercise_calculation_uuid"
+                ON "assignment_spes"."assignment_uuid" = "values"."assignment_uuid"::uuid
+                AND "assignment_spes"."algorithm_exercise_calculation_uuid" =
+                  "values"."algorithm_exercise_calculation_uuid"::uuid
             )
           WHERE_SQL
           AssignmentSpe.where(assignment_spe_where_query).ordered_delete_all
@@ -176,11 +176,11 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           forward_mapping_join_query = <<-JOIN_SQL.strip_heredoc
             INNER JOIN (#{ValuesTable.new(forward_mapping_values_array)})
               AS "values" ("to_ecosystem_uuid", "from_ecosystem_uuid", "from_book_container_uuids")
-              ON "book_container_mappings"."to_ecosystem_uuid"::text = "values"."to_ecosystem_uuid"
-                AND "book_container_mappings"."from_ecosystem_uuid"::text =
-                  "values"."from_ecosystem_uuid"
-                AND "book_container_mappings"."from_book_container_uuid"::text =
-                  ANY("values"."from_book_container_uuids")
+              ON "book_container_mappings"."to_ecosystem_uuid" = "values"."to_ecosystem_uuid"::uuid
+                AND "book_container_mappings"."from_ecosystem_uuid" =
+                  "values"."from_ecosystem_uuid"::uuid
+                AND "book_container_mappings"."from_book_container_uuid" =
+                  ANY("values"."from_book_container_uuids"::uuid[])
           JOIN_SQL
           BookContainerMapping.joins(forward_mapping_join_query)
                               .pluck(
