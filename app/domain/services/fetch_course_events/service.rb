@@ -356,8 +356,10 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     from_ecosystem_uuids = book_container_mappings.map(&:from_ecosystem_uuid)
     to_ecosystem_uuids = book_container_mappings.map(&:to_ecosystem_uuid)
 
-    to_from_mappings = BookContainerMapping.where(to_ecosystem_uuid: from_ecosystem_uuids)
-    from_to_mappings = BookContainerMapping.where(from_ecosystem_uuid: to_ecosystem_uuids)
+    to_from_mappings = from_ecosystem_uuids.empty? ?
+                         [] : BookContainerMapping.where(to_ecosystem_uuid: from_ecosystem_uuids)
+    from_to_mappings = to_ecosystem_uuids.empty? ?
+                         [] : BookContainerMapping.where(from_ecosystem_uuid: to_ecosystem_uuids)
 
     grouped_to_from_mappings = Hash.new do |hash, key|
       hash[key] = Hash.new { |hash, key| hash[key] = [] }

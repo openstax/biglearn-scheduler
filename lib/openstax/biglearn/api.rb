@@ -131,27 +131,21 @@ module OpenStax::Biglearn::Api
       result
     end
 
-    def single_api_request(method:, request: nil, keys: [], optional_keys: [],
-                           result_class: Hash, perform_later: false)
+    def single_api_request(method:, request: nil, keys: [], optional_keys: [], result_class: Hash)
       verified_request = verify_and_slice_request method: method,
                                                   request: request,
                                                   keys: keys,
                                                   optional_keys: optional_keys
 
-      if perform_later
-        raise NotImplementedError
-        #OpenStax::Biglearn::Api::Job.perform_later method.to_s, verified_request
-      else
-        response = verified_request.nil? ? client.send(method) :
-                                           client.send(method, verified_request)
+      response = verified_request.nil? ? client.send(method) :
+                                         client.send(method, verified_request)
 
-        verify_result(result: block_given? ? yield(request, response) : response,
-                      result_class: result_class)
-      end
+      verify_result(result: block_given? ? yield(request, response) : response,
+                    result_class: result_class)
     end
 
     def bulk_api_request(method:, requests:, keys:, optional_keys: [],
-                         result_class: Hash, uuid_key: :request_uuid, perform_later: false)
+                         result_class: Hash, uuid_key: :request_uuid)
       return {} if requests.blank?
 
       requests_map = {}
@@ -167,22 +161,17 @@ module OpenStax::Biglearn::Api
         request.has_key?(uuid_key) ? request : request.merge(uuid_key => uuid)
       end
 
-      if perform_later
-        raise NotImplementedError
-        #OpenStax::Biglearn::Api::Job.perform_later method.to_s, requests_array
-      else
-        responses = {}
-        client.send(method, requests_array).each do |response|
-          request = requests_map[response[uuid_key]]
+      responses = {}
+      client.send(method, requests_array).each do |response|
+        request = requests_map[response[uuid_key]]
 
-          responses[request] = verify_result(
-            result: block_given? ? yield(request, response) : response, result_class: result_class
-          )
-        end
-
-        # If given a Hash instead of an Array, return the response directly
-        requests.is_a?(Hash) ? responses.values.first : responses
+        responses[request] = verify_result(
+          result: block_given? ? yield(request, response) : response, result_class: result_class
+        )
       end
+
+      # If given a Hash instead of an Array, return the response directly
+      requests.is_a?(Hash) ? responses.values.first : responses
     end
 
   end
