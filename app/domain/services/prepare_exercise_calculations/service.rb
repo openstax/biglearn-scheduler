@@ -122,10 +122,20 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
   def mark_assignments_with_calculations(ec, st, aa)
     # Check if any assignments with has_exercise_calculation: false
     # already have calculations and need to be updated
-    Assignment.joins(:student).need_pes_or_spes.where(has_exercise_calculation: false).where(
-      ExerciseCalculation.where(
-        ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
-      ).exists
-    ).ordered_update_all(has_exercise_calculation: true)
+    # We don't care about missing assignments here because we call this method every iteration
+    # No order needed because of SKIP LOCKED
+    assignment_uuids = Assignment
+      .joins(:student)
+      .need_pes_or_spes
+      .where(has_exercise_calculation: false)
+      .where(
+        ExerciseCalculation.where(
+          ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
+        ).exists
+      )
+      .lock('FOR NO KEY UPDATE OF "assignments" SKIP LOCKED')
+      .pluck(:uuid)
+
+    Assignment.where(uuid: assignment_uuids).update_all(has_exercise_calculation: true)
   end
 end
