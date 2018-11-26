@@ -550,14 +550,22 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       # The ExerciseCalculation lock ensures we don't miss updates on
       # concurrent Assignment and AlgorithmExerciseCalculation inserts
       exercise_calculation_uuids = ExerciseCalculation
-        .references(:assignments, :student)
-        .where(student: { assignments: { assigned_exercises: { uuid: assigned_exercise_uuids } } })
-        .or(
-          ExerciseCalculation
-            .references(:assignments, :student)
-            .where(assignments: { uuid: assignment_uuids })
+        .where(
+          ExerciseCalculation.arel_table[:uuid].in(
+            ExerciseCalculation
+              .select(:uuid)
+              .joins(student: { assignments: :assigned_exercises })
+              .where(
+                student: { assignments: { assigned_exercises: { uuid: assigned_exercise_uuids } } }
+              )
+              .union(
+                ExerciseCalculation
+                  .select(:uuid)
+                  .joins(:assignments)
+                  .where(assignments: { uuid: assignment_uuids })
+              )
+          )
         )
-        .left_outer_joins(:assignments, student: { assignments: :assigned_exercises })
         .ordered
         .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
         .pluck(:uuid)
@@ -568,8 +576,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         .joins(:student_pes,
                exercise_calculation: { student: { assignments: :assigned_exercises } })
         .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
-        .where(exercise_calculations: { uuid: exercise_calculation_uuids },
-               assigned_exercises: { uuid: assigned_exercise_uuids })
+        .where(assigned_exercises: { uuid: assigned_exercise_uuids })
         .ordered_update_all(is_pending_for_student: true) unless assigned_exercise_uuids.empty?
 
       assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
