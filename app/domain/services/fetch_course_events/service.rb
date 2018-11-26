@@ -543,58 +543,113 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                             .ordered_update_all(recalculate_at: current_time)
     end
 
-    unless assignments_hash.empty? && assigned_exercises.empty?
+    unless assignments_hash.empty?
       assignment_uuids = assignments_hash.keys
       assigned_exercise_uuids = assigned_exercises.map(&:uuid)
 
       # The ExerciseCalculation lock ensures we don't miss updates on
       # concurrent Assignment and AlgorithmExerciseCalculation inserts
-      exercise_calculation_uuids = ExerciseCalculation
-        .where(
-          ExerciseCalculation.arel_table[:uuid].in(
-            ExerciseCalculation
-              .select(:uuid)
-              .joins(student: { assignments: :assigned_exercises })
-              .where(
-                student: { assignments: { assigned_exercises: { uuid: assigned_exercise_uuids } } }
-              )
-              .union(
-                ExerciseCalculation
-                  .select(:uuid)
-                  .joins(:assignments)
-                  .where(assignments: { uuid: assignment_uuids })
-              )
+      exercise_calculation_uuids = ExerciseCalculation.where(
+        <<-WHERE_SQL.strip_heredoc
+          "exercise_calculations"."uuid" IN (
+            #{
+              ExerciseCalculation
+                .select(:uuid)
+                .joins(
+                  algorithm_exercise_calculations: :student_pes,
+                  student: { assignments: :assigned_exercises }
+                )
+                .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
+                .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+                .to_sql
+            }
+            UNION
+            #{
+              ExerciseCalculation
+                .select(:uuid)
+                .joins(:assignments)
+                .where(assignments: { uuid: assignment_uuids })
+                .to_sql
+            }
+            UNION
+            #{
+              ExerciseCalculation
+                .select(:uuid)
+                .joins(assignments: :assignment_pes, student: { assignments: :assigned_exercises })
+                .where('"assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"')
+                .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+                .to_sql
+            }
+            UNION
+            #{
+              ExerciseCalculation
+                .select(:uuid)
+                .joins(assignments: :assignment_spes, student: { assignments: :assigned_exercises })
+                .where('"assigned_exercises"."exercise_uuid" = "assignment_spes"."exercise_uuid"')
+                .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+                .to_sql
+            }
           )
-        )
-        .ordered
-        .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
-        .pluck(:uuid)
+        WHERE_SQL
+      )
+      .ordered
+      .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
+      .pluck(:uuid)
 
       # Anti-cheating: we don't allow StudentPes that have already been assigned elsewhere
       # Recalculate Student PEs that conflict with the AssignedExercises that were just created
       AlgorithmExerciseCalculation
-        .joins(:student_pes,
-               exercise_calculation: { student: { assignments: :assigned_exercises } })
+        .joins(
+          :student_pes, exercise_calculation: { student: { assignments: :assigned_exercises } }
+        )
         .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
         .where(assigned_exercises: { uuid: assigned_exercise_uuids })
         .ordered_update_all(is_pending_for_student: true) unless assigned_exercise_uuids.empty?
 
-      assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
-      Assignment
-        .references(:assigned_exercises)
-        .where(uuid: assignment_uuids)
-        .or(Assignment.where(assigned_exercises: { uuid: assigned_exercise_uuids }))
-        .left_outer_joins(:assigned_exercises)
-        .joins(:exercise_calculation)
-        .where(exercise_calculations: { uuid: exercise_calculation_uuids })
-        .pluck('"exercise_calculations"."uuid"', :uuid)
-        .each do |exercise_calculation_uuid, uuid|
-        assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
-      end
-
       # Recalculate Assignment PEs and SPEs for updated assignments and
       # Assignment PEs and SPEs that conflict with the AssignedExercises that were just
       # created to prevent any assignment from getting a PE or SPE that was already used elsewhere
+      assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
+      Assignment.from(
+        <<-FROM_SQL.strip_heredoc
+          (#{
+            Assignment
+              .select(:uuid, '"exercise_calculations"."uuid" AS "exercise_calculation_uuid"')
+              .joins(:exercise_calculation)
+              .where(uuid: assignment_uuids)
+              .to_sql
+          }
+          UNION
+          #{
+            Assignment
+              .select(:uuid, '"exercise_calculations"."uuid" AS "exercise_calculation_uuid"')
+              .joins(
+                :assignment_pes,
+                exercise_calculation: { student: { assignments: :assigned_exercises } }
+              )
+              .where('"assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"')
+              .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+              .to_sql
+          }
+          UNION
+          #{
+            Assignment
+              .select(:uuid, '"exercise_calculations"."uuid" AS "exercise_calculation_uuid"')
+              .joins(
+                :assignment_spes,
+                exercise_calculation: { student: { assignments: :assigned_exercises } }
+              )
+              .where('"assigned_exercises"."exercise_uuid" = "assignment_spes"."exercise_uuid"')
+              .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+              .to_sql
+          }) AS "assignments"
+        FROM_SQL
+      )
+      .pluck(:uuid, '"assignments"."exercise_calculation_uuid"')
+      .each do |uuid, exercise_calculation_uuid|
+        assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
+      end
+
       algorithm_exercise_calculations = AlgorithmExerciseCalculation
         .where(exercise_calculation_uuid: exercise_calculation_uuids)
         .to_a
