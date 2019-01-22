@@ -1,0 +1,56 @@
+---
+http_interactions:
+- request:
+    method: post
+    uri: http://localhost:3000/fetch_course_metadatas
+    body:
+      encoding: UTF-8
+      string: '{"max_num_metadatas":1,"metadata_sequence_number_offset":4291}'
+    headers:
+      User-Agent:
+      - Faraday v0.11.0
+      Content-Type:
+      - application/json
+      Biglearn-Api-Token:
+      - 56c3d42cdd96f892ec5448efbe7bfd52a6ff2c874319e7b7297e1ae0dffc1db999cff1c5eb5d5d1ba4e4a16069f72a8bd961791df75d9dd97ff029325eb9fb98
+      Accept-Encoding:
+      - gzip;q=1.0,deflate;q=0.6,identity;q=0.3
+      Accept:
+      - "*/*"
+  response:
+    status:
+      code: 200
+      message: OK
+    headers:
+      Cache-Control:
+      - max-age=0, private, must-revalidate
+      Content-Type:
+      - application/json; charset=utf-8
+      Date:
+      - Wed, 09 Jan 2019 19:41:21 GMT
+      Etag:
+      - W/"a95573c592d8018ac23442a2b91c5331"
+      Server:
+      - nginx
+      Strict-Transport-Security:
+      - max-age=31536000; includeSubdomains
+      X-Content-Type-Options:
+      - nosniff
+      X-Frame-Options:
+      - SAMEORIGIN
+      X-Request-Id:
+      - badf8865-8669-4ae3-8d3b-12fe1cf4bc92
+      X-Runtime:
+      - '0.003647'
+      X-Xss-Protection:
+      - 1; mode=block
+      Content-Length:
+      - '166'
+      Connection:
+      - keep-alive
+    body:
+      encoding: UTF-8
+      string: '{"course_responses":[{"uuid":"b04d127c-df09-4ece-bd5a-46120603be09","initial_ecosystem_uuid":"96a193d0-f216-446e-92ef-1c1ecdfedc32","metadata_sequence_number":4291}]}'
+    http_version:
+  recorded_at: Wed, 09 Jan 2019 19:41:21 GMT
+recorded_with: VCR 3.0.3
