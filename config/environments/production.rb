@@ -82,6 +82,15 @@ Rails.application.configure do
     config.logger = ActiveSupport::TaggedLogging.new(logger)
   end
 
+  # do not log these huge params in order to prevent wasting disk space
+  config.filter_parameters += [
+    :exercise_calculation_updates,
+    :student_clue_requests,
+    :student_clue_updates,
+    :teacher_clue_updates,
+    :spe_updates,
+    :pe_updates
+  ]
   # Do not dump schema after migrations.
   config.active_record.dump_schema_after_migration = false
 end
