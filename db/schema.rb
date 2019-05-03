@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20181120195105) do
+ActiveRecord::Schema.define(version: 20190503201144) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -301,7 +301,7 @@ ActiveRecord::Schema.define(version: 20181120195105) do
     t.index ["exercise_uuid"], name: "index_responses_on_exercise_uuid", using: :btree
     t.index ["first_responded_at"], name: "index_responses_on_first_responded_at", using: :btree
     t.index ["last_responded_at"], name: "index_responses_on_last_responded_at", using: :btree
-    t.index ["student_uuid"], name: "index_responses_on_student_uuid", using: :btree
+    t.index ["student_uuid", "exercise_uuid"], name: "index_responses_on_student_uuid_and_exercise_uuid", using: :btree
     t.index ["trial_uuid"], name: "index_responses_on_trial_uuid", using: :btree
     t.index ["used_in_clue_calculations"], name: "index_responses_on_used_in_clue_calculations", using: :btree
     t.index ["used_in_exercise_calculations"], name: "index_responses_on_used_in_exercise_calculations", using: :btree
