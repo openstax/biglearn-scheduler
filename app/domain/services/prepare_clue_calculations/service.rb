@@ -315,9 +315,9 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
                                                          .to_h
 
         # Build the final Response query
-        response_values_array = student_clues_to_update
-          .flat_map do |to_ecosystem_uuid, to_ecosystem_student_clues|
-          to_ecosystem_student_clues.map do |to_book_container_uuid, student_uuids|
+        response_values_array = []
+        student_clues_to_update.each do |to_ecosystem_uuid, to_ecosystem_student_clues|
+          to_ecosystem_student_clues.each do |to_book_container_uuid, student_uuids|
             # Reverse map to find book_container_uuids that map to the to_book_container_uuid
             same_mapping_book_container_uuids = [ to_book_container_uuid ] +
               reverse_mappings[to_ecosystem_uuid][to_book_container_uuid].values
@@ -329,11 +329,11 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
             # Load all responses from the students
             # that refer to any exercise in the same_mapping_book_container_uuids
-            [ student_uuids, exercise_uuids ]
-          end.compact
-        end + teacher_clues_to_update
-          .flat_map do |to_ecosystem_uuid, to_ecosystem_teacher_clues|
-          to_ecosystem_teacher_clues.map do |to_book_container_uuid, course_container_uuids|
+            response_values_array.concat student_uuids.product(exercise_uuids)
+          end
+        end
+        teacher_clues_to_update.each do |to_ecosystem_uuid, to_ecosystem_teacher_clues|
+          to_ecosystem_teacher_clues.each do |to_book_container_uuid, course_container_uuids|
             # Teacher clues use all students in the same course container
             student_uuids = student_uuids_by_course_container_uuids
               .values_at(*course_container_uuids).compact.flatten
@@ -350,9 +350,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
             # Load all responses from students in the same course containers
             # that refer to any exercise in the same_mapping_book_container_uuids
-            [ student_uuids, exercise_uuids ]
-          end.compact
+            response_values_array.concat student_uuids.product(exercise_uuids)
+          end
         end
+        response_values_array.uniq!
 
         # Map student_uuids and exercise_group_uuids to correctness information
         # Take only the latest answer for each exercise_group_uuid
@@ -367,9 +368,9 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           new_response_uuids = []
           response_join_query = <<-JOIN_SQL.strip_heredoc
             INNER JOIN (#{ValuesTable.new(response_values_array)})
-              AS "values" ("student_uuids", "exercise_uuids")
-            ON "responses"."student_uuid" = ANY("values"."student_uuids"::uuid[])
-            AND "responses"."exercise_uuid" = ANY("values"."exercise_uuids"::uuid[])
+              AS "values" ("student_uuid", "exercise_uuid")
+            ON "responses"."student_uuid" = "values"."student_uuid"::uuid
+              AND "responses"."exercise_uuid" = "values"."exercise_uuid"::uuid
           JOIN_SQL
           Response
             .joins(assigned_exercise: :assignment)
