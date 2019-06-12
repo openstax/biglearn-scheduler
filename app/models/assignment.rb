@@ -71,7 +71,8 @@ class Assignment < ApplicationRecord
             PARTITION BY "assignments"."student_uuid", "assignments"."assignment_type"
             ORDER BY "assignments"."due_at" ASC,
               "assignments"."opens_at" ASC,
-              "assignments"."created_at" ASC
+              "assignments"."created_at" ASC,
+              "assignments"."uuid" ASC
           ) AS "instructor_driven_sequence_number",
           DENSE_RANK() OVER (
             PARTITION BY "assignments"."student_uuid", "assignments"."assignment_type"
@@ -87,6 +88,10 @@ class Assignment < ApplicationRecord
               CASE
                 WHEN "assignments"."student_history_at" IS NULL THEN NULL
                 ELSE "assignments"."created_at"
+              END ASC,
+              CASE
+                WHEN "assignments"."student_history_at" IS NULL THEN NULL
+                ELSE "assignments"."uuid"
               END ASC
           ) AS "student_driven_sequence_number"
       SELECT_SQL
