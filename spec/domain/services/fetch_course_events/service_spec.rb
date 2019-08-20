@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe Services::FetchCourseEvents::Service, type: :service do
   subject { described_class.new }
 
-  context 'with no events' do
+  context 'with no CourseEvents' do
     it 'does not modify any records' do
       expect { subject.process }.to  not_change { Course.count }
                                 .and not_change { EcosystemPreparation.count }
@@ -16,7 +16,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
     end
   end
 
-  context 'with an existing course and course events' do
+  context 'with an existing Course and CourseEvents' do
     let!(:course)                { FactoryGirl.create :course, sequence_number: 0 }
 
     let(:sequence_number)        { rand(10) + 1 }
@@ -261,9 +261,9 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
     end
 
     context 'update_course_active_dates events' do
-      let(:current_time)       { Time.current }
-      let(:starts_at)          { (current_time - 1.day).iso8601 }
-      let(:ends_at)            { (current_time + 1.day).iso8601 }
+      let(:current_time)       { DateTime.iso8601(Time.current.iso8601) }
+      let(:starts_at)          { current_time - 1.day }
+      let(:ends_at)            { current_time + 1.day }
 
       let(:event_type)         { 'update_course_active_dates' }
       let(:event_data)         do
@@ -271,8 +271,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           request_uuid: event_uuid,
           course_uuid: course.uuid,
           sequence_number: sequence_number,
-          starts_at: starts_at,
-          ends_at: ends_at
+          starts_at: starts_at.iso8601,
+          ends_at: ends_at.iso8601
         }
       end
 
@@ -288,14 +288,67 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { course.reload.sequence_number }
                                                     .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
-                                  .and change     { course.starts_at }
-                                                    .from(nil).to(DateTime.iso8601(starts_at))
-                                  .and change     { course.ends_at }
-                                                    .from(nil).to(DateTime.iso8601(ends_at))
+                                  .and change     { course.starts_at }.from(nil).to(starts_at)
+                                  .and change     { course.ends_at }.from(nil).to(ends_at)
                                   .and not_change { course.course_excluded_exercise_uuids }
                                   .and not_change { course.course_excluded_exercise_group_uuids }
                                   .and not_change { course.global_excluded_exercise_uuids }
                                   .and not_change { course.global_excluded_exercise_group_uuids }
+      end
+
+      context 'when the Course ended before the GRACE_PERIOD' do
+        let(:old_ends_at)    do
+          current_time - Services::FetchCourseEvents::Service::GRACE_PERIOD - 1.month
+        end
+        let(:old_updated_at) { old_ends_at - 1.month }
+        let(:old_starts_at)  { old_updated_at - 1.month }
+
+        before do
+          course.update_attributes(
+            starts_at: old_starts_at, ends_at: old_ends_at, updated_at: old_updated_at
+          )
+        end
+
+        it 'only loads CourseEvents if the Course was recently updated' do
+        expect { subject.process }.to  not_change { Course.count }
+                                  .and not_change { EcosystemPreparation.count }
+                                  .and not_change { BookContainerMapping.count }
+                                  .and not_change { CourseContainer.count }
+                                  .and not_change { Student.count }
+                                  .and not_change { Assignment.count }
+                                  .and not_change { AssignedExercise.count }
+                                  .and not_change { Response.count }
+                                  .and not_change { course.reload.sequence_number }
+                                  .and not_change { course.ecosystem_uuid }
+                                  .and not_change { course.starts_at }
+                                  .and not_change { course.ends_at }
+                                  .and not_change { course.course_excluded_exercise_uuids }
+                                  .and not_change { course.course_excluded_exercise_group_uuids }
+                                  .and not_change { course.global_excluded_exercise_uuids }
+                                  .and not_change { course.global_excluded_exercise_group_uuids }
+
+        course.touch
+
+        expect { subject.process }.to  not_change { Course.count }
+                                  .and not_change { EcosystemPreparation.count }
+                                  .and not_change { BookContainerMapping.count }
+                                  .and not_change { CourseContainer.count }
+                                  .and not_change { Student.count }
+                                  .and not_change { Assignment.count }
+                                  .and not_change { AssignedExercise.count }
+                                  .and not_change { Response.count }
+                                  .and change     { course.reload.sequence_number }
+                                                    .from(0).to(sequence_number + 1)
+                                  .and not_change { course.ecosystem_uuid }
+                                  .and change     { course.starts_at }
+                                                    .from(old_starts_at).to(starts_at)
+                                  .and change     { course.ends_at }
+                                                    .from(old_ends_at).to(ends_at)
+                                  .and not_change { course.course_excluded_exercise_uuids }
+                                  .and not_change { course.course_excluded_exercise_group_uuids }
+                                  .and not_change { course.global_excluded_exercise_uuids }
+                                  .and not_change { course.global_excluded_exercise_group_uuids }
+        end
       end
     end
 

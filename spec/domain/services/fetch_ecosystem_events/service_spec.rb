@@ -5,7 +5,7 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
 
   subject { described_class.new }
 
-  context 'with no events' do
+  context 'with no EcosystemEvents' do
     it 'does not modify any records' do
       expect { subject.process }.to  not_change { Ecosystem.count }
                                 .and not_change { ExercisePool.count }
@@ -14,7 +14,7 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
     end
   end
 
-  context 'with an existing ecosystem and ecosystem events' do
+  context 'with an existing Ecosystem and EcosystemEvents' do
     let!(:ecosystem)                { FactoryGirl.create :ecosystem, sequence_number: 0 }
 
     let(:sequence_number)           { 0 }
