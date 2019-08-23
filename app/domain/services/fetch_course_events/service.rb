@@ -32,18 +32,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         # Order needed because we are processing the courses in chunks
         course_relation = Course.ordered.lock('FOR NO KEY UPDATE SKIP LOCKED')
         course_relation = course_relation.where(
-          co.grouping(
-            co[:ends_at].gt(start_time - GRACE_PERIOD).and(
-              co[:starts_at].lt(start_time + GRACE_PERIOD)
-            )
-          ).or(
-            co.grouping(
-              co[:ends_at].eq(nil).and(
-                co[:starts_at].eq(nil).and(
-                  co[:updated_at].gt(start_time - GRACE_PERIOD)
-                )
-              )
-            )
+          co[:ends_at].gt(start_time - GRACE_PERIOD).or(
+            co[:updated_at].gt(start_time - GRACE_PERIOD)
           )
         ) unless restart
         course_relation = course_relation.where(co[:uuid].gt(last_uuid)) unless last_uuid.nil?
