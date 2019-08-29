@@ -70,10 +70,10 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           end
         end
         exercise_uuids_by_book_container_uuids = Hash.new { |hash, key| hash[key] = [] }
-        ExercisePool.where(book_container_uuid: relevant_book_container_uuids).pluck(
-          :book_container_uuid,
-          :use_for_personalized_for_assignment_types,
-          :exercise_uuids
+        ExercisePool.where(
+          book_container_uuid: relevant_book_container_uuids
+        ).pluck(
+          :book_container_uuid, :use_for_personalized_for_assignment_types, :exercise_uuids
         ).each do |book_container_uuid, assignment_types, exercise_uuids|
           next unless assignment_types.include? 'practice'
 

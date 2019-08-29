@@ -292,46 +292,26 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
 
       @clue_algorithm_name = 'sparfa'
 
-      scc_1 = FactoryGirl.create :student_clue_calculation,
-                                 ecosystem_uuid: ecosystem_2.uuid,
-                                 book_container_uuid: @practice_pool_1_new.book_container_uuid,
-                                 student_uuid: student.uuid
-      FactoryGirl.create :algorithm_student_clue_calculation,
-                         student_clue_calculation: scc_1,
-                         algorithm_name: @clue_algorithm_name,
-                         clue_value: 0.25
-      scc_2 = FactoryGirl.create :student_clue_calculation,
-                                 ecosystem_uuid: ecosystem_2.uuid,
-                                 book_container_uuid: @practice_pool_2_new.book_container_uuid,
-                                 student_uuid: student.uuid
-      FactoryGirl.create :algorithm_student_clue_calculation,
-                         student_clue_calculation: scc_2,
-                         algorithm_name: @clue_algorithm_name,
-                         clue_value: 0
-      scc_3 = FactoryGirl.create :student_clue_calculation,
-                                 ecosystem_uuid: ecosystem_2.uuid,
-                                 book_container_uuid: @practice_pool_3_new.book_container_uuid,
-                                 student_uuid: student.uuid
-      FactoryGirl.create :algorithm_student_clue_calculation,
-                         student_clue_calculation: scc_3,
-                         algorithm_name: @clue_algorithm_name,
-                         clue_value: 0.5
-      scc_4 = FactoryGirl.create :student_clue_calculation,
-                                 ecosystem_uuid: ecosystem_2.uuid,
-                                 book_container_uuid: @practice_pool_4_new.book_container_uuid,
-                                 student_uuid: student.uuid
-      FactoryGirl.create :algorithm_student_clue_calculation,
-                         student_clue_calculation: scc_4,
-                         algorithm_name: @clue_algorithm_name,
-                         clue_value: 0.75
-      scc_5 = FactoryGirl.create :student_clue_calculation,
-                                 ecosystem_uuid: ecosystem_2.uuid,
-                                 book_container_uuid: @practice_pool_5_new.book_container_uuid,
-                                 student_uuid: student.uuid
-      FactoryGirl.create :algorithm_student_clue_calculation,
-                         student_clue_calculation: scc_5,
-                         algorithm_name: @clue_algorithm_name,
-                         clue_value: 1
+      @scc_1 = FactoryGirl.create :student_clue_calculation,
+                                  ecosystem_uuid: ecosystem_2.uuid,
+                                  book_container_uuid: @practice_pool_1_new.book_container_uuid,
+                                  student_uuid: student.uuid
+      @scc_2 = FactoryGirl.create :student_clue_calculation,
+                                  ecosystem_uuid: ecosystem_2.uuid,
+                                  book_container_uuid: @practice_pool_2_new.book_container_uuid,
+                                  student_uuid: student.uuid
+      @scc_3 = FactoryGirl.create :student_clue_calculation,
+                                  ecosystem_uuid: ecosystem_2.uuid,
+                                  book_container_uuid: @practice_pool_3_new.book_container_uuid,
+                                  student_uuid: student.uuid
+      @scc_4 = FactoryGirl.create :student_clue_calculation,
+                                  ecosystem_uuid: ecosystem_2.uuid,
+                                  book_container_uuid: @practice_pool_4_new.book_container_uuid,
+                                  student_uuid: student.uuid
+      @scc_5 = FactoryGirl.create :student_clue_calculation,
+                                  ecosystem_uuid: ecosystem_2.uuid,
+                                  book_container_uuid: @practice_pool_5_new.book_container_uuid,
+                                  student_uuid: student.uuid
 
       exercise_calculation_1 = FactoryGirl.create(
         :exercise_calculation,
@@ -376,54 +356,206 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
 
     after(:all)  { DatabaseCleaner.clean }
 
-    let(:expected_num_spes) do
-      expected_student_pes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
-    end
-    let(:expected_num_pes) do
-      expected_student_pes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
-    end
+    context 'and AlgorithmStudentClueCalculations' do
+      before(:all) do
+        DatabaseCleaner.start
 
-    # There are no CLUes for local_query above, so there are no local_query StudentPes
-    let(:expected_student_pes) do
-      [
-        {
-          algorithm_exercise_calculation: @algorithm_exercise_calculation_3,
-          exercise_pool: [],
-          exercise_count: 0
-        },
-        {
-          algorithm_exercise_calculation: @algorithm_exercise_calculation_4,
-          exercise_pool: @practice_pool_1_new.exercise_uuids +
-                         @practice_pool_2_new.exercise_uuids +
-                         @practice_pool_3_new.exercise_uuids +
-                         @practice_pool_4_new.exercise_uuids +
-                         @practice_pool_5_new.exercise_uuids,
-          exercise_count: 5
-        }
-      ]
-    end
+        FactoryGirl.create :algorithm_student_clue_calculation,
+                           student_clue_calculation: @scc_1,
+                           algorithm_name: @clue_algorithm_name,
+                           clue_value: 0.25
+        FactoryGirl.create :algorithm_student_clue_calculation,
+                           student_clue_calculation: @scc_2,
+                           algorithm_name: @clue_algorithm_name,
+                           clue_value: 0
+        FactoryGirl.create :algorithm_student_clue_calculation,
+                           student_clue_calculation: @scc_3,
+                           algorithm_name: @clue_algorithm_name,
+                           clue_value: 0.5
+        FactoryGirl.create :algorithm_student_clue_calculation,
+                           student_clue_calculation: @scc_4,
+                           algorithm_name: @clue_algorithm_name,
+                           clue_value: 0.75
+        FactoryGirl.create :algorithm_student_clue_calculation,
+                           student_clue_calculation: @scc_5,
+                           algorithm_name: @clue_algorithm_name,
+                           clue_value: 1
+      end
 
-    before do
-      expect(OpenStax::Biglearn::Api).to receive(:update_practice_worst_areas).with(
-        [a_kind_of(Hash)] * expected_student_pes.size
-      )
-    end
+      after(:all)  { DatabaseCleaner.clean }
 
-    it 'creates the correct numbers of Biglearn requests and PEs from the correct pools' do
-      expect { subject.process }.to  change { StudentPe.count }.by(expected_num_pes)
+      let(:expected_num_pes) do
+        expected_student_pes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
+      end
 
-      expected_student_pes.each do |expected_student_pe|
-        algorithm_exercise_calculation_uuid =
-          expected_student_pe[:algorithm_exercise_calculation].uuid
-        student_pes = StudentPe.where(
-          algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid
+      # There are no CLUes for local_query above, so there are no local_query StudentPes
+      let(:expected_student_pes) do
+        [
+          {
+            algorithm_exercise_calculation: @algorithm_exercise_calculation_3,
+            exercise_pool: [],
+            exercise_count: 0
+          },
+          {
+            algorithm_exercise_calculation: @algorithm_exercise_calculation_4,
+            exercise_pool: @practice_pool_1_new.exercise_uuids +
+                           @practice_pool_2_new.exercise_uuids +
+                           @practice_pool_3_new.exercise_uuids +
+                           @practice_pool_4_new.exercise_uuids +
+                           @practice_pool_5_new.exercise_uuids,
+            exercise_count: 5
+          }
+        ]
+      end
+
+      before do
+        expect(OpenStax::Biglearn::Api).to receive(:update_practice_worst_areas).with(
+          [a_kind_of(Hash)] * expected_student_pes.size
         )
+      end
 
-        expect(student_pes.size).to eq expected_student_pe[:exercise_count]
+      it 'creates the correct numbers of Biglearn requests and PEs from the correct pools' do
+        expect { subject.process }.to change { StudentPe.count }.by(expected_num_pes)
 
-        student_pes.each do |student_pe|
-          expect(student_pe.exercise_uuid).to be_in expected_student_pe[:exercise_pool]
+        expected_student_pes.each do |expected_student_pe|
+          algorithm_exercise_calculation_uuid =
+            expected_student_pe[:algorithm_exercise_calculation].uuid
+          student_pes = StudentPe.where(
+            algorithm_exercise_calculation_uuid: algorithm_exercise_calculation_uuid
+          )
+
+          expect(student_pes.size).to eq expected_student_pe[:exercise_count]
+
+          student_pes.each do |student_pe|
+            expect(student_pe.exercise_uuid).to be_in expected_student_pe[:exercise_pool]
+          end
         end
+      end
+    end
+
+    context 'and initially no AlgorithmStudentClueCalculations' do
+      before do
+        expect(OpenStax::Biglearn::Api).to receive(:update_practice_worst_areas) do |requests|
+          requests.each { |request| expect(request).to be_a(Hash) }
+          expect(requests.size).to be_in [ 1, 2 ]
+        end
+      end
+
+      it 'creates student PEs as the AlgorithmStudentClueCalculations arrive' do
+        expect(OpenStax::Biglearn::Api).to receive(:update_practice_worst_areas).thrice do |reqs|
+          reqs.each { |request| expect(request).to be_a(Hash) }
+          expect(reqs.size).to be_in [ 1, 2 ]
+        end
+
+        expect { subject.process }.not_to change { StudentPe.count }
+
+        expect do
+          Services::UpdateClueCalculations::Service.new.process(
+            clue_calculation_updates: [
+              {
+                calculation_uuid: @scc_1.uuid,
+                algorithm_name: @clue_algorithm_name,
+                clue_data: {
+                  minimum: 0,
+                  most_likely: 0.25,
+                  maximum: 0.5,
+                  is_real: true,
+                  ecosystem_uuid: SecureRandom.uuid
+                }
+              }
+            ]
+          )
+        end.to(
+          change do
+            AlgorithmStudentClueCalculation.where(algorithm_name: @clue_algorithm_name).count
+          end.by(1)
+        )
+        expect { subject.process }.to change { StudentPe.count }.by(5)
+
+        student_pes = StudentPe.order(created_at: :desc).limit(5)
+
+        valid_exercise_uuids = ExercisePool.where(
+          book_container_uuid: @scc_1.book_container_uuid
+        ).flat_map(&:exercise_uuids)
+        expect(student_pes.map(&:exercise_uuid) - valid_exercise_uuids).to be_empty
+
+        expect do
+          Services::UpdateClueCalculations::Service.new.process(
+            clue_calculation_updates: [
+              {
+                calculation_uuid: @scc_2.uuid,
+                algorithm_name: @clue_algorithm_name,
+                clue_data: {
+                  minimum: 0,
+                  most_likely: 0,
+                  maximum: 0.25,
+                  is_real: true,
+                  ecosystem_uuid: SecureRandom.uuid
+                }
+              },
+              {
+                calculation_uuid: @scc_3.uuid,
+                algorithm_name: @clue_algorithm_name,
+                clue_data: {
+                  minimum: 0.25,
+                  most_likely: 0.5,
+                  maximum: 0.75,
+                  is_real: true,
+                  ecosystem_uuid: SecureRandom.uuid
+                }
+              }
+            ]
+          )
+        end.to(
+          change do
+            AlgorithmStudentClueCalculation.where(algorithm_name: @clue_algorithm_name).count
+          end.by(2)
+        )
+        expect { subject.process }.not_to change { StudentPe.count }
+
+        valid_exercise_uuids = ExercisePool.where(
+          book_container_uuid: [ @scc_1, @scc_2, @scc_3 ].map(&:book_container_uuid)
+        ).flat_map(&:exercise_uuids)
+        expect(student_pes.reload.map(&:exercise_uuid) - valid_exercise_uuids).to be_empty
+
+        expect do
+          Services::UpdateClueCalculations::Service.new.process(
+            clue_calculation_updates: [
+              {
+                calculation_uuid: @scc_4.uuid,
+                algorithm_name: @clue_algorithm_name,
+                clue_data: {
+                  minimum: 0.5,
+                  most_likely: 0.75,
+                  maximum: 1,
+                  is_real: true,
+                  ecosystem_uuid: SecureRandom.uuid
+                }
+              },
+              {
+                calculation_uuid: @scc_5.uuid,
+                algorithm_name: @clue_algorithm_name,
+                clue_data: {
+                  minimum: 0.75,
+                  most_likely: 1,
+                  maximum: 1,
+                  is_real: true,
+                  ecosystem_uuid: SecureRandom.uuid
+                }
+              }
+            ]
+          )
+        end.to(
+          change do
+            AlgorithmStudentClueCalculation.where(algorithm_name: @clue_algorithm_name).count
+          end.by(2)
+        )
+        expect { subject.process }.not_to change { StudentPe.count }
+
+        valid_exercise_uuids = ExercisePool.where(
+          book_container_uuid: [ @scc_1, @scc_2, @scc_3, @scc_4, @scc_5 ].map(&:book_container_uuid)
+        ).flat_map(&:exercise_uuids)
+        expect(student_pes.reload.map(&:exercise_uuid) - valid_exercise_uuids).to be_empty
       end
     end
   end
