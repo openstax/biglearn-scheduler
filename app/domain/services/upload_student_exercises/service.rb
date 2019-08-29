@@ -156,7 +156,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
             worst_clues_by_student_uuid_and_algorithm_name[student_uuid]
 
           exercise_algorithm_name = algorithm_exercise_calculation.algorithm_name
-          clue_algorithm_name = StudentPe::EXERCISE_TO_CLUE_ALGORITHM_NAME[exercise_algorithm_name]
+          clue_algorithm_name = StudentPe.exercise_to_clue_algorithm_name(exercise_algorithm_name)
 
           worst_clues = worst_clues_by_algorithm_name[clue_algorithm_name] || []
 

@@ -290,7 +290,9 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
       ].flat_map(&:exercise_uuids)
       new_exercise_uuids.each { |exercise_uuid| FactoryGirl.create :exercise, uuid: exercise_uuid }
 
-      @clue_algorithm_name = 'sparfa'
+      local_query_algorithm_name = 'local_query'
+      sparfa_algorithm_name = 'biglearn_sparfa'
+      @clue_algorithm_name = sparfa_algorithm_name
 
       @scc_1 = FactoryGirl.create :student_clue_calculation,
                                   ecosystem_uuid: ecosystem_2.uuid,
@@ -321,14 +323,14 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
       @algorithm_exercise_calculation_1 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_1,
-        algorithm_name: 'local_query',
+        algorithm_name: local_query_algorithm_name,
         exercise_uuids: old_exercise_uuids.shuffle,
         is_pending_for_student: true
       )
       @algorithm_exercise_calculation_2 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_1,
-        algorithm_name: 'tesr',
+        algorithm_name: sparfa_algorithm_name,
         exercise_uuids: old_exercise_uuids.shuffle,
         is_pending_for_student: true
       )
@@ -341,14 +343,14 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
       @algorithm_exercise_calculation_3 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_2,
-        algorithm_name: 'local_query',
+        algorithm_name: local_query_algorithm_name,
         exercise_uuids: new_exercise_uuids.shuffle,
         is_pending_for_student: true
       )
       @algorithm_exercise_calculation_4 = FactoryGirl.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_2,
-        algorithm_name: 'tesr',
+        algorithm_name: sparfa_algorithm_name,
         exercise_uuids: new_exercise_uuids.shuffle,
         is_pending_for_student: true
       )

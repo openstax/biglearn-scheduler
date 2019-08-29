@@ -100,7 +100,7 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
         student_pes_values_array = algorithm_student_clue_calculations.map do |calculation|
           [
             calculation.student_clue_calculation.student_uuid,
-            StudentPe::CLUE_TO_EXERCISE_ALGORITHM_NAME[calculation.algorithm_name]
+            StudentPe.clue_to_exercise_algorithm_name(calculation.algorithm_name)
           ]
         end
         algorithm_exercise_calculation_join_query = <<-JOIN_SQL.strip_heredoc
