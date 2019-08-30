@@ -70,10 +70,10 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           end
         end
         exercise_uuids_by_book_container_uuids = Hash.new { |hash, key| hash[key] = [] }
-        ExercisePool.where(book_container_uuid: relevant_book_container_uuids).pluck(
-          :book_container_uuid,
-          :use_for_personalized_for_assignment_types,
-          :exercise_uuids
+        ExercisePool.where(
+          book_container_uuid: relevant_book_container_uuids
+        ).pluck(
+          :book_container_uuid, :use_for_personalized_for_assignment_types, :exercise_uuids
         ).each do |book_container_uuid, assignment_types, exercise_uuids|
           next unless assignment_types.include? 'practice'
 
@@ -156,7 +156,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
             worst_clues_by_student_uuid_and_algorithm_name[student_uuid]
 
           exercise_algorithm_name = algorithm_exercise_calculation.algorithm_name
-          clue_algorithm_name = StudentPe::EXERCISE_TO_CLUE_ALGORITHM_NAME[exercise_algorithm_name]
+          clue_algorithm_name = StudentPe.exercise_to_clue_algorithm_name(exercise_algorithm_name)
 
           worst_clues = worst_clues_by_algorithm_name[clue_algorithm_name] || []
 

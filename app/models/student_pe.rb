@@ -1,8 +1,5 @@
 # Used to detect StudentPes that must be updated
 class StudentPe < ApplicationRecord
-  CLUE_TO_EXERCISE_ALGORITHM_NAME = { 'local_query' => 'local_query', 'sparfa' => 'tesr' }
-  EXERCISE_TO_CLUE_ALGORITHM_NAME = { 'local_query' => 'local_query', 'tesr' => 'sparfa' }
-
   belongs_to :algorithm_exercise_calculation, primary_key: :uuid,
                                               foreign_key: :algorithm_exercise_calculation_uuid,
                                               inverse_of: :student_pes
@@ -18,5 +15,14 @@ class StudentPe < ApplicationRecord
         '"uuid" = "student_pes"."algorithm_exercise_calculation_uuid"'
       ).exists
     )
+  end
+
+  # In case we have to map algorithm names in the future
+  def self.clue_to_exercise_algorithm_name(algorithm_name)
+    algorithm_name
+  end
+
+  def self.exercise_to_clue_algorithm_name(algorithm_name)
+    algorithm_name
   end
 end
