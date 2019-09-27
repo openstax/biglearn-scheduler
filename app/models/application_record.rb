@@ -32,6 +32,13 @@ class ApplicationRecord < ActiveRecord::Base
 
       rel.order(*order_columns)
     end
+
+    # Not quite random order, but gives us 1 of 4 possible orderings, which should reduce collisions
+    scope :random_ordered, -> do
+      rel = rand < 0.5 ? ordered : order(:id)
+      rand < 0.5 ? rel : rel.reverse_order
+    end
+
     define_singleton_method :sort_proc do
       ->(model) do
         scope_order = []
