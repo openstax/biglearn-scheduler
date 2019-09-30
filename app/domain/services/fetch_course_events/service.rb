@@ -168,7 +168,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         preparation_uuid = last_update_ecosystem.fetch(:event_data).fetch(:preparation_uuid)
         # Look in the current updates for the EcosystemPreparation
         # If not found, look in the database
-        preparation = course_ecosystem_preparations.find{ |prep| prep.uuid == preparation_uuid }
+        preparation = course_ecosystem_preparations.find { |prep| prep.uuid == preparation_uuid }
         preparation ||= EcosystemPreparation.find_by uuid: preparation_uuid
         course.ecosystem_uuid = preparation.ecosystem_uuid
         course_uuids_with_changed_ecosystems << course.uuid

@@ -15,8 +15,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
     total_assignment_pairs = 0
     loop do
       num_responses, num_course_pairs, num_assignment_pairs = Response.transaction do
-        # Get responses that have not yet been used in exercise calculations,
-        # their students' uuids and their courses' latest ecosystem_uuids
+        # Get responses not yet used in exercise calculations and their students' uuids
         # No order needed because of SKIP LOCKED
         responses = Response
           .joins(:student)
@@ -58,7 +57,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
           .need_pes_or_spes
           .lock('FOR NO KEY UPDATE OF "students" SKIP LOCKED')
           .limit(BATCH_SIZE)
-          .pluck('"students"."uuid"', :ecosystem_uuid)
+          .pluck(:student_uuid, :ecosystem_uuid)
 
         num_responses = responses.size
         if num_responses > 0
