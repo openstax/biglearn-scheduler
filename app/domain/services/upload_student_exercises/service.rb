@@ -197,6 +197,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           end
 
           student_pe_request = {
+            calculation_uuid: algorithm_exercise_calculation_uuid,
             student_uuid: student_uuid,
             exercise_uuids: chosen_pe_uuids,
             algorithm_name: exercise_algorithm_name,

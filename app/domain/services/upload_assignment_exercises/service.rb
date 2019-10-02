@@ -421,15 +421,12 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           algorithm_exercise_calculation_uuid = assignment.algorithm_exercise_calculation_uuid
           algorithm_exercise_calculation = algorithm_exercise_calculations_by_uuid
                                              .fetch(algorithm_exercise_calculation_uuid)
-          algorithm_name = algorithm_exercise_calculation.algorithm_name
-          prioritized_exercise_uuids = algorithm_exercise_calculation.exercise_uuids
           student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[assignment.student_uuid]
           assignment_uuid = assignment.uuid
 
           pe_request = build_pe_request(
+            algorithm_exercise_calculation: algorithm_exercise_calculation,
             assignment: assignment,
-            algorithm_name: algorithm_name,
-            prioritized_exercise_uuids: prioritized_exercise_uuids,
             excluded_exercise_uuids: student_excluded_exercise_uuids
           )
           assignment_pe_requests << pe_request
@@ -472,8 +469,6 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           algorithm_exercise_calculation_uuid = assignment.algorithm_exercise_calculation_uuid
           algorithm_exercise_calculation = algorithm_exercise_calculations_by_uuid
                                              .fetch(algorithm_exercise_calculation_uuid)
-          algorithm_name = algorithm_exercise_calculation.algorithm_name
-          prioritized_exercise_uuids = algorithm_exercise_calculation.exercise_uuids
           student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[student_uuid]
 
           assigned_book_container_uuids = assignment.assigned_book_container_uuids
@@ -493,12 +488,11 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
           # Instructor-driven
           instructor_driven_spe_request = build_spe_request(
+            algorithm_exercise_calculation: algorithm_exercise_calculation,
             assignment: assignment,
             assignment_sequence_number: instructor_sequence_number,
             history_type: :instructor_driven,
             assignment_history: mapped_instructor_history,
-            algorithm_name: algorithm_name,
-            prioritized_exercise_uuids: prioritized_exercise_uuids,
             excluded_exercise_uuids: excluded_exercise_uuids
           )
           assignment_spe_requests << instructor_driven_spe_request
@@ -517,12 +511,11 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
           # Student-driven
           student_driven_spe_request = build_spe_request(
+            algorithm_exercise_calculation: algorithm_exercise_calculation,
             assignment: assignment,
             assignment_sequence_number: student_sequence_number,
             history_type: :student_driven,
             assignment_history: mapped_student_history,
-            algorithm_name: algorithm_name,
-            prioritized_exercise_uuids: prioritized_exercise_uuids,
             excluded_exercise_uuids: excluded_exercise_uuids
           )
           assignment_spe_requests << student_driven_spe_request
@@ -642,12 +635,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     (prioritized_exercise_uuids & allowed_exercise_uuids).first(exercise_count)
   end
 
-  def build_pe_request(assignment:,
-                       algorithm_name:,
-                       prioritized_exercise_uuids:,
-                       excluded_exercise_uuids:)
+  def build_pe_request(algorithm_exercise_calculation:, assignment:, excluded_exercise_uuids:)
     assignment_type = assignment.assignment_type
-    assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment.assignment_type]
+    assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
     assignment_excluded_uuids = excluded_exercise_uuids
     # Ignore book containers with no dynamic exercises
     book_container_uuids = assignment.assigned_book_container_uuids
@@ -670,7 +660,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       choose_exercise_uuids(
         assignment: assignment,
         book_container_uuids: book_container_uuid,
-        prioritized_exercise_uuids: prioritized_exercise_uuids,
+        prioritized_exercise_uuids: algorithm_exercise_calculation.exercise_uuids,
         excluded_exercise_uuids: assignment_excluded_uuids,
         exercise_count: book_container_num_pes
       ).tap do |chosen_pe_uuids|
@@ -680,7 +670,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       end
     end
 
+    algorithm_name = algorithm_exercise_calculation.algorithm_name
+
     {
+      calculation_uuid: algorithm_exercise_calculation.uuid,
       assignment_uuid: assignment.uuid,
       exercise_uuids: chosen_pe_uuids,
       algorithm_name: algorithm_name,
@@ -691,16 +684,12 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     }
   end
 
-  def build_spe_request(assignment:,
+  def build_spe_request(algorithm_exercise_calculation:,
+                        assignment:,
                         assignment_sequence_number:,
                         history_type:,
                         assignment_history:,
-                        algorithm_name:,
-                        prioritized_exercise_uuids:,
                         excluded_exercise_uuids:)
-    assignment_uuid = assignment.uuid
-    assignment_type = assignment.assignment_type
-
     include_random_ago = history_type == :student_driven &&
                          assignment_sequence_number >= MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO
     k_ago_map = get_k_ago_map(assignment, include_random_ago)
@@ -734,7 +723,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         choose_exercise_uuids(
           assignment: assignment,
           book_container_uuids: book_container_uuid,
-          prioritized_exercise_uuids: prioritized_exercise_uuids,
+          prioritized_exercise_uuids: algorithm_exercise_calculation.exercise_uuids,
           excluded_exercise_uuids: assignment_excluded_uuids,
           exercise_count: book_container_num_spes
         ).tap do |chosen_spe_uuids|
@@ -758,7 +747,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     chosen_pe_uuids = choose_exercise_uuids(
       assignment: assignment,
       book_container_uuids: assignment.assigned_book_container_uuids,
-      prioritized_exercise_uuids: prioritized_exercise_uuids,
+      prioritized_exercise_uuids: algorithm_exercise_calculation.exercise_uuids,
       excluded_exercise_uuids: assignment_excluded_uuids,
       exercise_count: num_remaining_exercises
     )
@@ -768,12 +757,15 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
       exercises_spy_info[chosen_pe_uuid] = { k_ago: 0, is_random_ago: false }
     end
 
+    algorithm_name = algorithm_exercise_calculation.algorithm_name
+
     {
-      assignment_uuid: assignment_uuid,
+      calculation_uuid: algorithm_exercise_calculation.uuid,
+      assignment_uuid: assignment.uuid,
       exercise_uuids: chosen_spe_uuids + chosen_pe_uuids,
       algorithm_name: "#{history_type}_#{algorithm_name}",
       spy_info: {
-        assignment_type: assignment_type,
+        assignment_type: assignment.assignment_type,
         exercise_algorithm_name: algorithm_name,
         history_type: history_type,
         assignment_history: assignment_history,

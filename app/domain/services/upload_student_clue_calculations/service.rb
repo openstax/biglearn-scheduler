@@ -27,6 +27,7 @@ class Services::UploadStudentClueCalculations::Service < Services::ApplicationSe
           calculation = algorithm_calculation.student_clue_calculation
 
           {
+            calculation_uuid: algorithm_calculation.uuid,
             algorithm_name: algorithm_calculation.algorithm_name,
             student_uuid: calculation.student_uuid,
             book_container_uuid: calculation.book_container_uuid,
