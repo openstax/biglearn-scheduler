@@ -18,21 +18,21 @@ RSpec.describe Services::FetchExerciseCalculations::Service, type: :service do
     let(:calculation_uuid_2)   { SecureRandom.uuid }
 
     let!(:exercise_calculation_1) do
-      FactoryGirl.create :exercise_calculation, uuid: calculation_uuid_1
+      FactoryBot.create :exercise_calculation, uuid: calculation_uuid_1
     end
     let!(:exercise_calculation_2) do
-      FactoryGirl.create :exercise_calculation, uuid: calculation_uuid_2
+      FactoryBot.create :exercise_calculation, uuid: calculation_uuid_2
     end
 
     context "when the ExerciseCalculations have already been calculated" do
       before do
-        FactoryGirl.create :algorithm_exercise_calculation,
+        FactoryBot.create :algorithm_exercise_calculation,
                            exercise_calculation: exercise_calculation_1,
                            algorithm_name: given_algorithm_name
         exercise_calculation_1.algorithm_names << given_algorithm_name
         exercise_calculation_1.save!
 
-        FactoryGirl.create :algorithm_exercise_calculation,
+        FactoryBot.create :algorithm_exercise_calculation,
                            exercise_calculation: exercise_calculation_2,
                            algorithm_name: given_algorithm_name
         exercise_calculation_2.algorithm_names << given_algorithm_name

@@ -112,6 +112,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     course_containers_hash = {}
     students_hash = {}
     assignments_hash = {}
+    aec_assignment_uuids_by_uuid = Hash.new { |hash, key| hash[key] = [] }
     assigned_exercises = []
     student_uuids_by_assigned_exercise_uuid = Hash.new { |hash, key| hash[key] = [] }
     responses_hash = {}
@@ -286,6 +287,15 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         due_at = exclusion_info[:due_at]
         feedback_at = exclusion_info[:feedback_at]
 
+        calculations = data.fetch(:calculations, {})
+        pe_calculation_uuid = calculations[:pe_calculation_uuid]
+        spe_calculation_uuid = calculations[:spe_calculation_uuid]
+
+        aec_assignment_uuids_by_uuid[pe_calculation_uuid] << assignment_uuid \
+          unless pe_calculation_uuid.nil?
+        aec_assignment_uuids_by_uuid[spe_calculation_uuid] << assignment_uuid \
+          unless spe_calculation_uuid.nil?
+
         assignments_hash[assignment_uuid] = Assignment.new(
           uuid: assignment_uuid,
           course_uuid: course_uuid,
@@ -301,7 +311,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           spes_are_assigned: data.fetch(:spes_are_assigned),
           goal_num_tutor_assigned_pes: data[:goal_num_tutor_assigned_pes],
           pes_are_assigned: data.fetch(:pes_are_assigned),
-          has_exercise_calculation: false
+          has_exercise_calculation: !pe_calculation_uuid.nil? || !spe_calculation_uuid.nil?
         )
 
         data.fetch(:assigned_exercises).each do |assigned_exercise|
@@ -482,6 +492,23 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           :pes_are_assigned,
           :has_exercise_calculation
         ]
+      }
+    )
+
+    algorithm_exercise_calculations_by_uuid = AlgorithmExerciseCalculation
+      .select(:uuid, :assignment_uuids)
+      .where(uuid: aec_assignment_uuids_by_uuid.keys)
+      .index_by(&:uuid)
+    aec_assignment_uuids_by_uuid.each do |uuid, assignment_uuids|
+      algorithm_exercise_calculation = algorithm_exercise_calculations_by_uuid[uuid]
+      algorithm_exercise_calculation.assignment_uuids = (
+        algorithm_exercise_calculation.assignment_uuids + assignment_uuids
+      ).uniq
+    end
+
+    results << AlgorithmExerciseCalculation.import(
+      algorithm_exercise_calculations_by_uuid.values, validate: false, on_duplicate_key_update: {
+        conflict_target: [ :uuid ], columns: [ :assignment_uuids ]
       }
     )
 

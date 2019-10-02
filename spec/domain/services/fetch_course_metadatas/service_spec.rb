@@ -10,8 +10,8 @@ RSpec.describe Services::FetchCourseMetadatas::Service, type: :service do
   end
 
   context 'with some existing courses and course metadatas' do
-    let!(:course_1)                 { FactoryGirl.create :course }
-    let!(:course_2)                 { FactoryGirl.create :course }
+    let!(:course_1)                 { FactoryBot.create :course }
+    let!(:course_2)                 { FactoryBot.create :course }
 
     let(:existing_course_metadatas) do
       [ course_1, course_2 ].each_with_index.map do |course, index|

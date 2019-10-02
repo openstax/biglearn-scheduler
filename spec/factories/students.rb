@@ -1,4 +1,4 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :student do
     transient              { course_containers_count { rand(10) + 1 } }
 

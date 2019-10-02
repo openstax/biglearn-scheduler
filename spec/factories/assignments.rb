@@ -1,4 +1,4 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :assignment do
     transient                     do
       book_containers_count { rand(10) }

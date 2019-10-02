@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe AlgorithmStudentClueCalculation, type: :model do
-  subject { FactoryGirl.create :algorithm_student_clue_calculation }
+  subject { FactoryBot.create :algorithm_student_clue_calculation }
 
   it { is_expected.to belong_to(:student_clue_calculation) }
 

@@ -33,11 +33,11 @@ RSpec.describe Services::EcosystemMatricesUpdated::Service, type: :service do
 
   context "when previously-existing EcosystemMatrixUpdate calculation_uuids are given" do
     let!(:ecosystem_matrix_update_1) do
-      FactoryGirl.create :ecosystem_matrix_update, uuid: given_calculation_uuid_1
+      FactoryBot.create :ecosystem_matrix_update, uuid: given_calculation_uuid_1
     end
 
     let!(:ecosystem_matrix_update_2) do
-      FactoryGirl.create :ecosystem_matrix_update, uuid: given_calculation_uuid_2
+      FactoryBot.create :ecosystem_matrix_update, uuid: given_calculation_uuid_2
     end
 
     context "when non-existing AlgorithmEcosystemMatrixUpdate" +
@@ -59,11 +59,11 @@ RSpec.describe Services::EcosystemMatricesUpdated::Service, type: :service do
     context "when previously-existing AlgorithmEcosystemMatrixUpdate" +
             " calculation_uuid and algorithm_name are given" do
       before do
-        FactoryGirl.create :algorithm_ecosystem_matrix_update,
+        FactoryBot.create :algorithm_ecosystem_matrix_update,
                            ecosystem_matrix_update_uuid: given_calculation_uuid_1,
                            algorithm_name: given_algorithm_name
 
-        FactoryGirl.create :algorithm_ecosystem_matrix_update,
+        FactoryBot.create :algorithm_ecosystem_matrix_update,
                            ecosystem_matrix_update_uuid: given_calculation_uuid_2,
                            algorithm_name: given_algorithm_name
       end

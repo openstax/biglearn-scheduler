@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe BookContainerMapping, type: :model do
-  subject { FactoryGirl.create :book_container_mapping }
+  subject { FactoryBot.create :book_container_mapping }
 
   it { is_expected.to validate_presence_of :uuid                     }
   it { is_expected.to validate_presence_of :from_ecosystem_uuid      }

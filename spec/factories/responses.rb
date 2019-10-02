@@ -1,4 +1,4 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :response do
     transient                     { current_time { Time.current } }
     uuid                          { SecureRandom.uuid             }

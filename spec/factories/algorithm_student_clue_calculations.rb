@@ -1,4 +1,4 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :algorithm_student_clue_calculation do
     uuid                     { SecureRandom.uuid }
     student_clue_calculation

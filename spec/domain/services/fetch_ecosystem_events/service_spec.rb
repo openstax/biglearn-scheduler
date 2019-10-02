@@ -15,7 +15,7 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
   end
 
   context 'with an existing Ecosystem and EcosystemEvents' do
-    let!(:ecosystem)                { FactoryGirl.create :ecosystem, sequence_number: 0 }
+    let!(:ecosystem)                { FactoryBot.create :ecosystem, sequence_number: 0 }
 
     let(:sequence_number)           { 0 }
     let(:event_uuid)                { SecureRandom.uuid }
@@ -67,10 +67,10 @@ RSpec.describe Services::FetchEcosystemEvents::Service, type: :service do
         end
       end
       let!(:existing_exercise_group) do
-        FactoryGirl.create :exercise_group, uuid: exercises.first.fetch(:group_uuid)
+        FactoryBot.create :exercise_group, uuid: exercises.first.fetch(:group_uuid)
       end
       let!(:existing_exercise)       do
-        FactoryGirl.create :exercise, uuid: exercises.first.fetch(:exercise_uuid),
+        FactoryBot.create :exercise, uuid: exercises.first.fetch(:exercise_uuid),
                                       exercise_group: existing_exercise_group
       end
 

@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe Exercise, type: :model do
-  subject { FactoryGirl.create :exercise }
+  subject { FactoryBot.create :exercise }
 
   it { is_expected.to have_many(:ecosystem_exercises).dependent(:destroy) }
   it { is_expected.to have_many :responses }

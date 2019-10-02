@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe ExerciseCalculation, type: :model do
-  subject { FactoryGirl.create :exercise_calculation }
+  subject { FactoryBot.create :exercise_calculation }
 
   it { is_expected.to have_many(:algorithm_exercise_calculations).dependent(:destroy) }
 

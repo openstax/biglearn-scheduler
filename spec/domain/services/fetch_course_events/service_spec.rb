@@ -17,7 +17,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
   end
 
   context 'with an existing Course and CourseEvents' do
-    let!(:course)                { FactoryGirl.create :course, sequence_number: 0 }
+    let!(:course)                { FactoryBot.create :course, sequence_number: 0 }
 
     let(:sequence_number)        { rand(10) + 1 }
     let(:event_uuid)             { SecureRandom.uuid }
@@ -125,13 +125,13 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
 
           book_container_mappings.flat_map do |bcm|
             [
-              FactoryGirl.create(:book_container_mapping,
+              FactoryBot.create(:book_container_mapping,
                                  from_ecosystem_uuid: chainable_from_ecosystem_uuid,
                                  to_ecosystem_uuid: course.ecosystem_uuid,
                                  from_book_container_uuid: SecureRandom.uuid,
                                  to_book_container_uuid: bcm[:from_book_container_uuid]),
 
-              FactoryGirl.create(:book_container_mapping,
+              FactoryBot.create(:book_container_mapping,
                                  from_ecosystem_uuid: ecosystem_uuid,
                                  to_ecosystem_uuid: chainable_to_ecosystem_uuid,
                                  from_book_container_uuid: bcm[:to_book_container_uuid],
@@ -169,7 +169,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
     end
 
     context 'update_course_ecosystem events' do
-      let!(:preparation)       { FactoryGirl.create :ecosystem_preparation }
+      let!(:preparation)       { FactoryBot.create :ecosystem_preparation }
 
       let(:event_type)         { 'update_course_ecosystem' }
       let(:event_data)         do
@@ -465,7 +465,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       let(:assignment_uuid)                   { SecureRandom.uuid }
       let(:is_deleted)                        { [true, false].sample }
       let(:ecosystem_uuid)                    { SecureRandom.uuid }
-      let(:student)                           { FactoryGirl.create :student, course: course }
+      let(:student)                           { FactoryBot.create :student, course: course }
       let(:student_uuid)                      { student.uuid }
       let(:assignment_type)                   do
         ['reading', 'homework', 'practice', 'concept-coach'].sample
@@ -517,7 +517,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       end
 
       let!(:other_assignment)      do
-        FactoryGirl.create :assignment, student_uuid: student_uuid,
+        FactoryBot.create :assignment, student_uuid: student_uuid,
                                         goal_num_tutor_assigned_spes: num_assigned_exercises,
                                         spes_are_assigned: true,
                                         goal_num_tutor_assigned_pes: num_assigned_exercises,
@@ -561,22 +561,22 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       end
 
       context 'with an existing assignment with SPE/PE calculations and associated records' do
-        let(:ecosystem)                      { FactoryGirl.create :ecosystem, uuid: ecosystem_uuid }
+        let(:ecosystem)                      { FactoryBot.create :ecosystem, uuid: ecosystem_uuid }
         let(:exercise_calculation)           do
-          FactoryGirl.create :exercise_calculation, student: student, ecosystem: ecosystem
+          FactoryBot.create :exercise_calculation, student: student, ecosystem: ecosystem
         end
         let!(:existing_assignment)           do
-          FactoryGirl.create :assignment, uuid: assignment_uuid, student_uuid: student_uuid
+          FactoryBot.create :assignment, uuid: assignment_uuid, student_uuid: student_uuid
         end
         let(:algorithm_exercise_calculation) do
-          FactoryGirl.create :algorithm_exercise_calculation,
+          FactoryBot.create :algorithm_exercise_calculation,
             exercise_calculation: exercise_calculation,
             is_pending_for_student: false,
             pending_assignment_uuids: []
         end
         let!(:existing_assignment_pes)       do
           assigned_exercise_uuids.map do |assigned_exercise_uuid|
-            FactoryGirl.create :assignment_pe,
+            FactoryBot.create :assignment_pe,
               assignment: other_assignment,
               exercise_uuid: assigned_exercise_uuid,
               algorithm_exercise_calculation: algorithm_exercise_calculation
@@ -584,7 +584,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         end
         let!(:existing_assignment_spes)      do
           assigned_exercise_uuids.map do |assigned_exercise_uuid|
-            FactoryGirl.create :assignment_spe,
+            FactoryBot.create :assignment_spe,
               assignment: other_assignment,
               exercise_uuid: assigned_exercise_uuid,
               algorithm_exercise_calculation: algorithm_exercise_calculation
@@ -592,7 +592,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         end
         let!(:existing_student_pes)          do
           assigned_exercise_uuids.map do |assigned_exercise_uuid|
-            FactoryGirl.create :student_pe,
+            FactoryBot.create :student_pe,
               exercise_uuid: assigned_exercise_uuid,
               algorithm_exercise_calculation: algorithm_exercise_calculation
           end

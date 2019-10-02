@@ -1,4 +1,4 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :student_pe do
     uuid                           { SecureRandom.uuid }
     algorithm_exercise_calculation

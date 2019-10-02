@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 20190503201144) do
+ActiveRecord::Schema.define(version: 20191002154947) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "plpgsql"
@@ -35,6 +35,7 @@ ActiveRecord::Schema.define(version: 20190503201144) do
     t.datetime "updated_at",                               null: false
     t.boolean  "is_pending_for_student",    default: true, null: false
     t.string   "pending_assignment_uuids",                 null: false, array: true
+    t.uuid     "assignment_uuids",                                      array: true
     t.index "cardinality(pending_assignment_uuids)", name: "index_alg_ex_calc_on_cardinality_of_pending_assignment_uuids", using: :btree
     t.index ["exercise_calculation_uuid", "algorithm_name"], name: "index_alg_ex_calc_on_ex_calc_uuid_and_alg_name", unique: true, using: :btree
     t.index ["is_pending_for_student"], name: "index_algorithm_exercise_calculations_on_is_pending_for_student", using: :btree

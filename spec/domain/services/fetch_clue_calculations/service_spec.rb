@@ -18,22 +18,22 @@ RSpec.describe Services::FetchClueCalculations::Service, type: :service do
     let(:calculation_uuid_2)   { SecureRandom.uuid }
 
     let!(:student_clue_calculation) do
-      FactoryGirl.create :student_clue_calculation, uuid: calculation_uuid_1
+      FactoryBot.create :student_clue_calculation, uuid: calculation_uuid_1
     end
 
     let!(:teacher_clue_calculation) do
-      FactoryGirl.create :teacher_clue_calculation, uuid: calculation_uuid_2
+      FactoryBot.create :teacher_clue_calculation, uuid: calculation_uuid_2
     end
 
     context "when the ClueCalculations have already been calculated" do
       before do
-        FactoryGirl.create :algorithm_student_clue_calculation,
+        FactoryBot.create :algorithm_student_clue_calculation,
                            student_clue_calculation: student_clue_calculation,
                            algorithm_name: given_algorithm_name
         student_clue_calculation.algorithm_names << given_algorithm_name
         student_clue_calculation.save!
 
-        FactoryGirl.create :algorithm_teacher_clue_calculation,
+        FactoryBot.create :algorithm_teacher_clue_calculation,
                            teacher_clue_calculation: teacher_clue_calculation,
                            algorithm_name: given_algorithm_name
         teacher_clue_calculation.algorithm_names << given_algorithm_name

@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe EcosystemExercise, type: :model do
-  subject { FactoryGirl.create :ecosystem_exercise }
+  subject { FactoryBot.create :ecosystem_exercise }
 
   it { is_expected.to belong_to(:ecosystem) }
   it { is_expected.to belong_to(:exercise) }

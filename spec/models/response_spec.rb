@@ -1,13 +1,13 @@
 require 'rails_helper'
 
 RSpec.describe Response, type: :model do
-  subject { FactoryGirl.create :response }
+  subject { FactoryBot.create :response }
 
-  it { is_expected.to belong_to(:student)                      }
+  it { is_expected.to belong_to(:student).optional             }
 
-  it { is_expected.to belong_to(:exercise)                     }
+  it { is_expected.to belong_to(:exercise).optional            }
 
-  it { is_expected.to belong_to(:assigned_exercise)            }
+  it { is_expected.to belong_to(:assigned_exercise).optional   }
 
   it { is_expected.to validate_presence_of :ecosystem_uuid     }
   it { is_expected.to validate_presence_of :trial_uuid         }

@@ -1,4 +1,4 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :ecosystem_exercise do
     transient            { book_containers_count { rand(10) + 1 } }
 

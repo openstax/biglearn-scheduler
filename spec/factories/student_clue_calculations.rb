@@ -1,4 +1,4 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :student_clue_calculation do
     transient           do
       num_exercise_uuids { rand(10) + 1 }

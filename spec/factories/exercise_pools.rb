@@ -1,4 +1,4 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :exercise_pool do
     transient                                 { exercises_count   { rand(10) } }
 

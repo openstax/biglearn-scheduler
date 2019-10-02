@@ -46,10 +46,10 @@ RSpec.describe Services::UpdateExerciseCalculations::Service, type: :service do
 
   context 'when previously-existing ExerciseCalculation uuids are given' do
     let!(:exercise_calculation_1) do
-      FactoryGirl.create :exercise_calculation, uuid: given_calculation_uuid_1
+      FactoryBot.create :exercise_calculation, uuid: given_calculation_uuid_1
     end
     let!(:exercise_calculation_2) do
-      FactoryGirl.create :exercise_calculation, uuid: given_calculation_uuid_2
+      FactoryBot.create :exercise_calculation, uuid: given_calculation_uuid_2
     end
 
     context 'when non-existing AlgorithmExerciseCalculation' +
@@ -70,11 +70,11 @@ RSpec.describe Services::UpdateExerciseCalculations::Service, type: :service do
     context 'when previously-existing AlgorithmExerciseCalculation' +
             ' algorithm_name and calculation_uuids are given' do
       before do
-        FactoryGirl.create :algorithm_exercise_calculation,
+        FactoryBot.create :algorithm_exercise_calculation,
                            exercise_calculation: exercise_calculation_1,
                            algorithm_name: given_algorithm_name
 
-        FactoryGirl.create :algorithm_exercise_calculation,
+        FactoryBot.create :algorithm_exercise_calculation,
                            exercise_calculation: exercise_calculation_2,
                            algorithm_name: given_algorithm_name
       end

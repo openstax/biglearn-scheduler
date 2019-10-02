@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe EcosystemMatrixUpdate, type: :model do
-  subject { FactoryGirl.create :ecosystem_matrix_update }
+  subject { FactoryBot.create :ecosystem_matrix_update }
 
   it { is_expected.to have_many(:algorithm_ecosystem_matrix_updates).dependent(:destroy) }
 

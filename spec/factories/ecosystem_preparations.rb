@@ -1,4 +1,4 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :ecosystem_preparation do
     uuid           { SecureRandom.uuid }
     course_uuid    { SecureRandom.uuid }
