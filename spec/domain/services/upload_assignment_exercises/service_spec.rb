@@ -530,7 +530,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
 
         assigned_exercises.map do |assigned_exercise|
           FactoryBot.create :response, trial_uuid: assigned_exercise.uuid,
-                                        used_in_student_history: false
+                                       is_used_in_student_history: false
         end
       end
     end

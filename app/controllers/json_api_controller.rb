@@ -5,7 +5,7 @@ class JsonApiController < ApplicationController
   include ScoutIgnore
 
   API_TOKEN_HEADER = 'Biglearn-Scheduler-Token'
-  API_TOKEN = Rails.application.secrets.openstax['biglearn']['scheduler']['token']
+  API_TOKEN = Rails.application.secrets.openstax[:biglearn][:scheduler][:token]
   VALIDATE_JSON = false
 
   # Skip verifying the CSRF token

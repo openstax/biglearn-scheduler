@@ -11,7 +11,7 @@ class AddHasExerciseCalculationToAssignments < ActiveRecord::Migration[5.0]
         Assignment.joins(:student).where(
           ExerciseCalculation.where(
             ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
-          ).exists
+          ).arel.exists
         ).update_all(has_exercise_calculation: true)
 
         Assignment.where(has_exercise_calculation: nil).update_all(has_exercise_calculation: false)

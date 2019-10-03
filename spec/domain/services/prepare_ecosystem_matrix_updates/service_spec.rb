@@ -50,16 +50,16 @@ RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service 
       @response_1 = FactoryBot.create :response,
                                        ecosystem_uuid: @ecosystem_exercise_1.ecosystem_uuid,
                                        exercise_uuid: @ecosystem_exercise_1.exercise_uuid,
-                                       used_in_response_count: false
+                                       is_used_in_response_count: false
       @response_2 = FactoryBot.create :response,
                                        ecosystem_uuid: @ecosystem_exercise_2.ecosystem_uuid,
                                        exercise_uuid: @ecosystem_exercise_2.exercise_uuid,
-                                       used_in_response_count: false
+                                       is_used_in_response_count: false
 
       @response_3 = FactoryBot.create :response,
                                        ecosystem_uuid: @ecosystem_exercise_2.ecosystem_uuid,
                                        exercise_uuid: @ecosystem_exercise_2.exercise_uuid,
-                                       used_in_response_count: true
+                                       is_used_in_response_count: true
     end
 
     after(:all)  { DatabaseCleaner.clean }
@@ -67,9 +67,9 @@ RSpec.describe Services::PrepareEcosystemMatrixUpdates::Service, type: :service 
     it 'marks the Response objects as processed' do
       expect do
         subject.process
-      end.to  change     { @response_1.reload.used_in_response_count }.from(false).to(true)
-         .and change     { @response_2.reload.used_in_response_count }.from(false).to(true)
-         .and not_change { @response_3.reload.used_in_response_count }
+      end.to  change     { @response_1.reload.is_used_in_response_count }.from(false).to(true)
+         .and change     { @response_2.reload.is_used_in_response_count }.from(false).to(true)
+         .and not_change { @response_3.reload.is_used_in_response_count }
     end
 
     it 'creates EcosystemMatrixUpdate records when the next update response counts are reached' do

@@ -35,7 +35,6 @@ ActiveRecord::Schema.define(version: 20191002154947) do
     t.datetime "updated_at",                               null: false
     t.boolean  "is_pending_for_student",    default: true, null: false
     t.string   "pending_assignment_uuids",                 null: false, array: true
-    t.uuid     "assignment_uuids",                                      array: true
     t.index "cardinality(pending_assignment_uuids)", name: "index_alg_ex_calc_on_cardinality_of_pending_assignment_uuids", using: :btree
     t.index ["exercise_calculation_uuid", "algorithm_name"], name: "index_alg_ex_calc_on_ex_calc_uuid_and_alg_name", unique: true, using: :btree
     t.index ["is_pending_for_student"], name: "index_algorithm_exercise_calculations_on_is_pending_for_student", using: :btree
@@ -235,15 +234,18 @@ ActiveRecord::Schema.define(version: 20191002154947) do
   end
 
   create_table "exercise_calculations", force: :cascade do |t|
-    t.uuid     "uuid",                         null: false
-    t.uuid     "ecosystem_uuid",               null: false
-    t.uuid     "student_uuid",                 null: false
-    t.datetime "created_at",                   null: false
-    t.datetime "updated_at",                   null: false
-    t.string   "algorithm_names", default: [], null: false, array: true
+    t.uuid     "uuid",                                null: false
+    t.uuid     "ecosystem_uuid",                      null: false
+    t.uuid     "student_uuid",                        null: false
+    t.datetime "created_at",                          null: false
+    t.datetime "updated_at",                          null: false
+    t.string   "algorithm_names",        default: [], null: false, array: true
+    t.boolean  "is_used_in_assignments"
+    t.uuid     "superseded_by_uuid"
     t.index ["algorithm_names"], name: "index_exercise_calculations_on_algorithm_names", using: :gin
     t.index ["ecosystem_uuid"], name: "index_exercise_calculations_on_ecosystem_uuid", using: :btree
-    t.index ["student_uuid", "ecosystem_uuid"], name: "index_exercise_calculations_on_student_uuid_and_ecosystem_uuid", unique: true, using: :btree
+    t.index ["student_uuid", "ecosystem_uuid"], name: "index_exercise_calculations_on_student_uuid_and_ecosystem_uuid", using: :btree
+    t.index ["superseded_by_uuid", "is_used_in_assignments"], name: "index_deletable_exercise_calculations", using: :btree
     t.index ["uuid"], name: "index_exercise_calculations_on_uuid", unique: true, using: :btree
   end
 
@@ -284,30 +286,30 @@ ActiveRecord::Schema.define(version: 20191002154947) do
   end
 
   create_table "responses", force: :cascade do |t|
-    t.uuid     "uuid",                          null: false
-    t.uuid     "ecosystem_uuid",                null: false
-    t.uuid     "trial_uuid",                    null: false
-    t.uuid     "student_uuid",                  null: false
-    t.uuid     "exercise_uuid",                 null: false
-    t.datetime "first_responded_at",            null: false
-    t.datetime "last_responded_at",             null: false
-    t.boolean  "is_correct",                    null: false
-    t.boolean  "used_in_clue_calculations",     null: false
-    t.boolean  "used_in_exercise_calculations", null: false
-    t.datetime "created_at",                    null: false
-    t.datetime "updated_at",                    null: false
-    t.boolean  "used_in_response_count",        null: false
-    t.boolean  "used_in_student_history",       null: false
+    t.uuid     "uuid",                             null: false
+    t.uuid     "ecosystem_uuid",                   null: false
+    t.uuid     "trial_uuid",                       null: false
+    t.uuid     "student_uuid",                     null: false
+    t.uuid     "exercise_uuid",                    null: false
+    t.datetime "first_responded_at",               null: false
+    t.datetime "last_responded_at",                null: false
+    t.boolean  "is_correct",                       null: false
+    t.boolean  "is_used_in_clue_calculations",     null: false
+    t.boolean  "is_used_in_exercise_calculations", null: false
+    t.datetime "created_at",                       null: false
+    t.datetime "updated_at",                       null: false
+    t.boolean  "is_used_in_response_count",        null: false
+    t.boolean  "is_used_in_student_history",       null: false
     t.index ["ecosystem_uuid"], name: "index_responses_on_ecosystem_uuid", using: :btree
     t.index ["exercise_uuid"], name: "index_responses_on_exercise_uuid", using: :btree
     t.index ["first_responded_at"], name: "index_responses_on_first_responded_at", using: :btree
+    t.index ["is_used_in_clue_calculations"], name: "index_responses_on_is_used_in_clue_calculations", using: :btree
+    t.index ["is_used_in_exercise_calculations"], name: "index_responses_on_is_used_in_exercise_calculations", using: :btree
+    t.index ["is_used_in_response_count"], name: "index_responses_on_is_used_in_response_count", using: :btree
+    t.index ["is_used_in_student_history"], name: "index_responses_on_is_used_in_student_history", using: :btree
     t.index ["last_responded_at"], name: "index_responses_on_last_responded_at", using: :btree
     t.index ["student_uuid", "exercise_uuid"], name: "index_responses_on_student_uuid_and_exercise_uuid", using: :btree
     t.index ["trial_uuid"], name: "index_responses_on_trial_uuid", using: :btree
-    t.index ["used_in_clue_calculations"], name: "index_responses_on_used_in_clue_calculations", using: :btree
-    t.index ["used_in_exercise_calculations"], name: "index_responses_on_used_in_exercise_calculations", using: :btree
-    t.index ["used_in_response_count"], name: "index_responses_on_used_in_response_count", using: :btree
-    t.index ["used_in_student_history"], name: "index_responses_on_used_in_student_history", using: :btree
     t.index ["uuid"], name: "index_responses_on_uuid", unique: true, using: :btree
   end
 

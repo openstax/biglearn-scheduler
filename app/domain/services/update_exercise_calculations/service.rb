@@ -1,6 +1,7 @@
 class Services::UpdateExerciseCalculations::Service < Services::ApplicationService
   def process(exercise_calculation_updates:)
     calculation_uuids = exercise_calculation_updates.map { |calc| calc[:calculation_uuid] }
+    ec = ExerciseCalculation.arel_table
 
     ExerciseCalculation.transaction do
       # The ExerciseCalculation lock ensures we don't miss updates on
@@ -17,7 +18,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
       Assignment
         .joins(:exercise_calculation)
         .where(exercise_calculations: { uuid: exercise_calculation_uuids })
-        .pluck('"exercise_calculations"."uuid"', :uuid)
+        .pluck(ec[:uuid], :uuid)
         .each do |exercise_calculation_uuid, uuid|
           assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
         end

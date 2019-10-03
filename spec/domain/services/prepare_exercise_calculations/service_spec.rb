@@ -276,10 +276,12 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
 
       after(:all)  { DatabaseCleaner.clean }
 
-      it 'changes the uuid of existing ExerciseCalculations to trigger their recalculation' do
+      it 'creates new ExerciseCalculations and sets old ones as superseded' do
         expect { subject.process }.to  change { ExerciseCalculation.count               }
-                                         .by(expected_exercise_calculations.size - 1)
-                                  .and change { AlgorithmExerciseCalculation.count  }.by(-1)
+                                         .by(expected_exercise_calculations.size)
+                                  .and not_change { AlgorithmExerciseCalculation.count  }
+
+        expect(@existing_calculation.reload.superseded_by).not_to be_nil
 
         ExerciseCalculation.pluck(:student_uuid, :ecosystem_uuid).each do |attributes|
           expect(exercise_calculation_attributes_set).to include attributes

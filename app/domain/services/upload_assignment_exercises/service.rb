@@ -38,10 +38,15 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
 
         assignments = Assignment
-          .select([ aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
+          .select(aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid'))
           .joins(exercise_calculation: :algorithm_exercise_calculations)
           .where(uuid: algorithm_exercise_calculations.flat_map(&:pending_assignment_uuids))
-          .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
+          .where(
+            exercise_calculation: {
+              superseded_by_uuid: nil,
+              algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids }
+            }
+          )
 
         # Delete relevant AssignmentPe and AssignmentSpes, since we are about to reupload them
         pe_assignments = assignments.select(&:needs_pes?)
@@ -49,7 +54,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           assignment_pe_values = pe_assignments.map do |pe_assignment|
             [ pe_assignment.uuid, pe_assignment.algorithm_exercise_calculation_uuid ]
           end
-          assignment_pe_where_query = <<-WHERE_SQL.strip_heredoc
+          assignment_pe_where_query = <<~WHERE_SQL
             "assignment_pes"."id" IN (
               SELECT "assignment_pes"."id"
               FROM "assignment_pes"
@@ -67,7 +72,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           assignment_spe_values = spe_assignments.map do |spe_assignment|
             [ spe_assignment.uuid, spe_assignment.algorithm_exercise_calculation_uuid ]
           end
-          assignment_spe_where_query = <<-WHERE_SQL.strip_heredoc
+          assignment_spe_where_query = <<~WHERE_SQL
             "assignment_spes"."id" IN (
               SELECT "assignment_spes"."id"
               FROM "assignment_spes"
@@ -103,7 +108,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         Assignment
           .distinct
           .joins(
-            <<-SQL.strip_heredoc
+            <<~SQL
               INNER JOIN (#{subquery.to_sql}) "assignments_to_update"
                 ON "assignments"."student_uuid" = "assignments_to_update"."student_uuid"
                   AND "assignments"."assignment_type" = "assignments_to_update"."assignment_type"
@@ -173,7 +178,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         end
         ecosystems_map = Hash.new { |hash, key| hash[key] = {} }
         unless forward_mapping_values_array.empty?
-          forward_mapping_join_query = <<-JOIN_SQL.strip_heredoc
+          forward_mapping_join_query = <<~JOIN_SQL
             INNER JOIN (#{ValuesTable.new(forward_mapping_values_array)})
               AS "values" ("to_ecosystem_uuid", "from_ecosystem_uuid", "from_book_container_uuids")
               ON "book_container_mappings"."to_ecosystem_uuid" = "values"."to_ecosystem_uuid"::uuid

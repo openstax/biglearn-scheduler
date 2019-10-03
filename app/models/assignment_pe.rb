@@ -23,7 +23,7 @@ class AssignmentPe < ApplicationRecord
     where.not(
       AlgorithmExerciseCalculation.where(
         '"uuid" = "assignment_pes"."algorithm_exercise_calculation_uuid"'
-      ).exists
+      ).arel.exists
     )
   end
 end

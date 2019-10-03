@@ -17,7 +17,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         # Responses with no AssignedExercise or Assignment are completely ignored
         # No order needed because of SKIP LOCKED
         responses = Response.joins(assigned_exercise: :assignment)
-                            .where(used_in_clue_calculations: false)
+                            .where(is_used_in_clue_calculations: false)
                             .lock('FOR NO KEY UPDATE OF "responses" SKIP LOCKED')
                             .take(BATCH_SIZE)
         # Get any ClueCalculations that need to be recalculated
@@ -146,7 +146,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           end.compact
         end
         unless forward_mapping_values_array.empty?
-          forward_mapping_join_query = <<-JOIN_SQL.strip_heredoc
+          forward_mapping_join_query = <<~JOIN_SQL
             INNER JOIN (#{ValuesTable.new(forward_mapping_values_array)}) AS "values"
               ("from_ecosystem_uuid", "to_ecosystem_uuid", "from_book_container_uuids")
               ON "book_container_mappings"."from_ecosystem_uuid" =
@@ -273,7 +273,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
               [ to_ecosystem_uuid, to_book_container_uuid ]
             end
           end
-          reverse_mapping_join_query = <<-JOIN_SQL.strip_heredoc
+          reverse_mapping_join_query = <<~JOIN_SQL
             INNER JOIN (#{ValuesTable.new(reverse_mapping_values_array)})
               AS "values" ("to_ecosystem_uuid", "to_book_container_uuid")
               ON "book_container_mappings"."to_ecosystem_uuid" = "values"."to_ecosystem_uuid"::uuid
@@ -366,7 +366,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         teacher_responses_map = Hash.new { |hash, key| hash[key] = {} }
         unless response_values_array.empty?
           new_response_uuids = []
-          response_join_query = <<-JOIN_SQL.strip_heredoc
+          response_join_query = <<~JOIN_SQL
             INNER JOIN (#{ValuesTable.new(response_values_array)})
               AS "values" ("student_uuid", "exercise_uuid")
             ON "responses"."student_uuid" = "values"."student_uuid"::uuid
@@ -377,10 +377,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             .joins(response_join_query)
             .order(:last_responded_at)
             .pluck(:uuid, :trial_uuid, :student_uuid, :exercise_uuid,
-                   :used_in_clue_calculations, :is_correct, :feedback_at)
+                   :is_used_in_clue_calculations, :is_correct, :feedback_at)
             .each do |response_uuid, trial_uuid, student_uuid, exercise_uuid,
-                      used_in_clue_calculations, is_correct, feedback_at|
-            new_response_uuids << response_uuid unless used_in_clue_calculations
+                      is_used_in_clue_calculations, is_correct, feedback_at|
+            new_response_uuids << response_uuid unless is_used_in_clue_calculations
 
             # We can safely skip Responses whose exercise_uuid is absent from this hash
             # Because that means their exercises only appear in pools not used for CLUes
@@ -542,7 +542,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
         # No order needed because already locked above
-        Response.where(uuid: response_uuids).update_all(used_in_clue_calculations: true)
+        Response.where(uuid: response_uuids).update_all(is_used_in_clue_calculations: true)
 
         [ responses.size, sccs.size, tccs.size ]
       end

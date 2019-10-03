@@ -518,10 +518,10 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
 
       let!(:other_assignment)      do
         FactoryBot.create :assignment, student_uuid: student_uuid,
-                                        goal_num_tutor_assigned_spes: num_assigned_exercises,
-                                        spes_are_assigned: true,
-                                        goal_num_tutor_assigned_pes: num_assigned_exercises,
-                                        pes_are_assigned: true
+                                       goal_num_tutor_assigned_spes: num_assigned_exercises,
+                                       spes_are_assigned: true,
+                                       goal_num_tutor_assigned_pes: num_assigned_exercises,
+                                       pes_are_assigned: true
       end
 
       it 'creates an Assignment for the Course' do
@@ -687,7 +687,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         expect(response.student_uuid).to eq student_uuid
         expect(response.exercise_uuid).to eq exercise_uuid
         expect(response.is_correct).to eq is_correct
-        expect(response.used_in_clue_calculations).to eq false
+        expect(response.is_used_in_clue_calculations).to eq false
       end
     end
   end

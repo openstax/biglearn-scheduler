@@ -446,7 +446,7 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
 
         assigned_exercises.map do |assigned_exercise|
           FactoryBot.create :response, trial_uuid: assigned_exercise.uuid,
-                                        used_in_student_history: false
+                                       is_used_in_student_history: false
         end
       end
     end
@@ -459,7 +459,7 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
       it 'marks the responses as used in the student history' do
         expect { subject.process }.to(
           change do
-            ordered_responses.map(&:reload).count(&:used_in_student_history)
+            ordered_responses.map(&:reload).count(&:is_used_in_student_history)
           end.from(0).to(ordered_responses.count)
         )
       end
@@ -487,7 +487,7 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
       it 'marks the responses as used in the student history' do
         expect { subject.process }.to(
           change do
-            ordered_responses.map(&:reload).count(&:used_in_student_history)
+            ordered_responses.map(&:reload).count(&:is_used_in_student_history)
           end.from(0).to(ordered_responses.count)
         )
       end
@@ -515,7 +515,7 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
       it 'marks the responses as used in the student history' do
         expect { subject.process }.to(
           change do
-            ordered_responses.map(&:reload).count(&:used_in_student_history)
+            ordered_responses.map(&:reload).count(&:is_used_in_student_history)
           end.from(0).to(ordered_responses.count)
         )
       end
@@ -551,7 +551,7 @@ RSpec.describe Services::UpdateStudentHistory::Service, type: :service do
       it 'marks the responses as used in the student history' do
         expect { subject.process }.to(
           change do
-            ordered_responses.map(&:reload).count(&:used_in_student_history)
+            ordered_responses.map(&:reload).count(&:is_used_in_student_history)
           end.from(0).to(ordered_responses.count)
         )
       end

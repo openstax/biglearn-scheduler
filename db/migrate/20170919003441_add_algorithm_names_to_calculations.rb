@@ -12,7 +12,7 @@ class AddAlgorithmNamesToCalculations < ActiveRecord::Migration[5.0]
     reversible do |dir|
       dir.up do
         EcosystemMatrixUpdate.update_all(
-          <<-UPDATE_SQL.strip_heredoc
+          <<~UPDATE_SQL
             "algorithm_names" = (
               SELECT COALESCE(
                 ARRAY_AGG("algorithm_ecosystem_matrix_updates"."algorithm_name"),
@@ -26,7 +26,7 @@ class AddAlgorithmNamesToCalculations < ActiveRecord::Migration[5.0]
         )
 
         ExerciseCalculation.update_all(
-          <<-UPDATE_SQL.strip_heredoc
+          <<~UPDATE_SQL
             "algorithm_names" = (
               SELECT COALESCE(
                 ARRAY_AGG("algorithm_exercise_calculations"."algorithm_name"),
@@ -40,7 +40,7 @@ class AddAlgorithmNamesToCalculations < ActiveRecord::Migration[5.0]
         )
 
         StudentClueCalculation.update_all(
-          <<-UPDATE_SQL.strip_heredoc
+          <<~UPDATE_SQL
             "algorithm_names" = (
               SELECT COALESCE(
                 ARRAY_AGG("algorithm_student_clue_calculations"."algorithm_name"),
@@ -54,7 +54,7 @@ class AddAlgorithmNamesToCalculations < ActiveRecord::Migration[5.0]
         )
 
         TeacherClueCalculation.update_all(
-          <<-UPDATE_SQL.strip_heredoc
+          <<~UPDATE_SQL
             "algorithm_names" = (
               SELECT COALESCE(
                 ARRAY_AGG("algorithm_teacher_clue_calculations"."algorithm_name"),

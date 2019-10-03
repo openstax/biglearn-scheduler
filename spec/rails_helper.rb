@@ -97,7 +97,7 @@ end
 
 def make_post_request(route:, headers: {}, body: nil)
   headers = headers.merge(
-    'Biglearn-Scheduler-Token': Rails.application.secrets.openstax['biglearn']['scheduler']['token']
+    'Biglearn-Scheduler-Token': Rails.application.secrets.openstax[:biglearn][:scheduler][:token]
   )
 
   post route, params: body, headers: headers

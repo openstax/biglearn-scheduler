@@ -32,7 +32,7 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
     end
 
     from(
-      <<-SQL.strip_heredoc
+      <<~SQL
         (
           SELECT algorithm_student_clue_calculations.*,
             student_clue_calculations.ecosystem_uuid,
@@ -58,7 +58,7 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
     where.not(
       StudentClueCalculation.where(
         '"uuid" = "algorithm_student_clue_calculations"."student_clue_calculation_uuid"'
-      ).exists
+      ).arel.exists
     )
   end
 end

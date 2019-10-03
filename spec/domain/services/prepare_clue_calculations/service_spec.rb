@@ -66,97 +66,97 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                          ecosystem_uuid: ecosystem.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_1.uuid,
-                                         used_in_clue_calculations: true
+                                         is_used_in_clue_calculations: true
         @response_2 = FactoryBot.create :response,
                                          is_correct: false,
                                          ecosystem_uuid: ecosystem.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_2.uuid,
-                                         used_in_clue_calculations: true
+                                         is_used_in_clue_calculations: true
         @response_3 = FactoryBot.create :response,
                                          is_correct: true,
                                          ecosystem_uuid: ecosystem.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_3.uuid,
-                                         used_in_clue_calculations: true
+                                         is_used_in_clue_calculations: true
         @response_4 = FactoryBot.create :response,
                                          is_correct: false,
                                          ecosystem_uuid: ecosystem.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_4.uuid,
-                                         used_in_clue_calculations: true
+                                         is_used_in_clue_calculations: true
         @response_5 = FactoryBot.create :response,
                                          is_correct: true,
                                          ecosystem_uuid: ecosystem.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_5.uuid,
-                                         used_in_clue_calculations: false
+                                         is_used_in_clue_calculations: false
         @response_6 = FactoryBot.create :response,
                                          is_correct: false,
                                          ecosystem_uuid: ecosystem.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_6.uuid,
-                                         used_in_clue_calculations: false
+                                         is_used_in_clue_calculations: false
         @response_7 = FactoryBot.create :response,
                                          is_correct: true,
                                          ecosystem_uuid: ecosystem.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_7.uuid,
-                                         used_in_clue_calculations: false
+                                         is_used_in_clue_calculations: false
         @response_8 = FactoryBot.create :response,
                                          is_correct: false,
                                          ecosystem_uuid: ecosystem.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_8.uuid,
-                                         used_in_clue_calculations: false
+                                         is_used_in_clue_calculations: false
         @response_9 = FactoryBot.create :response,
                                          is_correct: true,
                                          ecosystem_uuid: ecosystem.uuid,
                                          student_uuid: @student_2.uuid,
                                          exercise_uuid: @exercise_1.uuid,
-                                         used_in_clue_calculations: true
+                                         is_used_in_clue_calculations: true
         @response_10 = FactoryBot.create :response,
                                           is_correct: false,
                                           ecosystem_uuid: ecosystem.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_2.uuid,
-                                          used_in_clue_calculations: true
+                                          is_used_in_clue_calculations: true
         @response_11 = FactoryBot.create :response,
                                           is_correct: true,
                                           ecosystem_uuid: ecosystem.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_3.uuid,
-                                          used_in_clue_calculations: true
+                                          is_used_in_clue_calculations: true
         @response_12 = FactoryBot.create :response,
                                           is_correct: false,
                                           ecosystem_uuid: ecosystem.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_4.uuid,
-                                          used_in_clue_calculations: true
+                                          is_used_in_clue_calculations: true
         @response_13 = FactoryBot.create :response,
                                           is_correct: true,
                                           ecosystem_uuid: ecosystem.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_5.uuid,
-                                          used_in_clue_calculations: false
+                                          is_used_in_clue_calculations: false
         @response_14 = FactoryBot.create :response,
                                           is_correct: false,
                                           ecosystem_uuid: ecosystem.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_6.uuid,
-                                          used_in_clue_calculations: false
+                                          is_used_in_clue_calculations: false
         @response_15 = FactoryBot.create :response,
                                           is_correct: true,
                                           ecosystem_uuid: ecosystem.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_7.uuid,
-                                          used_in_clue_calculations: false
+                                          is_used_in_clue_calculations: false
         @response_16 = FactoryBot.create :response,
                                           is_correct: false,
                                           ecosystem_uuid: ecosystem.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_8.uuid,
-                                          used_in_clue_calculations: false
+                                          is_used_in_clue_calculations: false
 
         @unprocessed_responses = [
           @response_5, @response_6, @response_7, @response_8,
@@ -339,7 +339,7 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
            .and change     { @tcc_3.reload.uuid                    }
 
         @unprocessed_responses.each do |response|
-          expect(response.reload.used_in_clue_calculations).to eq true
+          expect(response.reload.is_used_in_clue_calculations).to eq true
         end
 
         expect(@scc_2.exercise_uuids).to match_array [ @exercise_3, @exercise_4 ].map(&:uuid)
@@ -451,97 +451,97 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
                                          ecosystem_uuid: ecosystem_1.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_1.uuid,
-                                         used_in_clue_calculations: true
+                                         is_used_in_clue_calculations: true
         @response_2 = FactoryBot.create :response,
                                          is_correct: false,
                                          ecosystem_uuid: ecosystem_2.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_12.uuid,
-                                         used_in_clue_calculations: true
+                                         is_used_in_clue_calculations: true
         @response_3 = FactoryBot.create :response,
                                          is_correct: true,
                                          ecosystem_uuid: ecosystem_1.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_3.uuid,
-                                         used_in_clue_calculations: true
+                                         is_used_in_clue_calculations: true
         @response_4 = FactoryBot.create :response,
                                          is_correct: false,
                                          ecosystem_uuid: ecosystem_2.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_14.uuid,
-                                         used_in_clue_calculations: true
+                                         is_used_in_clue_calculations: true
         @response_5 = FactoryBot.create :response,
                                          is_correct: true,
                                          ecosystem_uuid: ecosystem_1.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_5.uuid,
-                                         used_in_clue_calculations: false
+                                         is_used_in_clue_calculations: false
         @response_6 = FactoryBot.create :response,
                                          is_correct: false,
                                          ecosystem_uuid: ecosystem_2.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_6.uuid,
-                                         used_in_clue_calculations: false
+                                         is_used_in_clue_calculations: false
         @response_7 = FactoryBot.create :response,
                                          is_correct: true,
                                          ecosystem_uuid: ecosystem_1.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_7.uuid,
-                                         used_in_clue_calculations: false
+                                         is_used_in_clue_calculations: false
         @response_8 = FactoryBot.create :response,
                                          is_correct: false,
                                          ecosystem_uuid: ecosystem_2.uuid,
                                          student_uuid: @student_1.uuid,
                                          exercise_uuid: @exercise_8.uuid,
-                                         used_in_clue_calculations: false
+                                         is_used_in_clue_calculations: false
         @response_9 = FactoryBot.create :response,
                                          is_correct: true,
                                          ecosystem_uuid: ecosystem_1.uuid,
                                          student_uuid: @student_2.uuid,
                                          exercise_uuid: @exercise_1.uuid,
-                                         used_in_clue_calculations: true
+                                         is_used_in_clue_calculations: true
         @response_10 = FactoryBot.create :response,
                                           is_correct: false,
                                           ecosystem_uuid: ecosystem_2.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_12.uuid,
-                                          used_in_clue_calculations: true
+                                          is_used_in_clue_calculations: true
         @response_11 = FactoryBot.create :response,
                                           is_correct: true,
                                           ecosystem_uuid: ecosystem_1.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_3.uuid,
-                                          used_in_clue_calculations: true
+                                          is_used_in_clue_calculations: true
         @response_12 = FactoryBot.create :response,
                                           is_correct: false,
                                           ecosystem_uuid: ecosystem_2.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_14.uuid,
-                                          used_in_clue_calculations: true
+                                          is_used_in_clue_calculations: true
         @response_13 = FactoryBot.create :response,
                                           is_correct: true,
                                           ecosystem_uuid: ecosystem_1.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_5.uuid,
-                                          used_in_clue_calculations: false
+                                          is_used_in_clue_calculations: false
         @response_14 = FactoryBot.create :response,
                                           is_correct: false,
                                           ecosystem_uuid: ecosystem_2.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_6.uuid,
-                                          used_in_clue_calculations: false
+                                          is_used_in_clue_calculations: false
         @response_15 = FactoryBot.create :response,
                                           is_correct: true,
                                           ecosystem_uuid: ecosystem_1.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_7.uuid,
-                                          used_in_clue_calculations: false
+                                          is_used_in_clue_calculations: false
         @response_16 = FactoryBot.create :response,
                                           is_correct: false,
                                           ecosystem_uuid: ecosystem_2.uuid,
                                           student_uuid: @student_2.uuid,
                                           exercise_uuid: @exercise_8.uuid,
-                                          used_in_clue_calculations: false
+                                          is_used_in_clue_calculations: false
 
         @unprocessed_responses = [
           @response_5, @response_6, @response_7, @response_8,
@@ -846,7 +846,7 @@ RSpec.describe Services::PrepareClueCalculations::Service, type: :service do
            .and change     { @tcc_2.reload.uuid                    }
 
         @unprocessed_responses.each do |response|
-          expect(response.reload.used_in_clue_calculations).to eq true
+          expect(response.reload.is_used_in_clue_calculations).to eq true
         end
 
         expect(@scc_2.exercise_uuids).to(
