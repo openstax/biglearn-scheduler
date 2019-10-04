@@ -225,8 +225,6 @@ GEM
     rspec-support (3.8.3)
     ruby-graphviz (1.2.4)
     safe_yaml (1.0.5)
-    sass-rails (6.0.0)
-      sassc-rails (~> 2.1, >= 2.1.1)
     sassc (2.2.1)
       ffi (~> 1.9)
     sassc-rails (2.1.2)
@@ -319,7 +317,7 @@ DEPENDENCIES
   rails-erd
   rb-readline
   rspec-rails
-  sass-rails
+  sassc-rails
   scout_apm
   sentry-raven
   shoulda-matchers
