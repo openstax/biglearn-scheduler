@@ -1,28 +1,31 @@
 require 'rails_helper'
 
 RSpec.describe ExerciseCalculationsController, type: :request do
-  let(:given_algorithm_name) { 'tesr' }
+  let(:given_algorithm_name)  { 'biglearn_sparfa' }
 
-  let(:calculation_uuid_1)   { SecureRandom.uuid }
-  let(:calculation_uuid_2)   { SecureRandom.uuid }
+  let(:calculation_uuid_1)    { SecureRandom.uuid }
+  let(:calculation_uuid_2)    { SecureRandom.uuid }
 
-  let(:num_exercise_uuids_1) { rand(10) + 1 }
-  let(:exercise_uuids_1)     { num_exercise_uuids_1.times.map { SecureRandom.uuid } }
+  let(:recommendation_uuid_1) { SecureRandom.uuid }
+  let(:recommendation_uuid_2) { SecureRandom.uuid }
 
-  let(:num_exercise_uuids_2) { rand(10) + 1 }
-  let(:exercise_uuids_2)     { num_exercise_uuids_2.times.map { SecureRandom.uuid } }
+  let(:num_exercise_uuids_1)  { rand(10) + 1 }
+  let(:exercise_uuids_1)      { num_exercise_uuids_1.times.map { SecureRandom.uuid } }
+
+  let(:num_exercise_uuids_2)  { rand(10) + 1 }
+  let(:exercise_uuids_2)      { num_exercise_uuids_2.times.map { SecureRandom.uuid } }
 
   context '#fetch_exercise_calculations' do
 
-    let(:ecosystem_uuid_1)   { SecureRandom.uuid }
-    let(:student_uuid_1)     { SecureRandom.uuid }
+    let(:ecosystem_uuid_1)    { SecureRandom.uuid }
+    let(:student_uuid_1)      { SecureRandom.uuid }
 
-    let(:ecosystem_uuid_2)   { SecureRandom.uuid }
-    let(:student_uuid_2)     { SecureRandom.uuid }
+    let(:ecosystem_uuid_2)    { SecureRandom.uuid }
+    let(:student_uuid_2)      { SecureRandom.uuid }
 
-    let(:request_payload)    { { algorithm_name: given_algorithm_name } }
+    let(:request_payload)     { { algorithm_name: given_algorithm_name } }
 
-    let(:target_result)      do
+    let(:target_result)       do
       {
         exercise_calculations: [
           {
@@ -92,11 +95,13 @@ RSpec.describe ExerciseCalculationsController, type: :request do
           {
             calculation_uuid: calculation_uuid_1,
             algorithm_name: given_algorithm_name,
+            recommendation_uuid: recommendation_uuid_1,
             exercise_uuids: exercise_uuids_1
           },
           {
             calculation_uuid: calculation_uuid_2,
             algorithm_name: given_algorithm_name,
+            recommendation_uuid: recommendation_uuid_2,
             exercise_uuids: exercise_uuids_2
           }
         ]

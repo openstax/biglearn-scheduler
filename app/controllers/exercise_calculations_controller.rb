@@ -78,14 +78,20 @@ class ExerciseCalculationsController < JsonApiController
           'items': {
             'type': 'object',
             'properties': {
-              'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
-              'algorithm_name':   { 'type': 'string' },
-              'exercise_uuids':   {
+              'calculation_uuid':    {'$ref': '#standard_definitions/uuid'},
+              'algorithm_name':      { 'type': 'string' },
+              'recommendation_uuid': {'$ref': '#standard_definitions/uuid'},
+              'exercise_uuids':      {
                 'type': 'array',
                 'items': {'$ref': '#standard_definitions/uuid'}
               }
             },
-            'required': ['calculation_uuid', 'algorithm_name', 'exercise_uuids'],
+            'required': [
+              'calculation_uuid',
+              'algorithm_name',
+              'recommendation_uuid',
+              'exercise_uuids'
+            ],
             'additionalProperties': false
           },
           'minItems': 1,

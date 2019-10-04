@@ -1,6 +1,6 @@
 FactoryBot.define do
   factory :exercise_calculation do
-    uuid      { SecureRandom.uuid }
+    uuid { SecureRandom.uuid }
     ecosystem
     student
   end
