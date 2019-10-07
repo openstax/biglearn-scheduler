@@ -678,6 +678,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     algorithm_name = algorithm_exercise_calculation.algorithm_name
 
     {
+      ecosystem_matrix_uuid: algorithm_exercise_calculation.ecosystem_matrix_uuid,
       calculation_uuid: algorithm_exercise_calculation.uuid,
       assignment_uuid: assignment.uuid,
       exercise_uuids: chosen_pe_uuids,
@@ -765,6 +766,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
     algorithm_name = algorithm_exercise_calculation.algorithm_name
 
     {
+      ecosystem_matrix_uuid: algorithm_exercise_calculation.ecosystem_matrix_uuid,
       calculation_uuid: algorithm_exercise_calculation.uuid,
       assignment_uuid: assignment.uuid,
       exercise_uuids: chosen_spe_uuids + chosen_pe_uuids,
