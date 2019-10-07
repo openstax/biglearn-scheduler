@@ -40,7 +40,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
             uuid: SecureRandom.uuid,
             exercise_calculation: exercise_calculation,
             algorithm_name: algorithm_name,
-            recommendation_uuid: exercise_calculation_update.fetch(:recommendation_uuid),
+            ecosystem_matrix_uuid: exercise_calculation_update.fetch(:ecosystem_matrix_uuid),
             exercise_uuids: exercise_calculation_update.fetch(:exercise_uuids),
             pending_assignment_uuids: assignment_uuids,
             is_pending_for_student: true
@@ -59,7 +59,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
           conflict_target: [ :exercise_calculation_uuid, :algorithm_name ],
           columns: [
             :uuid,
-            :recommendation_uuid,
+            :ecosystem_matrix_uuid,
             :exercise_uuids,
             :pending_assignment_uuids,
             :is_pending_for_student

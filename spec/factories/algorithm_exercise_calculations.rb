@@ -5,7 +5,7 @@ FactoryBot.define do
     uuid                   { SecureRandom.uuid }
     exercise_calculation
     algorithm_name         { [ 'local_query', 'biglearn_sparfa' ].sample }
-    recommendation_uuid    { SecureRandom.uuid }
+    ecosystem_matrix_uuid  { SecureRandom.uuid }
     exercise_uuids         { num_exercise_uuids.times.map { SecureRandom.uuid } }
     is_pending_for_student { [ true, false ].sample }
 

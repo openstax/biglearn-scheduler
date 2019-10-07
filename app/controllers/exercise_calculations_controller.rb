@@ -78,10 +78,10 @@ class ExerciseCalculationsController < JsonApiController
           'items': {
             'type': 'object',
             'properties': {
-              'calculation_uuid':    {'$ref': '#standard_definitions/uuid'},
-              'algorithm_name':      { 'type': 'string' },
-              'recommendation_uuid': {'$ref': '#standard_definitions/uuid'},
-              'exercise_uuids':      {
+              'calculation_uuid':      {'$ref': '#standard_definitions/uuid'},
+              'algorithm_name':        { 'type': 'string' },
+              'ecosystem_matrix_uuid': {'$ref': '#standard_definitions/uuid'},
+              'exercise_uuids':        {
                 'type': 'array',
                 'items': {'$ref': '#standard_definitions/uuid'}
               }
@@ -89,7 +89,7 @@ class ExerciseCalculationsController < JsonApiController
             'required': [
               'calculation_uuid',
               'algorithm_name',
-              'recommendation_uuid',
+              'ecosystem_matrix_uuid',
               'exercise_uuids'
             ],
             'additionalProperties': false

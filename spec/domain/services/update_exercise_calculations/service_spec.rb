@@ -1,32 +1,32 @@
 require 'rails_helper'
 
 RSpec.describe Services::UpdateExerciseCalculations::Service, type: :service do
-  let(:service)                     { described_class.new }
+  let(:service)                       { described_class.new }
 
-  let(:given_algorithm_name)        { 'sparfa' }
+  let(:given_algorithm_name)          { 'sparfa' }
 
-  let(:given_calculation_uuid_1)    { SecureRandom.uuid }
-  let(:given_recommendation_uuid_1) { SecureRandom.uuid }
-  let(:num_exercise_uuids_1)        { rand(10) }
-  let(:given_exercise_uuids_1)      { num_exercise_uuids_1.times.map { SecureRandom.uuid } }
+  let(:given_calculation_uuid_1)      { SecureRandom.uuid }
+  let(:given_ecosystem_matrix_uuid_1) { SecureRandom.uuid }
+  let(:num_exercise_uuids_1)          { rand(10) }
+  let(:given_exercise_uuids_1)        { num_exercise_uuids_1.times.map { SecureRandom.uuid } }
 
-  let(:given_calculation_uuid_2)    { SecureRandom.uuid }
-  let(:given_recommendation_uuid_2) { SecureRandom.uuid }
-  let(:num_exercise_uuids_2)        { rand(10) }
-  let(:given_exercise_uuids_2)      { num_exercise_uuids_2.times.map { SecureRandom.uuid } }
+  let(:given_calculation_uuid_2)      { SecureRandom.uuid }
+  let(:given_ecosystem_matrix_uuid_2) { SecureRandom.uuid }
+  let(:num_exercise_uuids_2)          { rand(10) }
+  let(:given_exercise_uuids_2)        { num_exercise_uuids_2.times.map { SecureRandom.uuid } }
 
   let(:algorithm_exercise_calculation_attributes_set) do
     Set[
       [
         given_algorithm_name,
         given_calculation_uuid_1,
-        given_recommendation_uuid_1,
+        given_ecosystem_matrix_uuid_1,
         given_exercise_uuids_1
       ],
       [
         given_algorithm_name,
         given_calculation_uuid_2,
-        given_recommendation_uuid_2,
+        given_ecosystem_matrix_uuid_2,
         given_exercise_uuids_2
       ]
     ]
@@ -34,11 +34,11 @@ RSpec.describe Services::UpdateExerciseCalculations::Service, type: :service do
 
   let(:given_exercise_calculation_updates) do
     algorithm_exercise_calculation_attributes_set
-      .map do |algorithm_name, calculation_uuid, recommendation_uuid, exercise_uuids|
+      .map do |algorithm_name, calculation_uuid, ecosystem_matrix_uuid, exercise_uuids|
       {
         calculation_uuid: calculation_uuid,
         algorithm_name: algorithm_name,
-        recommendation_uuid: recommendation_uuid,
+        ecosystem_matrix_uuid: ecosystem_matrix_uuid,
         exercise_uuids: exercise_uuids
       }
     end
@@ -72,8 +72,9 @@ RSpec.describe Services::UpdateExerciseCalculations::Service, type: :service do
 
         results.each { |result| expect(result[:calculation_status]).to eq 'calculation_accepted' }
 
-        algorithm_exercise_calculation_attributes = AlgorithmExerciseCalculation
-          .pluck(:algorithm_name, :exercise_calculation_uuid, :recommendation_uuid, :exercise_uuids)
+        algorithm_exercise_calculation_attributes = AlgorithmExerciseCalculation.pluck(
+          :algorithm_name, :exercise_calculation_uuid, :ecosystem_matrix_uuid, :exercise_uuids
+        )
         algorithm_exercise_calculation_attributes.each do |attributes|
           expect(algorithm_exercise_calculation_attributes_set).to include attributes
         end
@@ -97,8 +98,9 @@ RSpec.describe Services::UpdateExerciseCalculations::Service, type: :service do
 
         results.each { |result| expect(result[:calculation_status]).to eq 'calculation_accepted' }
 
-        algorithm_exercise_calculation_attributes = AlgorithmExerciseCalculation
-          .pluck(:algorithm_name, :exercise_calculation_uuid, :recommendation_uuid, :exercise_uuids)
+        algorithm_exercise_calculation_attributes = AlgorithmExerciseCalculation.pluck(
+          :algorithm_name, :exercise_calculation_uuid, :ecosystem_matrix_uuid, :exercise_uuids
+        )
         algorithm_exercise_calculation_attributes.each do |attributes|
           expect(algorithm_exercise_calculation_attributes_set).to include attributes
         end

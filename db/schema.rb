@@ -35,11 +35,11 @@ ActiveRecord::Schema.define(version: 2019_10_04_150206) do
     t.datetime "updated_at", null: false
     t.boolean "is_pending_for_student", default: true, null: false
     t.string "pending_assignment_uuids", null: false, array: true
-    t.uuid "recommendation_uuid", null: false
+    t.uuid "ecosystem_matrix_uuid", null: false
     t.index "cardinality(pending_assignment_uuids)", name: "index_alg_ex_calc_on_cardinality_of_pending_assignment_uuids"
+    t.index ["ecosystem_matrix_uuid"], name: "index_algorithm_exercise_calculations_on_ecosystem_matrix_uuid"
     t.index ["exercise_calculation_uuid", "algorithm_name"], name: "index_alg_ex_calc_on_ex_calc_uuid_and_alg_name", unique: true
     t.index ["is_pending_for_student"], name: "index_algorithm_exercise_calculations_on_is_pending_for_student"
-    t.index ["recommendation_uuid"], name: "index_algorithm_exercise_calculations_on_recommendation_uuid"
     t.index ["uuid"], name: "index_algorithm_exercise_calculations_on_uuid", unique: true
   end
 
