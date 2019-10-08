@@ -289,9 +289,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         due_at = exclusion_info[:due_at]
         feedback_at = exclusion_info[:feedback_at]
 
-        calculations = data.fetch(:calculations, {})
-        pe_calculation_uuid = calculations[:pe_calculation_uuid]
-        spe_calculation_uuid = calculations[:spe_calculation_uuid]
+        pe_calculation_uuid = data.dig(:pes, :calculation_uuid)
+        spe_calculation_uuid = data.dig(:spes, :calculation_uuid)
 
         used_algorithm_exercise_calculation_uuids << pe_calculation_uuid \
           unless pe_calculation_uuid.nil?
@@ -554,6 +553,18 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       exercise_calculation_uuids = ExerciseCalculation.where(
         <<~WHERE_SQL
           "exercise_calculations"."uuid" IN (
+            #{
+              ExerciseCalculation
+                .select(:uuid)
+                .joins(:algorithm_exercise_calculations)
+                .where(
+                  algorithm_exercise_calculations: {
+                    uuid: used_algorithm_exercise_calculation_uuids
+                  }
+                )
+                .to_sql
+            }
+            UNION ALL
             #{
               ExerciseCalculation
                 .select(:uuid)

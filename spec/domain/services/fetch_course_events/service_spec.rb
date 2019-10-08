@@ -470,6 +470,13 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       let(:assignment_type)                   do
         ['reading', 'homework', 'practice', 'concept-coach'].sample
       end
+      let(:existing_exercise_calculation)     do
+        FactoryBot.create :exercise_calculation, is_used_in_assignments: false
+      end
+      let!(:existing_algorithm_exercise_calculation) do
+        FactoryBot.create :algorithm_exercise_calculation,
+                          exercise_calculation: existing_exercise_calculation
+      end
       let(:num_assigned_book_container_uuids) { 3 }
       let(:assigned_book_container_uuids)     do
         num_assigned_book_container_uuids.times.map { SecureRandom.uuid }
@@ -507,6 +514,11 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
             due_at: due_at,
             feedback_at: due_at
           },
+          pes: {
+            calculation_uuid: existing_algorithm_exercise_calculation.uuid,
+            ecosystem_matrix_uuid: SecureRandom.uuid
+          },
+          spes: {},
           assigned_book_container_uuids: assigned_book_container_uuids,
           goal_num_tutor_assigned_spes: goal_num_tutor_assigned_spes,
           spes_are_assigned: spes_are_assigned,
@@ -534,6 +546,13 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                   .and change     { AssignedExercise.count }
                                                     .by(num_assigned_exercises)
                                   .and not_change { Response.count }
+                                  .and not_change { ExerciseCalculation.count }
+                                  .and not_change { AlgorithmExerciseCalculation.count }
+                                  .and(
+                                    change do
+                                      existing_exercise_calculation.reload.is_used_in_assignments
+                                    end.from(false).to(true)
+                                  )
                                   .and not_change { other_assignment.reload.spes_are_assigned }
                                   .and not_change { other_assignment.reload.pes_are_assigned }
                                   .and change     { course.reload.sequence_number }
@@ -608,6 +627,13 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     .and change     { AssignedExercise.count }
                                                       .by(num_assigned_exercises)
                                     .and not_change { Response.count }
+                                    .and not_change { ExerciseCalculation.count }
+                                    .and not_change { AlgorithmExerciseCalculation.count }
+                                    .and(
+                                      change do
+                                        existing_exercise_calculation.reload.is_used_in_assignments
+                                      end.from(false).to(true)
+                                    )
                                     .and not_change { other_assignment.reload.spes_are_assigned }
                                     .and not_change { other_assignment.reload.pes_are_assigned }
                                     .and change     { course.reload.sequence_number }
