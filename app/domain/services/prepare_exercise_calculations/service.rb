@@ -80,7 +80,8 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
           ExerciseCalculation.new(
             uuid: SecureRandom.uuid,
             ecosystem_uuid: ecosystem_uuid,
-            student_uuid: student_uuid
+            student_uuid: student_uuid,
+            is_used_in_assignments: false
           )
         end
 

@@ -1,4 +1,4 @@
-class Services::PrepareExerciseCalculations::Service < Services::ApplicationService
+class Services::CleanupExerciseCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 1000
   GRACE_PERIOD = 1.month
 
@@ -6,13 +6,14 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
+    ec = ExerciseCalculation.arel_table
     total_exercise_calculations = 0
     loop do
       num_exercise_calculations = ExerciseCalculation.transaction do
         old_exercise_calculation_uuids = ExerciseCalculation
           .superseded
-          .where(assignment_uuids: [])
-          .where(ec[:updated_at].lteq(current_time - GRACE_PERIOD))
+          .where(is_used_in_assignments: false)
+          .where(ec[:updated_at].lteq(start_time - GRACE_PERIOD))
           .ordered
           .lock('FOR UPDATE SKIP LOCKED')
           .limit(BATCH_SIZE)

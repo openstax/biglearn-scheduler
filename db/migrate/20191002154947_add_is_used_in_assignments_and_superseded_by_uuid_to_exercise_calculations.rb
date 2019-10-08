@@ -4,6 +4,9 @@ class AddIsUsedInAssignmentsAndSupersededByUuidToExerciseCalculations < ActiveRe
     add_column :exercise_calculations, :superseded_by_uuid, :uuid
 
     remove_index :exercise_calculations, column: [ :student_uuid, :ecosystem_uuid ], unique: true
+
+    change_column_null :exercise_calculations, :is_used_in_assignments, false, false
+
     add_index :exercise_calculations, [ :student_uuid, :ecosystem_uuid ]
     add_index :exercise_calculations,
               [ :superseded_by_uuid, :is_used_in_assignments ],
