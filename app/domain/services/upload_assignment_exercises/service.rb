@@ -43,8 +43,8 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           .where(uuid: algorithm_exercise_calculations.flat_map(&:pending_assignment_uuids))
           .where(
             exercise_calculation: {
-              superseded_by_uuid: nil,
-              algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids }
+              algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids },
+              superseded_at: nil
             }
           )
 

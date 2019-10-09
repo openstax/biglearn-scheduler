@@ -87,17 +87,16 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
 
         # Mark old ExerciseCalculations as superseded
         exercise_calculation_values_array = exercise_calculations.map do |calculation|
-          [ calculation.uuid, calculation.student_uuid, calculation.ecosystem_uuid ]
+          [ calculation.student_uuid, calculation.ecosystem_uuid ]
         end
-        ExerciseCalculation.update_all(
-          <<~UPDATE_SQL
-            "superseded_by_uuid" = "values"."uuid"::uuid
-              FROM (#{ValuesTable.new(exercise_calculation_values_array)})
-                AS "values" ("uuid", "student_uuid", "ecosystem_uuid")
-              WHERE "exercise_calculations"."student_uuid" = "values"."student_uuid"::uuid
+        ExerciseCalculation.joins(
+          <<~JOIN_SQL
+            INNER JOIN (#{ValuesTable.new(exercise_calculation_values_array)})
+              AS "values" ("student_uuid", "ecosystem_uuid")
+              ON "exercise_calculations"."student_uuid" = "values"."student_uuid"::uuid
                 AND "exercise_calculations"."ecosystem_uuid" = "values"."ecosystem_uuid"::uuid
-          UPDATE_SQL
-        )
+          JOIN_SQL
+        ).update_all superseded_at: start_time
 
         # Record the ExerciseCalculations
         ExerciseCalculation.import(

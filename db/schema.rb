@@ -243,11 +243,11 @@ ActiveRecord::Schema.define(version: 2019_10_04_150206) do
     t.datetime "updated_at", null: false
     t.string "algorithm_names", default: [], null: false, array: true
     t.boolean "is_used_in_assignments", null: false
-    t.uuid "superseded_by_uuid"
+    t.datetime "superseded_at"
     t.index ["algorithm_names"], name: "index_exercise_calculations_on_algorithm_names", using: :gin
     t.index ["ecosystem_uuid"], name: "index_exercise_calculations_on_ecosystem_uuid"
     t.index ["student_uuid", "ecosystem_uuid"], name: "index_exercise_calculations_on_student_uuid_and_ecosystem_uuid"
-    t.index ["superseded_by_uuid", "is_used_in_assignments"], name: "index_deletable_exercise_calculations"
+    t.index ["superseded_at"], name: "index_deletable_exercise_calculations_on_superseded_at", where: "(NOT is_used_in_assignments)"
     t.index ["uuid"], name: "index_exercise_calculations_on_uuid", unique: true
   end
 

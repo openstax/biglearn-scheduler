@@ -136,7 +136,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
     # concurrent Assignment and AlgorithmExerciseCalculation inserts
     exercise_calculation_uuids = ExerciseCalculation
       .joins(:assignments)
-      .where(superseded_by_uuid: nil, assignments: { student_uuid: student_uuids })
+      .where(assignments: { student_uuid: student_uuids }, superseded_at: nil)
       .ordered
       .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
       .pluck(:uuid)

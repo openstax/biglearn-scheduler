@@ -14,17 +14,6 @@ class ExerciseCalculation < ApplicationRecord
     Assignment.where student_uuid: student_uuid, ecosystem_uuid: ecosystem_uuid
   end
 
-  has_many :supersededs, class_name: name,
-                         primary_key: :uuid,
-                         foreign_key: :superseded_by_uuid,
-                         inverse_of: :superseded_by
-
-  belongs_to :superseded_by, class_name: name,
-                             primary_key: :uuid,
-                             foreign_key: :superseded_by_uuid,
-                             optional: true,
-                             inverse_of: :supersededs
-
   belongs_to :ecosystem, primary_key: :uuid,
                          foreign_key: :ecosystem_uuid,
                          inverse_of: :exercise_calculations
@@ -39,6 +28,6 @@ class ExerciseCalculation < ApplicationRecord
     joins(:ecosystem).select('"exercise_calculations".*, "ecosystems"."exercise_uuids"')
   end
 
-  scope :superseded,     -> { where.not superseded_by_uuid: nil }
-  scope :not_superseded, -> { where     superseded_by_uuid: nil }
+  scope :superseded,     -> { where.not superseded_at: nil }
+  scope :not_superseded, -> { where     superseded_at: nil }
 end

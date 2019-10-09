@@ -106,9 +106,9 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
         algorithm_exercise_calculation_join_query = <<~JOIN_SQL
           INNER JOIN (#{ValuesTable.new(student_pes_values_array)})
             AS "values" ("student_uuid", "algorithm_name")
-              ON "exercise_calculations"."superseded_by_uuid" IS NULL
-                AND "exercise_calculations"."student_uuid" = "values"."student_uuid"::uuid
+              ON "exercise_calculations"."student_uuid" = "values"."student_uuid"::uuid
                 AND "algorithm_exercise_calculations"."algorithm_name" = "values"."algorithm_name"
+                AND "exercise_calculations"."superseded_at" IS NULL
         JOIN_SQL
 
         AlgorithmExerciseCalculation

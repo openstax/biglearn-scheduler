@@ -11,9 +11,8 @@ class Services::CleanupExerciseCalculations::Service < Services::ApplicationServ
     loop do
       num_exercise_calculations = ExerciseCalculation.transaction do
         old_exercise_calculation_uuids = ExerciseCalculation
-          .superseded
           .where(is_used_in_assignments: false)
-          .where(ec[:updated_at].lteq(start_time - GRACE_PERIOD))
+          .where(ec[:superseded_at].lteq(start_time - GRACE_PERIOD))
           .ordered
           .lock('FOR UPDATE SKIP LOCKED')
           .limit(BATCH_SIZE)

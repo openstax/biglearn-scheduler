@@ -281,7 +281,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
                                          .by(expected_exercise_calculations.size)
                                   .and not_change { AlgorithmExerciseCalculation.count  }
 
-        expect(@existing_calculation.reload.superseded_by).not_to be_nil
+        expect(@existing_calculation.reload.superseded_at).not_to be_nil
 
         ExerciseCalculation.pluck(:student_uuid, :ecosystem_uuid).each do |attributes|
           expect(exercise_calculation_attributes_set).to include attributes

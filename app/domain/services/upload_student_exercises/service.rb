@@ -38,7 +38,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           .where(
             exercise_calculations: {
               algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids },
-              superseded_by_uuid: nil
+              superseded_at: nil
             }
           )
           .where(ec[:ecosystem_uuid].eq(cc[:ecosystem_uuid]))
