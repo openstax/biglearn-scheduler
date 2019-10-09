@@ -9,7 +9,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
         .select(:uuid, :student_uuid, :ecosystem_uuid, :algorithm_names)
         .where(uuid: calculation_uuids)
         .ordered
-        .lock('FOR NO KEY UPDATE')
+        .lock('FOR NO KEY UPDATE SKIP LOCKED')
         .index_by(&:uuid)
       exercise_calculation_uuids = exercise_calculations_by_uuid.keys
 

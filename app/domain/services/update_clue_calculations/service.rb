@@ -7,13 +7,13 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
         .select(:uuid, :student_uuid, :book_container_uuid, :algorithm_names)
         .where(uuid: relevant_calculation_uuids)
         .ordered
-        .lock('FOR NO KEY UPDATE')
+        .lock('FOR NO KEY UPDATE SKIP LOCKED')
         .index_by(&:uuid)
       teacher_clue_calculations_by_uuid = TeacherClueCalculation
         .select(:uuid, :course_container_uuid, :book_container_uuid, :algorithm_names)
         .where(uuid: relevant_calculation_uuids)
         .ordered
-        .lock('FOR NO KEY UPDATE')
+        .lock('FOR NO KEY UPDATE SKIP LOCKED')
         .index_by(&:uuid)
 
       algorithm_student_clue_calculations = []

@@ -8,6 +8,7 @@ class Services::FetchExerciseCalculations::Service < Services::ApplicationServic
       .with_exercise_uuids
       .where.not("\"algorithm_names\" @> ARRAY[#{sanitized_algorithm_name}]::varchar[]")
       .random_ordered
+      .lock('FOR SHARE SKIP LOCKED')
       .take(BATCH_SIZE)
 
     exercise_calculation_responses = exercise_calculations.map do |exercise_calculation|

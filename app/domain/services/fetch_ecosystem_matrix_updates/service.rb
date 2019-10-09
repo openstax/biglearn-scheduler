@@ -7,6 +7,7 @@ class Services::FetchEcosystemMatrixUpdates::Service < Services::ApplicationServ
     ecosystem_matrix_updates = EcosystemMatrixUpdate
       .where.not("\"algorithm_names\" @> ARRAY[#{sanitized_algorithm_name}]::varchar[]")
       .random_ordered
+      .lock('FOR SHARE SKIP LOCKED')
       .take(BATCH_SIZE)
 
     ecosystem_matrix_update_responses = ecosystem_matrix_updates.map do |ecosystem_matrix_update|
