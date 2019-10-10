@@ -4,9 +4,12 @@ class ExerciseCalculation < ApplicationRecord
                                              dependent: :destroy,
                                              inverse_of: :exercise_calculation
 
-  ec = arel_table
   has_many :assignments,
-    -> { where arel_table[:ecosystem_uuid].eq(ec[:ecosystem_uuid]) },
+    -> do
+      where(
+        Assignment.arel_table[:ecosystem_uuid].eq(ExerciseCalculation.arel_table[:ecosystem_uuid])
+      )
+    end,
     primary_key: :student_uuid,
     foreign_key: :student_uuid,
     inverse_of: :exercise_calculation

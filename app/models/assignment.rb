@@ -12,9 +12,12 @@ class Assignment < ApplicationRecord
                                 dependent: :destroy,
                                 inverse_of: :assignment
 
-  as = arel_table
   has_one :exercise_calculation,
-    -> { where arel_table[:ecosystem_uuid].eq(as[:ecosystem_uuid]) },
+    -> do
+      where(
+        ExerciseCalculation.arel_table[:ecosystem_uuid].eq(Assignment.arel_table[:ecosystem_uuid])
+      )
+    end,
     primary_key: :student_uuid,
     foreign_key: :student_uuid,
     inverse_of: :assignments
