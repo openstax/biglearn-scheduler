@@ -6,7 +6,7 @@ class Services::EcosystemMatricesUpdated::Service < Services::ApplicationService
         .select(:uuid, :ecosystem_uuid, :algorithm_names)
         .where(uuid: relevant_update_uuids)
         .ordered
-        .lock('FOR NO KEY UPDATE')
+        .lock('FOR NO KEY UPDATE SKIP LOCKED')
         .index_by(&:uuid)
 
       algorithm_ecosystem_matrix_updates = []

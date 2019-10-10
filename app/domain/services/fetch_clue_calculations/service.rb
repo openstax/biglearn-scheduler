@@ -7,11 +7,13 @@ class Services::FetchClueCalculations::Service < Services::ApplicationService
     student_clue_calculations = StudentClueCalculation
       .where.not("\"algorithm_names\" @> ARRAY[#{sanitized_algorithm_name}]::varchar[]")
       .random_ordered
+      .lock('FOR SHARE SKIP LOCKED')
       .take(BATCH_SIZE)
 
     teacher_clue_calculations = TeacherClueCalculation
       .where.not("\"algorithm_names\" @> ARRAY[#{sanitized_algorithm_name}]::varchar[]")
       .random_ordered
+      .lock('FOR SHARE SKIP LOCKED')
       .take(BATCH_SIZE)
 
     clue_calculations = student_clue_calculations + teacher_clue_calculations
