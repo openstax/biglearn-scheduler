@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe Services::FetchClueCalculations::Service, type: :service do
   let(:service)              { described_class.new }
 
-  let(:given_algorithm_name) { 'sparfa' }
+  let(:given_algorithm_name) { 'biglearn_sparfa' }
 
   let(:action)               { service.process(algorithm_name: given_algorithm_name) }
 

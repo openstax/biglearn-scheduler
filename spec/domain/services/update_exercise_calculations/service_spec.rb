@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe Services::UpdateExerciseCalculations::Service, type: :service do
   let(:service)                       { described_class.new }
 
-  let(:given_algorithm_name)          { 'sparfa' }
+  let(:given_algorithm_name)          { 'biglearn_sparfa' }
 
   let(:given_calculation_uuid_1)      { SecureRandom.uuid }
   let(:given_ecosystem_matrix_uuid_1) { SecureRandom.uuid }
