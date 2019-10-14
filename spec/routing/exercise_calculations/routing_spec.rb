@@ -16,4 +16,12 @@ RSpec.describe ExerciseCalculationsController, type: :routing do
       )
     end
   end
+
+  context "POST /fetch_algorithm_exercise_calculations" do
+    it "routes to #fetch_algorithm_exercise_calculations" do
+      expect(post '/fetch_algorithm_exercise_calculations').to(
+        route_to('exercise_calculations#fetch_algorithm_exercise_calculations')
+      )
+    end
+  end
 end

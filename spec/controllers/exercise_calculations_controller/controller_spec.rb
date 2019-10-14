@@ -89,7 +89,7 @@ RSpec.describe ExerciseCalculationsController, type: :request do
   end
 
   context '#update_exercise_calculations' do
-    let(:request_payload)      do
+    let(:request_payload)  do
       {
         exercise_calculation_updates: [
           {
@@ -108,7 +108,7 @@ RSpec.describe ExerciseCalculationsController, type: :request do
       }
     end
 
-    let(:target_result)        do
+    let(:target_result)    do
       {
         exercise_calculation_update_responses: [
           {
@@ -122,15 +122,15 @@ RSpec.describe ExerciseCalculationsController, type: :request do
         ]
       }
     end
-    let(:target_response)      { target_result }
+    let(:target_response)  { target_result }
 
-    let(:service_double)       do
+    let(:service_double)   do
       instance_double(Services::UpdateExerciseCalculations::Service).tap do |dbl|
         allow(dbl).to receive(:process).with(request_payload).and_return(target_result)
       end
     end
 
-    before(:each)              do
+    before(:each)          do
       allow(Services::UpdateExerciseCalculations::Service).to(
         receive(:new).and_return(service_double)
       )
@@ -167,13 +167,85 @@ RSpec.describe ExerciseCalculationsController, type: :request do
     end
   end
 
+  context '#fetch_algorithm_exercise_calculations' do
+    let(:request_payload)  do
+      {
+        algorithm_exercise_calculations: [
+          { calculation_uuid: calculation_uuid_1 }, { calculation_uuid: calculation_uuid_2 }
+        ]
+      }
+    end
+
+    let(:target_result)    do
+      {
+        algorithm_exercise_calculations: [
+          {
+            calculation_uuid: calculation_uuid_1,
+            algorithm_name: given_algorithm_name,
+            ecosystem_matrix_uuid: ecosystem_matrix_uuid_1,
+            exercise_uuids: exercise_uuids_1
+          },
+          {
+            calculation_uuid: calculation_uuid_2,
+            algorithm_name: given_algorithm_name,
+            ecosystem_matrix_uuid: ecosystem_matrix_uuid_2,
+            exercise_uuids: exercise_uuids_2
+          }
+        ]
+      }
+    end
+    let(:target_response)  { target_result }
+
+    let(:service_double)   do
+      instance_double(Services::FetchAlgorithmExerciseCalculations::Service).tap do |dbl|
+        allow(dbl).to receive(:process).with(request_payload).and_return(target_result)
+      end
+    end
+
+    before(:each)          do
+      allow(Services::FetchAlgorithmExerciseCalculations::Service).to(
+        receive(:new).and_return(service_double)
+      )
+    end
+
+    context "when a valid request is made" do
+      it "the request and response payloads are validated against their schemas" do
+        expect_any_instance_of(described_class).to receive(:with_json_apis).and_call_original
+        response_status, response_body = fetch_algorithm_exercise_calculations(
+          request_payload: request_payload
+        )
+      end
+
+      it "the response has status 200 (success)" do
+        response_status, response_body = fetch_algorithm_exercise_calculations(
+          request_payload: request_payload
+        )
+        expect(response_status).to eq(200)
+      end
+
+      it "the UpdateExerciseCalculations service is called with the correct course data" do
+        response_status, response_body = fetch_algorithm_exercise_calculations(
+          request_payload: request_payload
+        )
+        expect(service_double).to have_received(:process)
+      end
+
+      it "the response contains the target_response" do
+        response_status, response_body = fetch_algorithm_exercise_calculations(
+          request_payload: request_payload
+        )
+        expect(response_body).to eq(target_response.deep_stringify_keys)
+      end
+    end
+  end
+
   protected
 
   def fetch_exercise_calculations(request_payload:)
     make_post_request(
       route: '/fetch_exercise_calculations',
       headers: { 'Content-Type' => 'application/json' },
-      body:  request_payload.to_json
+      body: request_payload.to_json
     )
     response_status  = response.status
     response_payload = JSON.parse(response.body)
@@ -185,7 +257,19 @@ RSpec.describe ExerciseCalculationsController, type: :request do
     make_post_request(
       route: '/update_exercise_calculations',
       headers: { 'Content-Type' => 'application/json' },
-      body:  request_payload.to_json
+      body: request_payload.to_json
+    )
+    response_status  = response.status
+    response_payload = JSON.parse(response.body)
+
+    [response_status, response_payload]
+  end
+
+  def fetch_algorithm_exercise_calculations(request_payload:)
+    make_post_request(
+      route: '/fetch_algorithm_exercise_calculations',
+      headers: { 'Content-Type' => 'application/json' },
+      body: request_payload.to_json
     )
     response_status  = response.status
     response_payload = JSON.parse(response.body)
