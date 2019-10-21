@@ -150,9 +150,14 @@ class ExerciseCalculationsController < JsonApiController
           'items': {
             'type': 'object',
             'properties': {
-              'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
+              'request_uuid':     {'$ref': '#standard_definitions/uuid'},
+              'student_uuid':     {'$ref': '#standard_definitions/uuid'},
+              'calculation_uuid': {'$ref': '#standard_definitions/uuid'}
             },
-            'required': ['calculation_uuid'],
+            'anyOf': [
+              {'required': ['request_uuid', 'student_uuid']},
+              {'required': ['request_uuid', 'calculation_uuid']}
+            ],
             'additionalProperties': false
           },
           'minItems': 1,
@@ -175,6 +180,7 @@ class ExerciseCalculationsController < JsonApiController
           'items': {
             'type': 'object',
             'properties': {
+              'request_uuid':          {'$ref': '#standard_definitions/uuid'},
               'calculation_uuid':      {'$ref': '#standard_definitions/uuid'},
               'ecosystem_matrix_uuid': {'$ref': '#standard_definitions/uuid'},
               'algorithm_name':        { 'type': 'string' },
