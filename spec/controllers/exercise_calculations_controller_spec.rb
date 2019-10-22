@@ -174,8 +174,8 @@ RSpec.describe ExerciseCalculationsController, type: :request do
     let(:request_payload)  do
       {
         algorithm_exercise_calculations: [
-          { request_uuid: request_uuid_1, calculation_uuid: calculation_uuid_1 },
-          { request_uuid: request_uuid_2, calculation_uuid: calculation_uuid_2 }
+          { request_uuid: request_uuid_1, calculation_uuids: [ calculation_uuid_1 ] },
+          { request_uuid: request_uuid_2, calculation_uuids: [ calculation_uuid_2 ] }
         ]
       }
     end
@@ -185,17 +185,25 @@ RSpec.describe ExerciseCalculationsController, type: :request do
         algorithm_exercise_calculations: [
           {
             request_uuid: request_uuid_1,
-            calculation_uuid: calculation_uuid_1,
-            algorithm_name: given_algorithm_name,
-            ecosystem_matrix_uuid: ecosystem_matrix_uuid_1,
-            exercise_uuids: exercise_uuids_1
+            calculations: [
+              {
+                calculation_uuid: calculation_uuid_1,
+                algorithm_name: given_algorithm_name,
+                ecosystem_matrix_uuid: ecosystem_matrix_uuid_1,
+                exercise_uuids: exercise_uuids_1
+              }
+            ]
           },
           {
             request_uuid: request_uuid_2,
-            calculation_uuid: calculation_uuid_2,
-            algorithm_name: given_algorithm_name,
-            ecosystem_matrix_uuid: ecosystem_matrix_uuid_2,
-            exercise_uuids: exercise_uuids_2
+            calculations: [
+              {
+                calculation_uuid: calculation_uuid_2,
+                algorithm_name: given_algorithm_name,
+                ecosystem_matrix_uuid: ecosystem_matrix_uuid_2,
+                exercise_uuids: exercise_uuids_2
+              }
+            ]
           }
         ]
       }

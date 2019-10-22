@@ -20,16 +20,16 @@ RSpec.describe Services::FetchAlgorithmExerciseCalculations::Service, type: :ser
   let(:given_algorithm_exercise_calculation_requests) do
     [
       { request_uuid: given_request_uuid_1, student_uuid: given_student_uuid_1 },
-      { request_uuid: given_request_uuid_2, calculation_uuid: given_calculation_uuid_1 },
+      { request_uuid: given_request_uuid_2, calculation_uuids: [ given_calculation_uuid_1 ] },
       {
         request_uuid: given_request_uuid_3,
         student_uuid: given_student_uuid_2,
-        calculation_uuid: given_calculation_uuid_2
+        calculation_uuids: [ given_calculation_uuid_2 ]
       },
       {
         request_uuid: given_request_uuid_4,
         student_uuid: given_student_uuid_3,
-        calculation_uuid: given_calculation_uuid_3
+        calculation_uuids: [ given_calculation_uuid_3 ]
       }
     ]
   end
@@ -88,18 +88,24 @@ RSpec.describe Services::FetchAlgorithmExerciseCalculations::Service, type: :ser
           given_request_uuid_1, given_request_uuid_2, given_request_uuid_3
         ]
 
+        calculation = result.fetch(:calculations).first
+
         algorithm_exercise_calculation = algorithm_exercise_calculation_by_uuid.fetch(
-          result.fetch(:calculation_uuid)
+          calculation.fetch(:calculation_uuid)
         )
-        expect(result.fetch(:student_uuid)).to eq(
+        expect(calculation.fetch(:student_uuid)).to eq(
           algorithm_exercise_calculation.exercise_calculation.student_uuid
         )
 
-        expect(result.fetch(:algorithm_name)).to eq algorithm_exercise_calculation.algorithm_name
-        expect(result.fetch(:ecosystem_matrix_uuid)).to(
+        expect(calculation.fetch(:algorithm_name)).to(
+          eq algorithm_exercise_calculation.algorithm_name
+        )
+        expect(calculation.fetch(:ecosystem_matrix_uuid)).to(
           eq algorithm_exercise_calculation.ecosystem_matrix_uuid
         )
-        expect(result.fetch(:exercise_uuids)).to eq algorithm_exercise_calculation.exercise_uuids
+        expect(calculation.fetch(:exercise_uuids)).to(
+          eq algorithm_exercise_calculation.exercise_uuids
+        )
       end
     end
   end

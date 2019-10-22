@@ -150,13 +150,13 @@ class ExerciseCalculationsController < JsonApiController
           'items': {
             'type': 'object',
             'properties': {
-              'request_uuid':     {'$ref': '#standard_definitions/uuid'},
-              'student_uuid':     {'$ref': '#standard_definitions/uuid'},
-              'calculation_uuid': {'$ref': '#standard_definitions/uuid'}
+              'request_uuid':      {'$ref': '#standard_definitions/uuid'},
+              'student_uuid':      {'$ref': '#standard_definitions/uuid'},
+              'calculation_uuids': {'$ref': '#standard_definitions/uuid'}
             },
             'anyOf': [
               {'required': ['request_uuid', 'student_uuid']},
-              {'required': ['request_uuid', 'calculation_uuid']}
+              {'required': ['request_uuid', 'calculation_uuids']}
             ],
             'additionalProperties': false
           },
@@ -181,20 +181,32 @@ class ExerciseCalculationsController < JsonApiController
             'type': 'object',
             'properties': {
               'request_uuid':          {'$ref': '#standard_definitions/uuid'},
-              'calculation_uuid':      {'$ref': '#standard_definitions/uuid'},
-              'ecosystem_matrix_uuid': {'$ref': '#standard_definitions/uuid'},
-              'algorithm_name':        { 'type': 'string' },
-              'exercise_uuids':        {
+              'calculations': {
                 'type': 'array',
-                'items': {'$ref': '#standard_definitions/uuid'}
+                'items': {
+                  'type': 'object',
+                  'properties': {
+                    'calculation_uuid':      {'$ref': '#standard_definitions/uuid'},
+                    'ecosystem_matrix_uuid': {'$ref': '#standard_definitions/uuid'},
+                    'algorithm_name':        { 'type': 'string' },
+                    'exercise_uuids':        {
+                      'type': 'array',
+                      'items': {'$ref': '#standard_definitions/uuid'}
+                    }
+                  },
+                  'required': [
+                    'calculation_uuid',
+                    'ecosystem_matrix_uuid',
+                    'algorithm_name',
+                    'exercise_uuids'
+                  ],
+                  'additionalProperties': false
+                },
+                'maxItems': 2
               }
+
             },
-            'required': [
-              'calculation_uuid',
-              'ecosystem_matrix_uuid',
-              'algorithm_name',
-              'exercise_uuids'
-            ],
+            'required': ['request_uuid', 'calculations'],
             'additionalProperties': false
           },
           'minItems': 1,
