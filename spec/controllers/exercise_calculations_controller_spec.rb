@@ -171,6 +171,9 @@ RSpec.describe ExerciseCalculationsController, type: :request do
     let(:request_uuid_1)   { SecureRandom.uuid }
     let(:request_uuid_2)   { SecureRandom.uuid }
 
+    let(:calculated_at_1)  { Time.current.iso8601 }
+    let(:calculated_at_2)  { Time.current.iso8601 }
+
     let(:request_payload)  do
       {
         algorithm_exercise_calculations: [
@@ -188,6 +191,7 @@ RSpec.describe ExerciseCalculationsController, type: :request do
             calculations: [
               {
                 calculation_uuid: calculation_uuid_1,
+                calculated_at: calculated_at_1,
                 algorithm_name: given_algorithm_name,
                 ecosystem_matrix_uuid: ecosystem_matrix_uuid_1,
                 exercise_uuids: exercise_uuids_1
@@ -199,6 +203,7 @@ RSpec.describe ExerciseCalculationsController, type: :request do
             calculations: [
               {
                 calculation_uuid: calculation_uuid_2,
+                calculated_at: calculated_at_2,
                 algorithm_name: given_algorithm_name,
                 ecosystem_matrix_uuid: ecosystem_matrix_uuid_2,
                 exercise_uuids: exercise_uuids_2

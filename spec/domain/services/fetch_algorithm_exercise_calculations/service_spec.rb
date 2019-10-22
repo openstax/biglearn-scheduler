@@ -93,10 +93,12 @@ RSpec.describe Services::FetchAlgorithmExerciseCalculations::Service, type: :ser
         algorithm_exercise_calculation = algorithm_exercise_calculation_by_uuid.fetch(
           calculation.fetch(:calculation_uuid)
         )
+        expect(calculation.fetch(:calculated_at)).to eq(
+          algorithm_exercise_calculation.updated_at.iso8601
+        )
         expect(calculation.fetch(:student_uuid)).to eq(
           algorithm_exercise_calculation.exercise_calculation.student_uuid
         )
-
         expect(calculation.fetch(:algorithm_name)).to(
           eq algorithm_exercise_calculation.algorithm_name
         )

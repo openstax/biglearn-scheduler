@@ -13,7 +13,8 @@ class Services::FetchAlgorithmExerciseCalculations::Service < Services::Applicat
         :uuid,
         :ecosystem_matrix_uuid,
         :algorithm_name,
-        :exercise_uuids
+        :exercise_uuids,
+        :updated_at
       )
       .joins(:exercise_calculation)
       .joins(
@@ -41,6 +42,7 @@ class Services::FetchAlgorithmExerciseCalculations::Service < Services::Applicat
           {
             student_uuid: algorithm_exercise_calculation.student_uuid,
             calculation_uuid: algorithm_exercise_calculation.uuid,
+            calculated_at: algorithm_exercise_calculation.updated_at.iso8601,
             ecosystem_matrix_uuid: algorithm_exercise_calculation.ecosystem_matrix_uuid,
             algorithm_name: algorithm_exercise_calculation.algorithm_name,
             exercise_uuids: algorithm_exercise_calculation.exercise_uuids
