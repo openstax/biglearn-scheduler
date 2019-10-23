@@ -1,9 +1,9 @@
 class Services::FetchAlgorithmExerciseCalculations::Service < Services::ApplicationService
-  def process(algorithm_exercise_calculations:)
-    return { algorithm_exercise_calculations: [] } if algorithm_exercise_calculations.empty?
+  def process(algorithm_exercise_calculation_requests:)
+    return { algorithm_exercise_calculations: [] } if algorithm_exercise_calculation_requests.empty?
 
-    algorithm_exercise_calculation_values = algorithm_exercise_calculations.map do |calculation|
-      [ calculation[:request_uuid], calculation[:student_uuid], calculation[:calculation_uuids] ]
+    algorithm_exercise_calculation_values = algorithm_exercise_calculation_requests.map do |request|
+      [ request[:request_uuid], request[:student_uuid], request[:calculation_uuids] ]
     end
 
     algorithm_exercise_calculation_responses = AlgorithmExerciseCalculation

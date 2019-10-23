@@ -176,7 +176,7 @@ RSpec.describe ExerciseCalculationsController, type: :request do
 
     let(:request_payload)  do
       {
-        algorithm_exercise_calculations: [
+        algorithm_exercise_calculation_requests: [
           { request_uuid: request_uuid_1, calculation_uuids: [ calculation_uuid_1 ] },
           { request_uuid: request_uuid_2, calculation_uuids: [ calculation_uuid_2 ] }
         ]

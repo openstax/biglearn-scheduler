@@ -145,7 +145,7 @@ class ExerciseCalculationsController < JsonApiController
       '$schema': JSON_SCHEMA,
       'type': 'object',
       'properties': {
-        'algorithm_exercise_calculations': {
+        'algorithm_exercise_calculations_requests': {
           'type': 'array',
           'items': {
             'type': 'object',
@@ -164,7 +164,7 @@ class ExerciseCalculationsController < JsonApiController
           'maxItems': 10
         }
       },
-      'required': ['algorithm_exercise_calculations'],
+      'required': ['algorithm_exercise_calculation_requests'],
       'additionalProperties': false,
       'standard_definitions': _standard_definitions
     }

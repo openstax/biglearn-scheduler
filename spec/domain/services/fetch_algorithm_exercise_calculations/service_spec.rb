@@ -35,7 +35,9 @@ RSpec.describe Services::FetchAlgorithmExerciseCalculations::Service, type: :ser
   end
 
   let(:action)  do
-    service.process(algorithm_exercise_calculations: given_algorithm_exercise_calculation_requests)
+    service.process(
+      algorithm_exercise_calculation_requests: given_algorithm_exercise_calculation_requests
+    )
   end
   let(:results) { action.fetch(:algorithm_exercise_calculations) }
 
