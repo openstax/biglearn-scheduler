@@ -168,13 +168,16 @@ RSpec.describe ExerciseCalculationsController, type: :request do
   end
 
   context '#fetch_algorithm_exercise_calculations' do
-    let(:request_uuid_1)   { SecureRandom.uuid }
-    let(:request_uuid_2)   { SecureRandom.uuid }
+    let(:student_uuid_1)  { SecureRandom.uuid }
+    let(:student_uuid_2)  { SecureRandom.uuid }
 
-    let(:calculated_at_1)  { Time.current.iso8601 }
-    let(:calculated_at_2)  { Time.current.iso8601 }
+    let(:request_uuid_1)  { SecureRandom.uuid }
+    let(:request_uuid_2)  { SecureRandom.uuid }
 
-    let(:request_payload)  do
+    let(:calculated_at_1) { Time.current.iso8601 }
+    let(:calculated_at_2) { Time.current.iso8601 }
+
+    let(:request_payload) do
       {
         algorithm_exercise_calculation_requests: [
           { request_uuid: request_uuid_1, calculation_uuids: [ calculation_uuid_1 ] },
@@ -183,13 +186,14 @@ RSpec.describe ExerciseCalculationsController, type: :request do
       }
     end
 
-    let(:target_result)    do
+    let(:target_result)   do
       {
         algorithm_exercise_calculations: [
           {
             request_uuid: request_uuid_1,
             calculations: [
               {
+                student_uuid: student_uuid_1,
                 calculation_uuid: calculation_uuid_1,
                 calculated_at: calculated_at_1,
                 algorithm_name: given_algorithm_name,
@@ -202,6 +206,7 @@ RSpec.describe ExerciseCalculationsController, type: :request do
             request_uuid: request_uuid_2,
             calculations: [
               {
+                student_uuid: student_uuid_2,
                 calculation_uuid: calculation_uuid_2,
                 calculated_at: calculated_at_2,
                 algorithm_name: given_algorithm_name,
@@ -213,15 +218,15 @@ RSpec.describe ExerciseCalculationsController, type: :request do
         ]
       }
     end
-    let(:target_response)  { target_result }
+    let(:target_response) { target_result }
 
-    let(:service_double)   do
+    let(:service_double)  do
       instance_double(Services::FetchAlgorithmExerciseCalculations::Service).tap do |dbl|
         allow(dbl).to receive(:process).with(request_payload).and_return(target_result)
       end
     end
 
-    before(:each)          do
+    before(:each)         do
       allow(Services::FetchAlgorithmExerciseCalculations::Service).to(
         receive(:new).and_return(service_double)
       )

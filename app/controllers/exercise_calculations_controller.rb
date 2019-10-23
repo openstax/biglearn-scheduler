@@ -186,6 +186,7 @@ class ExerciseCalculationsController < JsonApiController
                 'items': {
                   'type': 'object',
                   'properties': {
+                    'student_uuid':          {'$ref': '#standard_definitions/uuid'},
                     'calculation_uuid':      {'$ref': '#standard_definitions/uuid'},
                     'calculated_at':         {'$ref': '#standard_definitions/datetime'},
                     'ecosystem_matrix_uuid': {'$ref': '#standard_definitions/uuid'},
@@ -196,6 +197,7 @@ class ExerciseCalculationsController < JsonApiController
                     }
                   },
                   'required': [
+                    'student_uuid',
                     'calculation_uuid',
                     'calculated_at',
                     'ecosystem_matrix_uuid',
