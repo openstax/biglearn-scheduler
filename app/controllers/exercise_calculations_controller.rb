@@ -87,7 +87,7 @@ class ExerciseCalculationsController < JsonApiController
             'type': 'object',
             'properties': {
               'calculation_uuid':      {'$ref': '#standard_definitions/uuid'},
-              'algorithm_name':        { 'type': 'string' },
+              'algorithm_name':        {'type': 'string'},
               'ecosystem_matrix_uuid': {'$ref': '#standard_definitions/uuid'},
               'exercise_uuids':        {
                 'type': 'array',
@@ -152,10 +152,11 @@ class ExerciseCalculationsController < JsonApiController
             'properties': {
               'request_uuid':      {'$ref': '#standard_definitions/uuid'},
               'student_uuid':      {'$ref': '#standard_definitions/uuid'},
+              'algorithm_name':    {'type': 'string'},
               'calculation_uuids': {'$ref': '#standard_definitions/uuid'}
             },
             'anyOf': [
-              {'required': ['request_uuid', 'student_uuid']},
+              {'required': ['request_uuid', 'student_uuid', 'algorithm_name']},
               {'required': ['request_uuid', 'calculation_uuids']}
             ],
             'additionalProperties': false
@@ -190,7 +191,7 @@ class ExerciseCalculationsController < JsonApiController
                     'calculation_uuid':      {'$ref': '#standard_definitions/uuid'},
                     'calculated_at':         {'$ref': '#standard_definitions/datetime'},
                     'ecosystem_matrix_uuid': {'$ref': '#standard_definitions/uuid'},
-                    'algorithm_name':        { 'type': 'string' },
+                    'algorithm_name':        {'type': 'string'},
                     'exercise_uuids':        {
                       'type': 'array',
                       'items': {'$ref': '#standard_definitions/uuid'}

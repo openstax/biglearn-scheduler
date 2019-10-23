@@ -5,30 +5,39 @@ RSpec.describe Services::FetchAlgorithmExerciseCalculations::Service, type: :ser
 
   let(:given_request_uuid_1)     { SecureRandom.uuid }
   let(:given_student_uuid_1)     { SecureRandom.uuid }
+  let(:given_algorithm_name_1)   { [ 'local_query', 'biglearn_sparfa' ].sample }
 
   let(:given_request_uuid_2)     { SecureRandom.uuid }
   let(:given_calculation_uuid_1) { SecureRandom.uuid }
 
   let(:given_request_uuid_3)     { SecureRandom.uuid }
   let(:given_student_uuid_2)     { SecureRandom.uuid }
+  let(:given_algorithm_name_2)   { [ 'local_query', 'biglearn_sparfa' ].sample }
   let(:given_calculation_uuid_2) { SecureRandom.uuid }
 
   let(:given_request_uuid_4)     { SecureRandom.uuid }
   let(:given_student_uuid_3)     { SecureRandom.uuid }
+  let(:given_algorithm_name_3)   { [ 'local_query', 'biglearn_sparfa' ].sample }
   let(:given_calculation_uuid_3) { SecureRandom.uuid }
 
   let(:given_algorithm_exercise_calculation_requests) do
     [
-      { request_uuid: given_request_uuid_1, student_uuid: given_student_uuid_1 },
+      {
+        request_uuid: given_request_uuid_1,
+        student_uuid: given_student_uuid_1,
+        algorithm_name: given_algorithm_name_1
+      },
       { request_uuid: given_request_uuid_2, calculation_uuids: [ given_calculation_uuid_1 ] },
       {
         request_uuid: given_request_uuid_3,
         student_uuid: given_student_uuid_2,
+        algorithm_name: given_algorithm_name_2,
         calculation_uuids: [ given_calculation_uuid_2 ]
       },
       {
         request_uuid: given_request_uuid_4,
         student_uuid: given_student_uuid_3,
+        algorithm_name: given_algorithm_name_3,
         calculation_uuids: [ given_calculation_uuid_3 ]
       }
     ]
@@ -54,7 +63,8 @@ RSpec.describe Services::FetchAlgorithmExerciseCalculations::Service, type: :ser
     let(:exercise_calculation_1) { FactoryBot.create :exercise_calculation, student: student_1 }
     let!(:algorithm_exercise_calculation_1) do
       FactoryBot.create :algorithm_exercise_calculation,
-                        exercise_calculation: exercise_calculation_1
+                        exercise_calculation: exercise_calculation_1,
+                        algorithm_name: given_algorithm_name_1
     end
     let!(:algorithm_exercise_calculation_2) do
       FactoryBot.create :algorithm_exercise_calculation, uuid: given_calculation_uuid_1
@@ -64,16 +74,19 @@ RSpec.describe Services::FetchAlgorithmExerciseCalculations::Service, type: :ser
     let!(:algorithm_exercise_calculation_3) do
       FactoryBot.create :algorithm_exercise_calculation,
                         uuid: given_calculation_uuid_2,
-                        exercise_calculation: exercise_calculation_2
+                        exercise_calculation: exercise_calculation_2,
+                        algorithm_name: given_algorithm_name_2
     end
     let(:student_3)              { FactoryBot.create :student, uuid: given_student_uuid_3 }
     let(:exercise_calculation_3) { FactoryBot.create :exercise_calculation, student: student_3 }
     let!(:algorithm_exercise_calculation_4) do
       FactoryBot.create :algorithm_exercise_calculation,
-                        exercise_calculation: exercise_calculation_3
+                        exercise_calculation: exercise_calculation_3,
+                        algorithm_name: given_algorithm_name_3
     end
     let!(:algorithm_exercise_calculation_5) do
-      FactoryBot.create :algorithm_exercise_calculation, uuid: given_calculation_uuid_3
+      FactoryBot.create :algorithm_exercise_calculation, uuid: given_calculation_uuid_3,
+                                                         algorithm_name: given_algorithm_name_3
     end
 
     it 'returns the requested algorithm exercise calculations' do

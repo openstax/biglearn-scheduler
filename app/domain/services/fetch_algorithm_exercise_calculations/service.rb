@@ -3,7 +3,12 @@ class Services::FetchAlgorithmExerciseCalculations::Service < Services::Applicat
     return { algorithm_exercise_calculations: [] } if algorithm_exercise_calculation_requests.empty?
 
     algorithm_exercise_calculation_values = algorithm_exercise_calculation_requests.map do |request|
-      [ request[:request_uuid], request[:student_uuid], request[:calculation_uuids] ]
+      [
+        request[:request_uuid],
+        request[:student_uuid],
+        request[:algorithm_name],
+        request[:calculation_uuids]
+      ]
     end
 
     algorithm_exercise_calculation_responses = AlgorithmExerciseCalculation
@@ -20,10 +25,13 @@ class Services::FetchAlgorithmExerciseCalculations::Service < Services::Applicat
       .joins(
         <<~JOIN_SQL
           INNER JOIN (#{ValuesTable.new(algorithm_exercise_calculation_values)}) AS "values"
-            ("request_uuid", "student_uuid", "calculation_uuids")
+            ("request_uuid", "student_uuid", "algorithm_name", "calculation_uuids")
             ON (
               "values"."student_uuid" IS NULL
                 OR "exercise_calculations"."student_uuid" = "values"."student_uuid"::uuid
+            ) AND (
+              "values"."algorithm_name" IS NULL
+                OR "algorithm_exercise_calculations"."algorithm_name" = "values"."algorithm_name"
             ) AND (
               (
                 "values"."calculation_uuids" IS NULL
