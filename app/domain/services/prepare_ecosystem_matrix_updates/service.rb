@@ -23,7 +23,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         responses = Response
           .select(:uuid, '"exercise_groups"."uuid" AS "group_uuid"')
           .joins(exercise: :exercise_group)
-          .where(used_in_response_count: false)
+          .where(is_used_in_response_count: false)
           .lock('FOR NO KEY UPDATE OF "responses", "exercise_groups" SKIP LOCKED')
           .take(RESPONSE_BATCH_SIZE)
         responses_size = responses.size
@@ -35,13 +35,13 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         # No order needed because already locked above
         ExerciseGroup
           .where(
-            <<-WHERE_SQL.strip_heredoc
+            <<~WHERE_SQL
               "exercise_groups"."uuid" IN (#{group_uuids_array_string})
                 AND "response_counts"."group_uuid" = "exercise_groups"."uuid"
             WHERE_SQL
           )
           .update_all(
-            <<-UPDATE_SQL.strip_heredoc
+            <<~UPDATE_SQL
               "response_count" = "response_counts"."count",
                 "trigger_ecosystem_matrix_update" = "response_counts"."count" >=
                   "exercise_groups"."next_update_response_count"
@@ -59,7 +59,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
         # Mark the responses as used in response counts
         # No order needed because already locked above
         response_uuids = responses.map(&:uuid)
-        Response.where(uuid: response_uuids).update_all(used_in_response_count: true)
+        Response.where(uuid: response_uuids).update_all(is_used_in_response_count: true)
 
         responses_size
       end
@@ -91,7 +91,7 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
             .where(
               EcosystemExercise.joins(exercise: :exercise_group).where(
                 eex[:ecosystem_uuid].eq(ec[:uuid]).and(eg[:uuid].in(group_uuids))
-              ).exists
+              ).arel.exists
             )
             .ordered
             .lock('FOR NO KEY UPDATE')
@@ -105,10 +105,10 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
             .where(
               EcosystemExercise.joins(:exercise).where(
                 eex[:ecosystem_uuid].in(ecosystem_uuids).and(ex[:group_uuid].eq(eg[:uuid]))
-              ).exists
+              ).arel.exists
             )
             .ordered_update_all(
-              <<-UPDATE_SQL.strip_heredoc
+              <<~UPDATE_SQL
                 "trigger_ecosystem_matrix_update" = FALSE,
                 "next_update_response_count" =
                   FLOOR((1 + #{UPDATE_THRESHOLD}) * "exercise_groups"."response_count") + 1

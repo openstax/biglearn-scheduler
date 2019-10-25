@@ -11,8 +11,13 @@ class Assignment < ApplicationRecord
                                 foreign_key: :assignment_uuid,
                                 dependent: :destroy,
                                 inverse_of: :assignment
+
   has_one :exercise_calculation,
-    -> { where '"exercise_calculations"."ecosystem_uuid" = "assignments"."ecosystem_uuid"' },
+    -> do
+      where(
+        ExerciseCalculation.arel_table[:ecosystem_uuid].eq(Assignment.arel_table[:ecosystem_uuid])
+      )
+    end,
     primary_key: :student_uuid,
     foreign_key: :student_uuid,
     inverse_of: :assignments
@@ -65,7 +70,7 @@ class Assignment < ApplicationRecord
     # This is also why we return NULL for all the student_history tiebreakers
     # if student_history_at is NULL
     rel = select(
-      <<-SELECT_SQL.strip_heredoc
+      <<~SELECT_SQL
         "assignments".*,
           ROW_NUMBER() OVER (
             PARTITION BY "assignments"."student_uuid", "assignments"."assignment_type"
@@ -107,7 +112,7 @@ class Assignment < ApplicationRecord
     student_uuids: nil, assignment_types: nil
   )
     find_by_sql(
-      <<-SQL.strip_heredoc
+      <<~SQL
         WITH "assignments" AS (
           #{
             unscoped.with_instructor_and_student_driven_sequence_numbers_subquery(

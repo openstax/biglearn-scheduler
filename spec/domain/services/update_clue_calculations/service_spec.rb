@@ -3,7 +3,7 @@ require 'rails_helper'
 RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
   let(:service)                        { described_class.new }
 
-  let(:given_algorithm_name)           { 'sparfa' }
+  let(:given_algorithm_name)           { 'biglearn_sparfa' }
 
   let(:given_calculation_uuid_1)       { SecureRandom.uuid }
   let(:given_clue_data_1)              do
@@ -61,11 +61,11 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
   context 'when previously-existing StudentClueCalculation and' +
           ' TeacherClueCalculation calculation_uuids are given' do
     let!(:student_clue_calculation) do
-      FactoryGirl.create :student_clue_calculation, uuid: given_calculation_uuid_1
+      FactoryBot.create :student_clue_calculation, uuid: given_calculation_uuid_1
     end
 
     let!(:teacher_clue_calculation) do
-      FactoryGirl.create :teacher_clue_calculation, uuid: given_calculation_uuid_2
+      FactoryBot.create :teacher_clue_calculation, uuid: given_calculation_uuid_2
     end
 
     context 'when non-existing AlgorithmStudentClueCalculation and' +
@@ -95,11 +95,11 @@ RSpec.describe Services::UpdateClueCalculations::Service, type: :service do
     context 'when previously-existing AlgorithmStudentClueCalculation and' +
             ' AlgorithmTeacherClueCalculation calculation_uuids and algorithm_name are given' do
       before do
-        FactoryGirl.create :algorithm_student_clue_calculation,
+        FactoryBot.create :algorithm_student_clue_calculation,
                            student_clue_calculation: student_clue_calculation,
                            algorithm_name: given_algorithm_name
 
-        FactoryGirl.create :algorithm_teacher_clue_calculation,
+        FactoryBot.create :algorithm_teacher_clue_calculation,
                            teacher_clue_calculation: teacher_clue_calculation,
                            algorithm_name: given_algorithm_name
       end

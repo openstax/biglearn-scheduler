@@ -89,6 +89,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
   protected
 
   def fetch_and_process_course_events(courses, event_types, restart, current_time)
+    ec = ExerciseCalculation.arel_table
+    as = Assignment.arel_table
     course_uuids_to_requery = []
     results = []
     total_events = 0
@@ -112,6 +114,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     course_containers_hash = {}
     students_hash = {}
     assignments_hash = {}
+    used_algorithm_exercise_calculation_uuids = []
     assigned_exercises = []
     student_uuids_by_assigned_exercise_uuid = Hash.new { |hash, key| hash[key] = [] }
     responses_hash = {}
@@ -286,6 +289,14 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         due_at = exclusion_info[:due_at]
         feedback_at = exclusion_info[:feedback_at]
 
+        pe_calculation_uuid = data.dig(:pes, :calculation_uuid)
+        spe_calculation_uuid = data.dig(:spes, :calculation_uuid)
+
+        used_algorithm_exercise_calculation_uuids << pe_calculation_uuid \
+          unless pe_calculation_uuid.nil?
+        used_algorithm_exercise_calculation_uuids << spe_calculation_uuid \
+          unless spe_calculation_uuid.nil?
+
         assignments_hash[assignment_uuid] = Assignment.new(
           uuid: assignment_uuid,
           course_uuid: course_uuid,
@@ -301,7 +312,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           spes_are_assigned: data.fetch(:spes_are_assigned),
           goal_num_tutor_assigned_pes: data[:goal_num_tutor_assigned_pes],
           pes_are_assigned: data.fetch(:pes_are_assigned),
-          has_exercise_calculation: false
+          has_exercise_calculation: !pe_calculation_uuid.nil? || !spe_calculation_uuid.nil?
         )
 
         data.fetch(:assigned_exercises).each do |assigned_exercise|
@@ -335,10 +346,10 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           first_responded_at: responded_at,
           last_responded_at: responded_at,
           is_correct: data.fetch(:is_correct),
-          used_in_clue_calculations: false,
-          used_in_exercise_calculations: false,
-          used_in_response_count: false,
-          used_in_student_history: false
+          is_used_in_clue_calculations: false,
+          is_used_in_exercise_calculations: false,
+          is_used_in_response_count: false,
+          is_used_in_student_history: false
         )
       end
 
@@ -493,7 +504,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
     # NOTE: update happens when an answer is changed
     #       first_responded_at is not included here so it is never updated after set
-    #       used_in_clue_calculations is here because the CLUes need to be recalculated
+    #       is_used_in_clue_calculations is here because the CLUes need to be recalculated
     #       exercise calculations, response counts and student history are unaffected
     results << Response.import(
       responses_hash.values.sort_by(&Response.sort_proc), validate: false, on_duplicate_key_update: {
@@ -504,7 +515,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           :exercise_uuid,
           :last_responded_at,
           :is_correct,
-          :used_in_clue_calculations
+          :is_used_in_clue_calculations
         ]
       }
     )
@@ -540,8 +551,20 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       # The ExerciseCalculation lock ensures we don't miss updates on
       # concurrent Assignment and AlgorithmExerciseCalculation inserts
       exercise_calculation_uuids = ExerciseCalculation.where(
-        <<-WHERE_SQL.strip_heredoc
+        <<~WHERE_SQL
           "exercise_calculations"."uuid" IN (
+            #{
+              ExerciseCalculation
+                .select(:uuid)
+                .joins(:algorithm_exercise_calculations)
+                .where(
+                  algorithm_exercise_calculations: {
+                    uuid: used_algorithm_exercise_calculation_uuids
+                  }
+                )
+                .to_sql
+            }
+            UNION ALL
             #{
               ExerciseCalculation
                 .select(:uuid)
@@ -553,7 +576,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 .where(assigned_exercises: { uuid: assigned_exercise_uuids })
                 .to_sql
             }
-            UNION
+            UNION ALL
             #{
               ExerciseCalculation
                 .select(:uuid)
@@ -561,7 +584,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 .where(assignments: { uuid: assignment_uuids })
                 .to_sql
             }
-            UNION
+            UNION ALL
             #{
               ExerciseCalculation
                 .select(:uuid)
@@ -570,7 +593,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 .where(assigned_exercises: { uuid: assigned_exercise_uuids })
                 .to_sql
             }
-            UNION
+            UNION ALL
             #{
               ExerciseCalculation
                 .select(:uuid)
@@ -600,11 +623,13 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       # Assignment PEs and SPEs that conflict with the AssignedExercises that were just
       # created to prevent any assignment from getting a PE or SPE that was already used elsewhere
       assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
+      ecu = ec[:uuid].as('"exercise_calculation_uuid"')
+      aeeu = AssignedExercise.arel_table[:exercise_uuid]
       Assignment.from(
-        <<-FROM_SQL.strip_heredoc
+        <<~FROM_SQL
           (#{
             Assignment
-              .select(:uuid, '"exercise_calculations"."uuid" AS "exercise_calculation_uuid"')
+              .select(:uuid, ecu)
               .joins(:exercise_calculation)
               .where(uuid: assignment_uuids)
               .to_sql
@@ -612,30 +637,42 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           UNION
           #{
             Assignment
-              .select(:uuid, '"exercise_calculations"."uuid" AS "exercise_calculation_uuid"')
+              .select(:uuid, ecu)
               .joins(
                 :assignment_pes,
                 exercise_calculation: { student: { assignments: :assigned_exercises } }
               )
-              .where('"assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"')
-              .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+              .where(aeeu.eq(AssignmentPe.arel_table[:exercise_uuid]))
+              .where(
+                exercise_calculation: {
+                  student: {
+                    assignments: { assigned_exercises: { uuid: assigned_exercise_uuids } }
+                  }
+                }
+              )
               .to_sql
           }
           UNION
           #{
             Assignment
-              .select(:uuid, '"exercise_calculations"."uuid" AS "exercise_calculation_uuid"')
+              .select(:uuid, ecu)
               .joins(
                 :assignment_spes,
                 exercise_calculation: { student: { assignments: :assigned_exercises } }
               )
-              .where('"assigned_exercises"."exercise_uuid" = "assignment_spes"."exercise_uuid"')
-              .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+              .where(aeeu.eq(AssignmentSpe.arel_table[:exercise_uuid]))
+              .where(
+                exercise_calculation: {
+                  student: {
+                    assignments: { assigned_exercises: { uuid: assigned_exercise_uuids } }
+                  }
+                }
+              )
               .to_sql
           }) AS "assignments"
         FROM_SQL
       )
-      .pluck(:uuid, '"assignments"."exercise_calculation_uuid"')
+      .pluck(:uuid, as[:exercise_calculation_uuid])
       .each do |uuid, exercise_calculation_uuid|
         assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
       end
@@ -644,15 +681,23 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         .where(exercise_calculation_uuid: exercise_calculation_uuids)
         .to_a
 
+      used_exercise_calculations_uuids = []
       algorithm_exercise_calculations.each do |algorithm_exercise_calculation|
-        calculation_uuid = algorithm_exercise_calculation.exercise_calculation_uuid
-        assignment_uuids = assignment_uuids_by_exercise_calculation_uuid[calculation_uuid]
+        exercise_calculation_uuid = algorithm_exercise_calculation.exercise_calculation_uuid
         algorithm_exercise_calculation.pending_assignment_uuids = (
-          algorithm_exercise_calculation.pending_assignment_uuids + assignment_uuids
+          algorithm_exercise_calculation.pending_assignment_uuids +
+          assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid]
         ).uniq
+
+        used_exercise_calculations_uuids << exercise_calculation_uuid \
+          if used_algorithm_exercise_calculation_uuids.include? algorithm_exercise_calculation.uuid
       end
 
-      AlgorithmExerciseCalculation.import(
+      ExerciseCalculation.where(uuid: used_exercise_calculations_uuids)
+                         .ordered_update_all(is_used_in_assignments: true) \
+        unless used_exercise_calculations_uuids.empty?
+
+      results << AlgorithmExerciseCalculation.import(
         algorithm_exercise_calculations, validate: false, on_duplicate_key_update: {
           conflict_target: [ :uuid ], columns: [ :pending_assignment_uuids ]
         }

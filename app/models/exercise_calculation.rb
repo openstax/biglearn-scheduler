@@ -5,7 +5,11 @@ class ExerciseCalculation < ApplicationRecord
                                              inverse_of: :exercise_calculation
 
   has_many :assignments,
-    -> { where '"assignments"."ecosystem_uuid" = "exercise_calculations"."ecosystem_uuid"' },
+    -> do
+      where(
+        Assignment.arel_table[:ecosystem_uuid].eq(ExerciseCalculation.arel_table[:ecosystem_uuid])
+      )
+    end,
     primary_key: :student_uuid,
     foreign_key: :student_uuid,
     inverse_of: :exercise_calculation
@@ -21,9 +25,12 @@ class ExerciseCalculation < ApplicationRecord
                        foreign_key: :student_uuid,
                        inverse_of: :exercise_calculations
 
-  unique_index :student_uuid, :ecosystem_uuid
+  unique_index :uuid
 
   scope :with_exercise_uuids, -> do
     joins(:ecosystem).select('"exercise_calculations".*, "ecosystems"."exercise_uuids"')
   end
+
+  scope :superseded,     -> { where.not superseded_at: nil }
+  scope :not_superseded, -> { where     superseded_at: nil }
 end

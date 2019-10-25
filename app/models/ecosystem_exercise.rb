@@ -19,7 +19,7 @@ class EcosystemExercise < ApplicationRecord
   has_many :student_clue_calculations,
     -> do
       where(
-        <<-WHERE_SQL.strip_heredoc
+        <<~WHERE_SQL
           "student_clue_calculations"."exercise_uuids" &&
           ARRAY["ecosystem_exercises"."exercise_uuid"]::varchar[]
         WHERE_SQL
@@ -31,7 +31,7 @@ class EcosystemExercise < ApplicationRecord
   def student_clue_calculations
     sanitized_exercise_uuid = self.class.sanitize exercise_uuid
     StudentClueCalculation.where(ecosystem_uuid: ecosystem_uuid).where(
-      <<-WHERE_SQL.strip_heredoc
+      <<~WHERE_SQL
         "student_clue_calculations"."exercise_uuids" && ARRAY[#{sanitized_exercise_uuid}]::varchar[]
       WHERE_SQL
     )
@@ -40,7 +40,7 @@ class EcosystemExercise < ApplicationRecord
   has_many :teacher_clue_calculations,
     -> do
       where(
-        <<-WHERE_SQL.strip_heredoc
+        <<~WHERE_SQL
           "teacher_clue_calculations"."exercise_uuids" &&
           ARRAY["ecosystem_exercises"."exercise_uuid"]::varchar[]
         WHERE_SQL
@@ -52,7 +52,7 @@ class EcosystemExercise < ApplicationRecord
   def teacher_clue_calculations
     sanitized_exercise_uuid = self.class.sanitize exercise_uuid
     TeacherClueCalculation.where(ecosystem_uuid: ecosystem_uuid).where(
-      <<-WHERE_SQL.strip_heredoc
+      <<~WHERE_SQL
         "teacher_clue_calculations"."exercise_uuids" && ARRAY[#{sanitized_exercise_uuid}]::varchar[]
       WHERE_SQL
     )

@@ -4,20 +4,20 @@ RSpec.describe Services::UploadTeacherClueCalculations::Service, type: :service 
   subject { described_class.new }
 
   before(:all) do
-    @scc_1 = FactoryGirl.create :student_clue_calculation
-    @ascc_1 = FactoryGirl.create :algorithm_student_clue_calculation,
+    @scc_1 = FactoryBot.create :student_clue_calculation
+    @ascc_1 = FactoryBot.create :algorithm_student_clue_calculation,
                                  student_clue_calculation: @scc_1,
                                  is_uploaded: false
 
-    @scc_2 = FactoryGirl.create :student_clue_calculation
-    @ascc_2 = FactoryGirl.create :algorithm_student_clue_calculation,
+    @scc_2 = FactoryBot.create :student_clue_calculation
+    @ascc_2 = FactoryBot.create :algorithm_student_clue_calculation,
                                  student_clue_calculation: @scc_2,
                                  is_uploaded: true
 
-    @ascc_3 = FactoryGirl.create :algorithm_student_clue_calculation,
+    @ascc_3 = FactoryBot.create :algorithm_student_clue_calculation,
                                  is_uploaded: false
 
-    @ascc_4 = FactoryGirl.create :algorithm_student_clue_calculation,
+    @ascc_4 = FactoryBot.create :algorithm_student_clue_calculation,
                                  is_uploaded: false
   end
 
@@ -37,13 +37,13 @@ RSpec.describe Services::UploadTeacherClueCalculations::Service, type: :service 
     before(:all) do
       DatabaseCleaner.start
 
-      @tcc_1 = FactoryGirl.create :teacher_clue_calculation
-      @atcc_1 = FactoryGirl.create :algorithm_teacher_clue_calculation,
+      @tcc_1 = FactoryBot.create :teacher_clue_calculation
+      @atcc_1 = FactoryBot.create :algorithm_teacher_clue_calculation,
                                    teacher_clue_calculation: @tcc_1,
                                    is_uploaded: false
 
-      @tcc_2 = FactoryGirl.create :teacher_clue_calculation
-      @atcc_2 = FactoryGirl.create :algorithm_teacher_clue_calculation,
+      @tcc_2 = FactoryBot.create :teacher_clue_calculation
+      @atcc_2 = FactoryBot.create :algorithm_teacher_clue_calculation,
                                    teacher_clue_calculation: @tcc_2,
                                    is_uploaded: true
     end

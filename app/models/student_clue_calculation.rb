@@ -11,7 +11,7 @@ class StudentClueCalculation < ApplicationRecord
   has_many :ecosystem_exercises,
     -> do
       where(
-        <<-WHERE_SQL.strip_heredoc
+        <<~WHERE_SQL
           "student_clue_calculations"."exercise_uuids" &&
           ARRAY["ecosystem_exercises"."exercise_uuid"]
         WHERE_SQL

@@ -10,8 +10,8 @@ RSpec.describe Services::FetchEcosystemMetadatas::Service, type: :service do
   end
 
   context 'with some existing ecosystems and ecosystem metadatas' do
-    let!(:ecosystem_1)                 { FactoryGirl.create :ecosystem }
-    let!(:ecosystem_2)                 { FactoryGirl.create :ecosystem }
+    let!(:ecosystem_1)                 { FactoryBot.create :ecosystem }
+    let!(:ecosystem_2)                 { FactoryBot.create :ecosystem }
 
     let(:existing_ecosystem_metadatas) do
       [ ecosystem_1, ecosystem_2 ].each_with_index.map do |ecosystem, index|

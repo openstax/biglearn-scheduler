@@ -6,19 +6,19 @@ git_source(:github) do |repo_name|
 end
 
 # Bundle edge Rails instead: gem 'rails', github: 'rails/rails'
-gem 'rails', '~> 5.0.2'
+gem 'rails', '~> 5.2.3'
 
 # Use PostgreSQL as the database for Active Record
 gem 'pg'
 
 # Use SCSS for stylesheets
-gem 'sass-rails', '~> 5.0'
+gem 'sassc-rails'
 
 # Use Uglifier as compressor for JavaScript assets
-gem 'uglifier', '>= 1.3.0'
+gem 'uglifier'
 
 # Use CoffeeScript for .coffee assets and views
-gem 'coffee-rails', '~> 4.2'
+gem 'coffee-rails'
 
 # See https://github.com/rails/execjs#readme for more supported runtimes
 gem 'therubyracer', platforms: :ruby
@@ -27,10 +27,7 @@ gem 'therubyracer', platforms: :ruby
 gem 'jquery-rails'
 
 # Turbolinks makes navigating your web application faster. Read more: https://github.com/turbolinks/turbolinks
-gem 'turbolinks', '~> 5'
-
-# Build JSON APIs with ease. Read more: https://github.com/rails/jbuilder
-gem 'jbuilder', '~> 2.5'
+gem 'turbolinks'
 
 # Run unicorn when using the `rails server` or `rails s` command
 gem 'unicorn-rails'
@@ -62,13 +59,13 @@ gem 'silencer'
 gem 'rails-erd'
 
 # Notify developers of Exceptions in production
-gem 'openstax_rescue_from', '~> 3.0.0'
+gem 'openstax_rescue_from'
 
 # Sentry integration (the require disables automatic Rails integration since we use rescue_from)
 gem 'sentry-raven', require: 'raven/base'
 
 # Real time application monitoring
-gem 'scout_apm', '~> 3.0.x'
+gem 'scout_apm'
 
 # Respond to ELB healthchecks in /ping and /ping/
 gem 'openstax_healthcheck'
@@ -81,7 +78,7 @@ group :development, :test do
   gem 'rspec-rails'
 
   # Fixture creation
-  gem 'factory_girl_rails'
+  gem 'factory_bot_rails'
 
   # Lorem Ipsum generator
   gem 'faker'
@@ -95,12 +92,12 @@ end
 
 group :development do
   # Access an IRB console on exception pages or by using <%= console %> anywhere in the code.
-  gem 'web-console', '>= 3.3.0'
-  gem 'listen', '~> 3.0.5'
+  gem 'web-console'
+  gem 'listen'
 
   # Spring speeds up development by keeping your application running in the background. Read more: https://github.com/rails/spring
   gem 'spring'
-  gem 'spring-watcher-listen', '~> 2.0.0'
+  gem 'spring-watcher-listen'
 
   # Re-run specs when files change
   gem 'spring-commands-rspec'

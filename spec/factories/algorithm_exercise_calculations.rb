@@ -1,10 +1,11 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :algorithm_exercise_calculation do
     transient              { num_exercise_uuids { rand(10) + 1 } }
 
     uuid                   { SecureRandom.uuid }
     exercise_calculation
-    algorithm_name         { [ 'local_query', 'tesr' ].sample }
+    algorithm_name         { [ 'local_query', 'biglearn_sparfa' ].sample }
+    ecosystem_matrix_uuid  { SecureRandom.uuid }
     exercise_uuids         { num_exercise_uuids.times.map { SecureRandom.uuid } }
     is_pending_for_student { [ true, false ].sample }
 

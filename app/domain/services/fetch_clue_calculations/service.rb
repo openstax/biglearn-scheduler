@@ -2,7 +2,7 @@ class Services::FetchClueCalculations::Service < Services::ApplicationService
   BATCH_SIZE = 100
 
   def process(algorithm_name:)
-    sanitized_algorithm_name = ActiveRecord::Base.sanitize(algorithm_name.downcase)
+    sanitized_algorithm_name = ApplicationRecord.sanitize(algorithm_name.downcase)
 
     student_clue_calculations = StudentClueCalculation
       .where.not("\"algorithm_names\" @> ARRAY[#{sanitized_algorithm_name}]::varchar[]")

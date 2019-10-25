@@ -1,13 +1,13 @@
 require 'rails_helper'
 
 RSpec.describe Assignment, type: :model do
-  subject { FactoryGirl.create :assignment }
+  subject { FactoryBot.create :assignment }
 
   it { is_expected.to have_many(:assigned_exercises).dependent(:destroy) }
   it { is_expected.to have_many(:assignment_pes).dependent(:destroy) }
   it { is_expected.to have_many(:assignment_spes).dependent(:destroy) }
 
-  it { is_expected.to belong_to(:student) }
+  it { is_expected.to belong_to(:student).optional }
 
   it { is_expected.to validate_presence_of :course_uuid }
   it { is_expected.to validate_presence_of :ecosystem_uuid }
@@ -34,53 +34,53 @@ RSpec.describe Assignment, type: :model do
     let(:current_time)    { Time.current }
 
     let!(:assignment_1) do
-      FactoryGirl.create :assignment, student_uuid: student_uuid,
+      FactoryBot.create :assignment, student_uuid: student_uuid,
                                       assignment_type: assignment_type,
                                       due_at: current_time.yesterday,
                                       opens_at: current_time.yesterday - 2.days,
                                       student_history_at: current_time
     end
     let!(:assignment_2) do
-      FactoryGirl.create :assignment, student_uuid: student_uuid,
+      FactoryBot.create :assignment, student_uuid: student_uuid,
                                       assignment_type: assignment_type,
                                       due_at: current_time.yesterday,
                                       opens_at: current_time.yesterday - 2.days,
                                       student_history_at: current_time
     end
     let!(:assignment_3) do
-      FactoryGirl.create :assignment, student_uuid: student_uuid,
+      FactoryBot.create :assignment, student_uuid: student_uuid,
                                       assignment_type: assignment_type,
                                       due_at: current_time.yesterday,
                                       opens_at: current_time.yesterday - 1.day,
                                       student_history_at: current_time - 1.day
     end
     let!(:assignment_4) do
-      FactoryGirl.create :assignment, student_uuid: student_uuid,
+      FactoryBot.create :assignment, student_uuid: student_uuid,
                                       assignment_type: assignment_type,
                                       due_at: current_time.yesterday,
                                       opens_at: current_time.yesterday - 1.day,
                                       student_history_at: current_time - 1.day
     end
     let!(:assignment_5) do
-      FactoryGirl.create :assignment, student_uuid: student_uuid,
+      FactoryBot.create :assignment, student_uuid: student_uuid,
                                       assignment_type: assignment_type,
                                       due_at: current_time,
                                       opens_at: current_time.yesterday - 2.days
     end
     let!(:assignment_6) do
-      FactoryGirl.create :assignment, student_uuid: student_uuid,
+      FactoryBot.create :assignment, student_uuid: student_uuid,
                                       assignment_type: assignment_type,
                                       due_at: current_time,
                                       opens_at: current_time.yesterday - 2.days
     end
     let!(:assignment_7) do
-      FactoryGirl.create :assignment, student_uuid: student_uuid,
+      FactoryBot.create :assignment, student_uuid: student_uuid,
                                       assignment_type: assignment_type,
                                       due_at: current_time,
                                       opens_at: current_time.yesterday - 1.day
     end
     let!(:assignment_8) do
-      FactoryGirl.create :assignment, student_uuid: student_uuid,
+      FactoryBot.create :assignment, student_uuid: student_uuid,
                                       assignment_type: assignment_type,
                                       due_at: current_time,
                                       opens_at: current_time.yesterday - 1.day

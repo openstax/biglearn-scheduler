@@ -11,7 +11,7 @@ class AlgorithmTeacherClueCalculation < ApplicationRecord
     where.not(
       TeacherClueCalculation.where(
         '"uuid" = "algorithm_teacher_clue_calculations"."teacher_clue_calculation_uuid"'
-      ).exists
+      ).arel.exists
     )
   end
 end

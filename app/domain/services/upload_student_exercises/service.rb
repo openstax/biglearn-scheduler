@@ -21,7 +21,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         # Find algorithm_exercise_calculations with students that need PEs
         # No order needed because of SKIP LOCKED
         algorithm_exercise_calculations = AlgorithmExerciseCalculation
-          .select([:uuid, :algorithm_name, :exercise_uuids])
+          .select(:uuid, :algorithm_name, :exercise_uuids)
           .where(is_pending_for_student: true)
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .take(BATCH_SIZE)
@@ -33,9 +33,14 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
 
         # Don't bother updating calculations for old ecosystems
         students = Student
-          .select([ st[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid') ])
+          .select(st[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid'))
           .joins(:course, exercise_calculations: :algorithm_exercise_calculations)
-          .where(algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids })
+          .where(
+            exercise_calculations: {
+              algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids },
+              superseded_at: nil
+            }
+          )
           .where(ec[:ecosystem_uuid].eq(cc[:ecosystem_uuid]))
         student_uuids = students.map(&:uuid)
 
@@ -197,6 +202,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
           end
 
           student_pe_request = {
+            calculation_uuid: algorithm_exercise_calculation_uuid,
             student_uuid: student_uuid,
             exercise_uuids: chosen_pe_uuids,
             algorithm_name: exercise_algorithm_name,

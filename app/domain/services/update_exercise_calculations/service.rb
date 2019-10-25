@@ -1,6 +1,7 @@
 class Services::UpdateExerciseCalculations::Service < Services::ApplicationService
   def process(exercise_calculation_updates:)
     calculation_uuids = exercise_calculation_updates.map { |calc| calc[:calculation_uuid] }
+    ec = ExerciseCalculation.arel_table
 
     ExerciseCalculation.transaction do
       # The ExerciseCalculation lock ensures we don't miss updates on
@@ -17,7 +18,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
       Assignment
         .joins(:exercise_calculation)
         .where(exercise_calculations: { uuid: exercise_calculation_uuids })
-        .pluck('"exercise_calculations"."uuid"', :uuid)
+        .pluck(ec[:uuid], :uuid)
         .each do |exercise_calculation_uuid, uuid|
           assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
         end
@@ -39,6 +40,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
             uuid: SecureRandom.uuid,
             exercise_calculation: exercise_calculation,
             algorithm_name: algorithm_name,
+            ecosystem_matrix_uuid: exercise_calculation_update.fetch(:ecosystem_matrix_uuid),
             exercise_uuids: exercise_calculation_update.fetch(:exercise_uuids),
             pending_assignment_uuids: assignment_uuids,
             is_pending_for_student: true
@@ -56,7 +58,11 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
         validate: false, on_duplicate_key_update: {
           conflict_target: [ :exercise_calculation_uuid, :algorithm_name ],
           columns: [
-            :uuid, :exercise_uuids, :pending_assignment_uuids, :is_pending_for_student
+            :uuid,
+            :ecosystem_matrix_uuid,
+            :exercise_uuids,
+            :pending_assignment_uuids,
+            :is_pending_for_student
           ]
         }
       )

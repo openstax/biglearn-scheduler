@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe ClueCalculationsController, type: :request do
-  let(:given_algorithm_name)   { 'sparfa' }
+  let(:given_algorithm_name)   { 'biglearn_sparfa' }
 
   let(:calculation_uuid_1)     { SecureRandom.uuid }
   let(:calculation_uuid_2)     { SecureRandom.uuid }

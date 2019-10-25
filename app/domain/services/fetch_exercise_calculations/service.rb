@@ -6,6 +6,7 @@ class Services::FetchExerciseCalculations::Service < Services::ApplicationServic
 
     exercise_calculations = ExerciseCalculation
       .with_exercise_uuids
+      .not_superseded
       .where.not("\"algorithm_names\" @> ARRAY[#{sanitized_algorithm_name}]::varchar[]")
       .random_ordered
       .lock('FOR SHARE SKIP LOCKED')

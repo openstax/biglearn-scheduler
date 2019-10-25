@@ -15,7 +15,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         responses = Response
           .select(:uuid, :assignment_uuid)
           .joins(assigned_exercise: :assignment)
-          .where(used_in_student_history: false)
+          .where(is_used_in_student_history: false)
           .lock('FOR NO KEY UPDATE OF "responses", "assignments" SKIP LOCKED')
           .take(BATCH_SIZE)
         responses_size = responses.size
@@ -24,7 +24,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         # Mark the above responses as used in the student history
         response_uuids = responses.map(&:uuid)
         # No order needed because already locked above
-        Response.where(uuid: response_uuids).update_all(used_in_student_history: true)
+        Response.where(uuid: response_uuids).update_all(is_used_in_student_history: true)
 
         # Find assignments that correspond to the above responses and check if they are complete
         # No order needed because already locked above
@@ -33,7 +33,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
           .select(:uuid, :student_uuid)
           .where(uuid: responded_assignment_uuids, student_history_at: nil)
           .where(
-            <<-WHERE_SQL.strip_heredoc
+            <<~WHERE_SQL
               NOT EXISTS (
                 SELECT *
                   FROM "assigned_exercises"
@@ -57,7 +57,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
         completed_assignment_uuids = completed_assignments.map(&:uuid)
         # No order needed because already locked above
         Assignment.where(uuid: completed_assignment_uuids).update_all(
-          <<-SQL.strip_heredoc
+          <<~SQL
             "student_history_at" = (
               SELECT MAX("responses"."first_responded_at")
                 FROM "assigned_exercises"
@@ -136,7 +136,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
     # concurrent Assignment and AlgorithmExerciseCalculation inserts
     exercise_calculation_uuids = ExerciseCalculation
       .joins(:assignments)
-      .where(assignments: { student_uuid: student_uuids })
+      .where(assignments: { student_uuid: student_uuids }, superseded_at: nil)
       .ordered
       .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
       .pluck(:uuid)
@@ -146,7 +146,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
     Assignment
       .joins(:exercise_calculation)
       .where(exercise_calculations: { uuid: exercise_calculation_uuids })
-      .pluck('"exercise_calculations"."uuid"', :uuid)
+      .pluck(ExerciseCalculation.arel_table[:uuid], :uuid)
       .each do |exercise_calculation_uuid, uuid|
         assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
       end

@@ -14,64 +14,64 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
     before(:all) do
       DatabaseCleaner.start
 
-      @ecosystem_1 = FactoryGirl.create :ecosystem
-      @ecosystem_2 = FactoryGirl.create :ecosystem
-      @ecosystem_3 = FactoryGirl.create :ecosystem
-      @ecosystem_4 = FactoryGirl.create :ecosystem
+      @ecosystem_1 = FactoryBot.create :ecosystem
+      @ecosystem_2 = FactoryBot.create :ecosystem
+      @ecosystem_3 = FactoryBot.create :ecosystem
+      @ecosystem_4 = FactoryBot.create :ecosystem
 
-      @reading_pool_1_old = FactoryGirl.create(
+      @reading_pool_1_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 10,
         ecosystem_uuid: @ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      @reading_pool_1_new = FactoryGirl.create(
+      @reading_pool_1_new = FactoryBot.create(
         :exercise_pool,
         exercise_uuids: @reading_pool_1_old.exercise_uuids,
         ecosystem_uuid: @ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: @ecosystem_1.uuid,
                          to_ecosystem_uuid: @ecosystem_2.uuid,
                          from_book_container_uuid: @reading_pool_1_old.book_container_uuid,
                          to_book_container_uuid: @reading_pool_1_new.book_container_uuid
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: @ecosystem_2.uuid,
                          to_ecosystem_uuid: @ecosystem_1.uuid,
                          from_book_container_uuid: @reading_pool_1_new.book_container_uuid,
                          to_book_container_uuid: @reading_pool_1_old.book_container_uuid
-      @reading_pool_2_old = FactoryGirl.create(
+      @reading_pool_2_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 9,
         ecosystem_uuid: @ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      @reading_pool_2_new = FactoryGirl.create(
+      @reading_pool_2_new = FactoryBot.create(
         :exercise_pool,
         exercise_uuids: @reading_pool_2_old.exercise_uuids,
         ecosystem_uuid: @ecosystem_3.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: @ecosystem_2.uuid,
                          to_ecosystem_uuid: @ecosystem_3.uuid,
                          from_book_container_uuid: @reading_pool_2_old.book_container_uuid,
                          to_book_container_uuid: @reading_pool_2_new.book_container_uuid
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: @ecosystem_3.uuid,
                          to_ecosystem_uuid: @ecosystem_2.uuid,
                          from_book_container_uuid: @reading_pool_2_new.book_container_uuid,
                          to_book_container_uuid: @reading_pool_2_old.book_container_uuid
 
-      @homework_pool_old = FactoryGirl.create(
+      @homework_pool_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 5,
         ecosystem_uuid: @ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: @reading_pool_1_old.book_container_uuid
       )
-      @homework_pool_new = FactoryGirl.create(
+      @homework_pool_new = FactoryBot.create(
         :exercise_pool,
         exercise_uuids: @homework_pool_old.exercise_uuids,
         ecosystem_uuid: @ecosystem_2.uuid,
@@ -79,28 +79,28 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         book_container_uuid: @reading_pool_1_new.book_container_uuid
       )
 
-      practice_pool_1_old = FactoryGirl.create(
+      practice_pool_1_old = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: @ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: @reading_pool_1_old.exercise_uuids + @homework_pool_old.exercise_uuids,
         book_container_uuid: @reading_pool_1_old.book_container_uuid
       )
-      practice_pool_1_new = FactoryGirl.create(
+      practice_pool_1_new = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: @ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: @reading_pool_1_new.exercise_uuids + @homework_pool_new.exercise_uuids,
         book_container_uuid: @reading_pool_1_new.book_container_uuid
       )
-      practice_pool_2_old = FactoryGirl.create(
+      practice_pool_2_old = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: @ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: @reading_pool_2_old.exercise_uuids,
         book_container_uuid: @reading_pool_2_old.book_container_uuid
       )
-      practice_pool_2_new = FactoryGirl.create(
+      practice_pool_2_new = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: @ecosystem_3.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
@@ -109,14 +109,14 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
       )
 
       exercise_uuids = [ practice_pool_1_new, practice_pool_2_new ].flat_map(&:exercise_uuids)
-      exercise_uuids.each { |exercise_uuid| FactoryGirl.create :exercise, uuid: exercise_uuid }
+      exercise_uuids.each { |exercise_uuid| FactoryBot.create :exercise, uuid: exercise_uuid }
 
-      course = FactoryGirl.create :course, ecosystem_uuid: @ecosystem_4.uuid
-      @student_1 = FactoryGirl.create :student, course: course
-      @student_2 = FactoryGirl.create :student, course: course
+      course = FactoryBot.create :course, ecosystem_uuid: @ecosystem_4.uuid
+      @student_1 = FactoryBot.create :student, course: course
+      @student_2 = FactoryBot.create :student, course: course
 
       # Biglearn exercises requested
-      @reading_1 = FactoryGirl.create(
+      @reading_1 = FactoryBot.create(
         :assignment,
         course_uuid: course.uuid,
         student_uuid: @student_1.uuid,
@@ -130,7 +130,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         pes_are_assigned: false,
         has_exercise_calculation: true
       )
-      @reading_2 = FactoryGirl.create(
+      @reading_2 = FactoryBot.create(
         :assignment,
         course_uuid: course.uuid,
         student_uuid: @student_2.uuid,
@@ -144,7 +144,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         pes_are_assigned: false,
         has_exercise_calculation: true
       )
-      @reading_3 = FactoryGirl.create(
+      @reading_3 = FactoryBot.create(
         :assignment,
         course_uuid: course.uuid,
         student_uuid: @student_1.uuid,
@@ -158,7 +158,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         pes_are_assigned: false,
         has_exercise_calculation: true
       )
-      @reading_4 = FactoryGirl.create(
+      @reading_4 = FactoryBot.create(
         :assignment,
         course_uuid: course.uuid,
         student_uuid: @student_2.uuid,
@@ -174,7 +174,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
       )
 
       # No Biglearn exercises requested
-      @homework_1 = FactoryGirl.create(
+      @homework_1 = FactoryBot.create(
         :assignment,
         course_uuid: course.uuid,
         student_uuid: @student_1.uuid,
@@ -188,7 +188,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         pes_are_assigned: false,
         has_exercise_calculation: true
       )
-      @homework_2 = FactoryGirl.create(
+      @homework_2 = FactoryBot.create(
         :assignment,
         course_uuid: course.uuid,
         student_uuid: @student_2.uuid,
@@ -236,7 +236,7 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
         student_uuid = assignment.student_uuid
 
         assignment.assigned_exercise_uuids.map do |assigned_exercise_uuid|
-          FactoryGirl.create :response, student_uuid: student_uuid,
+          FactoryBot.create :response, student_uuid: student_uuid,
                                         exercise_uuid: assigned_exercise_uuid
         end
       end
@@ -264,22 +264,24 @@ RSpec.describe Services::PrepareExerciseCalculations::Service, type: :service do
       before(:all) do
         DatabaseCleaner.start
 
-        @existing_calculation = FactoryGirl.create(
+        @existing_calculation = FactoryBot.create(
           :exercise_calculation,
           ecosystem: @ecosystem_1,
           student: @student_1
         )
 
-        FactoryGirl.create :algorithm_exercise_calculation,
+        FactoryBot.create :algorithm_exercise_calculation,
                            exercise_calculation: @existing_calculation
       end
 
       after(:all)  { DatabaseCleaner.clean }
 
-      it 'changes the uuid of existing ExerciseCalculations to trigger their recalculation' do
+      it 'creates new ExerciseCalculations and sets old ones as superseded' do
         expect { subject.process }.to  change { ExerciseCalculation.count               }
-                                         .by(expected_exercise_calculations.size - 1)
-                                  .and change { AlgorithmExerciseCalculation.count  }.by(-1)
+                                         .by(expected_exercise_calculations.size)
+                                  .and not_change { AlgorithmExerciseCalculation.count  }
+
+        expect(@existing_calculation.reload.superseded_at).not_to be_nil
 
         ExerciseCalculation.pluck(:student_uuid, :ecosystem_uuid).each do |attributes|
           expect(exercise_calculation_attributes_set).to include attributes

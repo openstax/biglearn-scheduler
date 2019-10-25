@@ -1,4 +1,4 @@
-FactoryGirl.define do
+FactoryBot.define do
   factory :book_container_mapping do
     uuid                     { SecureRandom.uuid }
     from_ecosystem_uuid      { SecureRandom.uuid }

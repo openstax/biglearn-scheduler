@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe StudentClueCalculation, type: :model do
-  subject { FactoryGirl.create :student_clue_calculation }
+  subject { FactoryBot.create :student_clue_calculation }
 
   it { is_expected.to have_many(:algorithm_student_clue_calculations).dependent(:destroy) }
   it { is_expected.to have_many(:ecosystem_exercises) }

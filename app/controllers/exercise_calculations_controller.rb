@@ -22,6 +22,14 @@ class ExerciseCalculationsController < JsonApiController
     )
   end
 
+  def fetch_algorithm_exercise_calculations
+    respond_with_json_apis_and_service(
+      input_schema: _fetch_algorithm_exercise_calculations_request_payload_schema,
+      output_schema: _fetch_algorithm_exercise_calculations_response_payload_schema,
+      service: Services::FetchAlgorithmExerciseCalculations::Service
+    )
+  end
+
   protected
 
   def _fetch_exercise_calculations_request_payload_schema
@@ -78,14 +86,20 @@ class ExerciseCalculationsController < JsonApiController
           'items': {
             'type': 'object',
             'properties': {
-              'calculation_uuid': {'$ref': '#standard_definitions/uuid'},
-              'algorithm_name':   { 'type': 'string' },
-              'exercise_uuids':   {
+              'calculation_uuid':      {'$ref': '#standard_definitions/uuid'},
+              'algorithm_name':        {'type': 'string'},
+              'ecosystem_matrix_uuid': {'$ref': '#standard_definitions/uuid'},
+              'exercise_uuids':        {
                 'type': 'array',
                 'items': {'$ref': '#standard_definitions/uuid'}
               }
             },
-            'required': ['calculation_uuid', 'algorithm_name', 'exercise_uuids'],
+            'required': [
+              'calculation_uuid',
+              'algorithm_name',
+              'ecosystem_matrix_uuid',
+              'exercise_uuids'
+            ],
             'additionalProperties': false
           },
           'minItems': 1,
@@ -126,4 +140,87 @@ class ExerciseCalculationsController < JsonApiController
     }
   end
 
+  def _fetch_algorithm_exercise_calculations_request_payload_schema
+    {
+      '$schema': JSON_SCHEMA,
+      'type': 'object',
+      'properties': {
+        'algorithm_exercise_calculations_requests': {
+          'type': 'array',
+          'items': {
+            'type': 'object',
+            'properties': {
+              'request_uuid':      {'$ref': '#standard_definitions/uuid'},
+              'student_uuid':      {'$ref': '#standard_definitions/uuid'},
+              'algorithm_name':    {'type': 'string'},
+              'calculation_uuids': {'$ref': '#standard_definitions/uuid'}
+            },
+            'anyOf': [
+              {'required': ['request_uuid', 'student_uuid', 'algorithm_name']},
+              {'required': ['request_uuid', 'calculation_uuids']}
+            ],
+            'additionalProperties': false
+          },
+          'minItems': 1,
+          'maxItems': 10
+        }
+      },
+      'required': ['algorithm_exercise_calculation_requests'],
+      'additionalProperties': false,
+      'standard_definitions': _standard_definitions
+    }
+  end
+
+  def _fetch_algorithm_exercise_calculations_response_payload_schema
+    {
+      '$schema': JSON_SCHEMA,
+      'type': 'object',
+      'properties': {
+        'algorithm_exercise_calculations': {
+          'type': 'array',
+          'items': {
+            'type': 'object',
+            'properties': {
+              'request_uuid':          {'$ref': '#standard_definitions/uuid'},
+              'calculations': {
+                'type': 'array',
+                'items': {
+                  'type': 'object',
+                  'properties': {
+                    'student_uuid':          {'$ref': '#standard_definitions/uuid'},
+                    'calculation_uuid':      {'$ref': '#standard_definitions/uuid'},
+                    'calculated_at':         {'$ref': '#standard_definitions/datetime'},
+                    'ecosystem_matrix_uuid': {'$ref': '#standard_definitions/uuid'},
+                    'algorithm_name':        {'type': 'string'},
+                    'exercise_uuids':        {
+                      'type': 'array',
+                      'items': {'$ref': '#standard_definitions/uuid'}
+                    }
+                  },
+                  'required': [
+                    'student_uuid',
+                    'calculation_uuid',
+                    'calculated_at',
+                    'ecosystem_matrix_uuid',
+                    'algorithm_name',
+                    'exercise_uuids'
+                  ],
+                  'additionalProperties': false
+                },
+                'maxItems': 2
+              }
+
+            },
+            'required': ['request_uuid', 'calculations'],
+            'additionalProperties': false
+          },
+          'minItems': 1,
+          'maxItems': 10
+        }
+      },
+      'required': ['algorithm_exercise_calculations'],
+      'additionalProperties': false,
+      'standard_definitions': _standard_definitions
+    }
+  end
 end

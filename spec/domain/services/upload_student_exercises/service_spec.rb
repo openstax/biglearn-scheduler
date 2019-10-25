@@ -15,187 +15,187 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
     before(:all) do
       DatabaseCleaner.start
 
-      ecosystem_1 = FactoryGirl.create :ecosystem
-      ecosystem_2 = FactoryGirl.create :ecosystem
+      ecosystem_1 = FactoryBot.create :ecosystem
+      ecosystem_2 = FactoryBot.create :ecosystem
 
-      course = FactoryGirl.create :course, ecosystem_uuid: ecosystem_2.uuid
-      student = FactoryGirl.create :student, course: course
+      course = FactoryBot.create :course, ecosystem_uuid: ecosystem_2.uuid
+      student = FactoryBot.create :student, course: course
 
-      reading_pool_1_old = FactoryGirl.create(
+      reading_pool_1_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 10,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      reading_pool_1_new = FactoryGirl.create(
+      reading_pool_1_new = FactoryBot.create(
         :exercise_pool,
         exercise_uuids: reading_pool_1_old.exercise_uuids,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: ecosystem_1.uuid,
                          to_ecosystem_uuid: ecosystem_2.uuid,
                          from_book_container_uuid: reading_pool_1_old.book_container_uuid,
                          to_book_container_uuid: reading_pool_1_new.book_container_uuid
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: ecosystem_2.uuid,
                          to_ecosystem_uuid: ecosystem_1.uuid,
                          from_book_container_uuid: reading_pool_1_new.book_container_uuid,
                          to_book_container_uuid: reading_pool_1_old.book_container_uuid
-      reading_pool_2_old = FactoryGirl.create(
+      reading_pool_2_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 9,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      reading_pool_2_new = FactoryGirl.create(
+      reading_pool_2_new = FactoryBot.create(
         :exercise_pool,
         exercise_uuids: reading_pool_2_old.exercise_uuids,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: ecosystem_1.uuid,
                          to_ecosystem_uuid: ecosystem_2.uuid,
                          from_book_container_uuid: reading_pool_2_old.book_container_uuid,
                          to_book_container_uuid: reading_pool_2_new.book_container_uuid
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: ecosystem_2.uuid,
                          to_ecosystem_uuid: ecosystem_1.uuid,
                          from_book_container_uuid: reading_pool_2_new.book_container_uuid,
                          to_book_container_uuid: reading_pool_2_old.book_container_uuid
-      reading_pool_3_old = FactoryGirl.create(
+      reading_pool_3_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 8,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      reading_pool_3_new = FactoryGirl.create(
+      reading_pool_3_new = FactoryBot.create(
         :exercise_pool,
         exercises_count: 8,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: ecosystem_1.uuid,
                          to_ecosystem_uuid: ecosystem_2.uuid,
                          from_book_container_uuid: reading_pool_3_old.book_container_uuid,
                          to_book_container_uuid: reading_pool_3_new.book_container_uuid
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: ecosystem_2.uuid,
                          to_ecosystem_uuid: ecosystem_1.uuid,
                          from_book_container_uuid: reading_pool_3_new.book_container_uuid,
                          to_book_container_uuid: reading_pool_3_old.book_container_uuid
-      reading_pool_4_old = FactoryGirl.create(
+      reading_pool_4_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 7,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      reading_pool_4_new = FactoryGirl.create(
+      reading_pool_4_new = FactoryBot.create(
         :exercise_pool,
         exercises_count: 7,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: ecosystem_1.uuid,
                          to_ecosystem_uuid: ecosystem_2.uuid,
                          from_book_container_uuid: reading_pool_4_old.book_container_uuid,
                          to_book_container_uuid: reading_pool_4_new.book_container_uuid
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: ecosystem_2.uuid,
                          to_ecosystem_uuid: ecosystem_1.uuid,
                          from_book_container_uuid: reading_pool_4_new.book_container_uuid,
                          to_book_container_uuid: reading_pool_4_old.book_container_uuid
-      reading_pool_5_old = FactoryGirl.create(
+      reading_pool_5_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 6,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      reading_pool_5_new = FactoryGirl.create(
+      reading_pool_5_new = FactoryBot.create(
         :exercise_pool,
         exercises_count: 6,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: ecosystem_1.uuid,
                          to_ecosystem_uuid: ecosystem_2.uuid,
                          from_book_container_uuid: reading_pool_5_old.book_container_uuid,
                          to_book_container_uuid: reading_pool_5_new.book_container_uuid
-      FactoryGirl.create :book_container_mapping,
+      FactoryBot.create :book_container_mapping,
                          from_ecosystem_uuid: ecosystem_2.uuid,
                          to_ecosystem_uuid: ecosystem_1.uuid,
                          from_book_container_uuid: reading_pool_5_new.book_container_uuid,
                          to_book_container_uuid: reading_pool_5_old.book_container_uuid
 
-      homework_pool_1_old = FactoryGirl.create(
+      homework_pool_1_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 5,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: reading_pool_1_old.book_container_uuid
       )
-      homework_pool_1_new = FactoryGirl.create(
+      homework_pool_1_new = FactoryBot.create(
         :exercise_pool,
         exercise_uuids: homework_pool_1_old.exercise_uuids,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: reading_pool_1_new.book_container_uuid
       )
-      homework_pool_2_old = FactoryGirl.create(
+      homework_pool_2_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 4,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: reading_pool_2_old.book_container_uuid
       )
-      homework_pool_2_new = FactoryGirl.create(
+      homework_pool_2_new = FactoryBot.create(
         :exercise_pool,
         exercise_uuids: homework_pool_2_old.exercise_uuids,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: reading_pool_2_new.book_container_uuid
       )
-      homework_pool_3_old = FactoryGirl.create(
+      homework_pool_3_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 3,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: reading_pool_3_old.book_container_uuid
       )
-      homework_pool_3_new = FactoryGirl.create(
+      homework_pool_3_new = FactoryBot.create(
         :exercise_pool,
         exercises_count: 3,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: reading_pool_3_new.book_container_uuid
       )
-      homework_pool_4_old = FactoryGirl.create(
+      homework_pool_4_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 2,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: reading_pool_4_old.book_container_uuid
       )
-      homework_pool_4_new = FactoryGirl.create(
+      homework_pool_4_new = FactoryBot.create(
         :exercise_pool,
         exercises_count: 2,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: reading_pool_4_new.book_container_uuid
       )
-      homework_pool_5_old = FactoryGirl.create(
+      homework_pool_5_old = FactoryBot.create(
         :exercise_pool,
         exercises_count: 1,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['homework'],
         book_container_uuid: reading_pool_5_old.book_container_uuid
       )
-      homework_pool_5_new = FactoryGirl.create(
+      homework_pool_5_new = FactoryBot.create(
         :exercise_pool,
         exercises_count: 1,
         ecosystem_uuid: ecosystem_2.uuid,
@@ -203,70 +203,70 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
         book_container_uuid: reading_pool_5_new.book_container_uuid
       )
 
-      practice_pool_1_old = FactoryGirl.create(
+      practice_pool_1_old = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: reading_pool_1_old.exercise_uuids + homework_pool_1_old.exercise_uuids,
         book_container_uuid: reading_pool_1_old.book_container_uuid
       )
-      @practice_pool_1_new = FactoryGirl.create(
+      @practice_pool_1_new = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: reading_pool_1_new.exercise_uuids + homework_pool_1_new.exercise_uuids,
         book_container_uuid: reading_pool_1_new.book_container_uuid
       )
-      practice_pool_2_old = FactoryGirl.create(
+      practice_pool_2_old = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: reading_pool_2_old.exercise_uuids + homework_pool_2_old.exercise_uuids,
         book_container_uuid: reading_pool_2_old.book_container_uuid
       )
-      @practice_pool_2_new = FactoryGirl.create(
+      @practice_pool_2_new = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: reading_pool_2_new.exercise_uuids + homework_pool_2_new.exercise_uuids,
         book_container_uuid: reading_pool_2_new.book_container_uuid
       )
-      practice_pool_3_old = FactoryGirl.create(
+      practice_pool_3_old = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: reading_pool_3_old.exercise_uuids + homework_pool_3_old.exercise_uuids,
         book_container_uuid: reading_pool_3_old.book_container_uuid
       )
-      @practice_pool_3_new = FactoryGirl.create(
+      @practice_pool_3_new = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: reading_pool_3_new.exercise_uuids + homework_pool_3_new.exercise_uuids,
         book_container_uuid: reading_pool_3_new.book_container_uuid
       )
-      practice_pool_4_old = FactoryGirl.create(
+      practice_pool_4_old = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: reading_pool_4_old.exercise_uuids + homework_pool_4_old.exercise_uuids,
         book_container_uuid: reading_pool_4_old.book_container_uuid
       )
-      @practice_pool_4_new = FactoryGirl.create(
+      @practice_pool_4_new = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: reading_pool_4_new.exercise_uuids + homework_pool_4_new.exercise_uuids,
         book_container_uuid: reading_pool_4_new.book_container_uuid
       )
-      practice_pool_5_old = FactoryGirl.create(
+      practice_pool_5_old = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
         exercise_uuids: reading_pool_5_old.exercise_uuids + homework_pool_5_old.exercise_uuids,
         book_container_uuid: reading_pool_5_old.book_container_uuid
       )
-      @practice_pool_5_new = FactoryGirl.create(
+      @practice_pool_5_new = FactoryBot.create(
         :exercise_pool,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['practice'],
@@ -288,46 +288,46 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
         @practice_pool_4_new,
         @practice_pool_5_new
       ].flat_map(&:exercise_uuids)
-      new_exercise_uuids.each { |exercise_uuid| FactoryGirl.create :exercise, uuid: exercise_uuid }
+      new_exercise_uuids.each { |exercise_uuid| FactoryBot.create :exercise, uuid: exercise_uuid }
 
       local_query_algorithm_name = 'local_query'
       sparfa_algorithm_name = 'biglearn_sparfa'
       @clue_algorithm_name = sparfa_algorithm_name
 
-      @scc_1 = FactoryGirl.create :student_clue_calculation,
+      @scc_1 = FactoryBot.create :student_clue_calculation,
                                   ecosystem_uuid: ecosystem_2.uuid,
                                   book_container_uuid: @practice_pool_1_new.book_container_uuid,
                                   student_uuid: student.uuid
-      @scc_2 = FactoryGirl.create :student_clue_calculation,
+      @scc_2 = FactoryBot.create :student_clue_calculation,
                                   ecosystem_uuid: ecosystem_2.uuid,
                                   book_container_uuid: @practice_pool_2_new.book_container_uuid,
                                   student_uuid: student.uuid
-      @scc_3 = FactoryGirl.create :student_clue_calculation,
+      @scc_3 = FactoryBot.create :student_clue_calculation,
                                   ecosystem_uuid: ecosystem_2.uuid,
                                   book_container_uuid: @practice_pool_3_new.book_container_uuid,
                                   student_uuid: student.uuid
-      @scc_4 = FactoryGirl.create :student_clue_calculation,
+      @scc_4 = FactoryBot.create :student_clue_calculation,
                                   ecosystem_uuid: ecosystem_2.uuid,
                                   book_container_uuid: @practice_pool_4_new.book_container_uuid,
                                   student_uuid: student.uuid
-      @scc_5 = FactoryGirl.create :student_clue_calculation,
+      @scc_5 = FactoryBot.create :student_clue_calculation,
                                   ecosystem_uuid: ecosystem_2.uuid,
                                   book_container_uuid: @practice_pool_5_new.book_container_uuid,
                                   student_uuid: student.uuid
 
-      exercise_calculation_1 = FactoryGirl.create(
+      exercise_calculation_1 = FactoryBot.create(
         :exercise_calculation,
         ecosystem: ecosystem_1,
         student_uuid: student.uuid
       )
-      @algorithm_exercise_calculation_1 = FactoryGirl.create(
+      @algorithm_exercise_calculation_1 = FactoryBot.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_1,
         algorithm_name: local_query_algorithm_name,
         exercise_uuids: old_exercise_uuids.shuffle,
         is_pending_for_student: true
       )
-      @algorithm_exercise_calculation_2 = FactoryGirl.create(
+      @algorithm_exercise_calculation_2 = FactoryBot.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_1,
         algorithm_name: sparfa_algorithm_name,
@@ -335,19 +335,19 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
         is_pending_for_student: true
       )
 
-      exercise_calculation_2 = FactoryGirl.create(
+      exercise_calculation_2 = FactoryBot.create(
         :exercise_calculation,
         ecosystem: ecosystem_2,
         student_uuid: student.uuid
       )
-      @algorithm_exercise_calculation_3 = FactoryGirl.create(
+      @algorithm_exercise_calculation_3 = FactoryBot.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_2,
         algorithm_name: local_query_algorithm_name,
         exercise_uuids: new_exercise_uuids.shuffle,
         is_pending_for_student: true
       )
-      @algorithm_exercise_calculation_4 = FactoryGirl.create(
+      @algorithm_exercise_calculation_4 = FactoryBot.create(
         :algorithm_exercise_calculation,
         exercise_calculation: exercise_calculation_2,
         algorithm_name: sparfa_algorithm_name,
@@ -362,23 +362,23 @@ RSpec.describe Services::UploadStudentExercises::Service, type: :service do
       before(:all) do
         DatabaseCleaner.start
 
-        FactoryGirl.create :algorithm_student_clue_calculation,
+        FactoryBot.create :algorithm_student_clue_calculation,
                            student_clue_calculation: @scc_1,
                            algorithm_name: @clue_algorithm_name,
                            clue_value: 0.25
-        FactoryGirl.create :algorithm_student_clue_calculation,
+        FactoryBot.create :algorithm_student_clue_calculation,
                            student_clue_calculation: @scc_2,
                            algorithm_name: @clue_algorithm_name,
                            clue_value: 0
-        FactoryGirl.create :algorithm_student_clue_calculation,
+        FactoryBot.create :algorithm_student_clue_calculation,
                            student_clue_calculation: @scc_3,
                            algorithm_name: @clue_algorithm_name,
                            clue_value: 0.5
-        FactoryGirl.create :algorithm_student_clue_calculation,
+        FactoryBot.create :algorithm_student_clue_calculation,
                            student_clue_calculation: @scc_4,
                            algorithm_name: @clue_algorithm_name,
                            clue_value: 0.75
-        FactoryGirl.create :algorithm_student_clue_calculation,
+        FactoryBot.create :algorithm_student_clue_calculation,
                            student_clue_calculation: @scc_5,
                            algorithm_name: @clue_algorithm_name,
                            clue_value: 1

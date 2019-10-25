@@ -1,7 +1,7 @@
 require 'rails_helper'
 
 RSpec.describe AssignmentSpe, type: :model do
-  subject { FactoryGirl.create :assignment_spe }
+  subject { FactoryBot.create :assignment_spe }
 
   it { is_expected.to belong_to :algorithm_exercise_calculation }
   it { is_expected.to belong_to :assignment }

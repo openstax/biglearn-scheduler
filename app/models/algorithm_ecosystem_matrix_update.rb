@@ -9,7 +9,7 @@ class AlgorithmEcosystemMatrixUpdate < ApplicationRecord
     where.not(
       EcosystemMatrixUpdate.where(
         '"uuid" = "algorithm_ecosystem_matrix_updates"."ecosystem_matrix_update_uuid"'
-      ).exists
+      ).arel.exists
     )
   end
 end

@@ -37,12 +37,12 @@ RSpec.describe OpenStax::Biglearn::Api, type: :external do
       )
 
       @book_container_uuid = SecureRandom.uuid
-      @ecosystem = FactoryGirl.create :ecosystem
-      @course = FactoryGirl.create :course
-      @course_container = FactoryGirl.create :course_container
-      @student = FactoryGirl.create :student
-      @assignment = FactoryGirl.create :assignment
-      @exercises = rand(10).times.map { FactoryGirl.create :exercise }
+      @ecosystem = FactoryBot.create :ecosystem
+      @course = FactoryBot.create :course
+      @course_container = FactoryBot.create :course_container
+      @student = FactoryBot.create :student
+      @assignment = FactoryBot.create :assignment
+      @exercises = rand(10).times.map { FactoryBot.create :exercise }
 
       random_sorted_numbers = 3.times.map { rand }.sort
       @clue_data = {

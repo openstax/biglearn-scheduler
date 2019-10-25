@@ -5,7 +5,7 @@ class ChangeIsUploadedToPending < ActiveRecord::Migration[5.0]
     add_column :algorithm_exercise_calculations, :pending_assignment_uuids, :string, array: true
 
     AlgorithmExerciseCalculation.update_all(
-      <<-UPDATE_SQL.strip_heredoc
+      <<~UPDATE_SQL
         "is_pending_for_student" = NOT "is_uploaded_for_student",
         "pending_assignment_uuids" = ARRAY(
           SELECT "assignments"."uuid"::varchar
@@ -37,7 +37,7 @@ class ChangeIsUploadedToPending < ActiveRecord::Migration[5.0]
                array: true, null: false, default: []
 
     AlgorithmExerciseCalculation.update_all(
-      <<-UPDATE_SQL.strip_heredoc
+      <<~UPDATE_SQL
         "is_uploaded_for_student" = NOT "is_pending_for_student",
         "is_uploaded_for_assignment_uuids" = ARRAY(
           SELECT "assignments"."uuid"::varchar

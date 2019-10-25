@@ -19,10 +19,10 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
         # No order needed because of SKIP LOCKED
         responses = Response
           .joins(:student)
-          .where(used_in_exercise_calculations: false)
+          .where(is_used_in_exercise_calculations: false)
           .lock('FOR NO KEY UPDATE OF "responses", "students" SKIP LOCKED')
           .limit(BATCH_SIZE)
-          .pluck(:uuid, '"students"."uuid"')
+          .pluck(:uuid, st[:uuid])
         response_student_uuids = responses.map(&:second)
 
         # Get the latest course ecosystem UUID for each student above and also include other
@@ -30,10 +30,10 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
         # No order needed because of SKIP LOCKED
         course_pairs = Student
           .where(uuid: response_student_uuids).or(
-            Student.where(
+            Student.where.not(
               ExerciseCalculation.where(
                 ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(co[:ecosystem_uuid])
-              ).exists.not
+              ).arel.exists
             )
           )
           .joins(:course)
@@ -47,24 +47,24 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
         assignment_pairs = Assignment
           .where(student_uuid: response_student_uuids)
           .or(
-            Assignment.where(has_exercise_calculation: false).where(
+            Assignment.where(has_exercise_calculation: false).where.not(
               ExerciseCalculation.where(
                 ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
-              ).exists.not
+              ).arel.exists
             )
           )
           .joins(:student)
           .need_pes_or_spes
           .lock('FOR NO KEY UPDATE OF "students" SKIP LOCKED')
           .limit(BATCH_SIZE)
-          .pluck(:student_uuid, :ecosystem_uuid)
+          .pluck(st[:uuid], :ecosystem_uuid)
 
         num_responses = responses.size
         if num_responses > 0
           # Record the fact that the CLUes are up-to-date with the latest Responses
           response_uuids = responses.map(&:first)
           # No order needed because already locked above
-          Response.where(uuid: response_uuids).update_all(used_in_exercise_calculations: true)
+          Response.where(uuid: response_uuids).update_all(is_used_in_exercise_calculations: true)
         end
 
         student_uuid_ecosystem_uuid_pairs = (course_pairs + assignment_pairs).uniq
@@ -80,25 +80,31 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
           ExerciseCalculation.new(
             uuid: SecureRandom.uuid,
             ecosystem_uuid: ecosystem_uuid,
-            student_uuid: student_uuid
+            student_uuid: student_uuid,
+            is_used_in_assignments: false
           )
         end
 
+        # Mark old ExerciseCalculations as superseded
+        exercise_calculation_values_array = exercise_calculations.map do |calculation|
+          [ calculation.student_uuid, calculation.ecosystem_uuid ]
+        end
+        ExerciseCalculation.joins(
+          <<~JOIN_SQL
+            INNER JOIN (#{ValuesTable.new(exercise_calculation_values_array)})
+              AS "values" ("student_uuid", "ecosystem_uuid")
+              ON "exercise_calculations"."student_uuid" = "values"."student_uuid"::uuid
+                AND "exercise_calculations"."ecosystem_uuid" = "values"."ecosystem_uuid"::uuid
+          JOIN_SQL
+        ).update_all superseded_at: start_time
+
         # Record the ExerciseCalculations
         ExerciseCalculation.import(
-          exercise_calculations.sort_by(&ExerciseCalculation.sort_proc),
-          validate: false, on_duplicate_key_update: {
-            conflict_target: [ :student_uuid, :ecosystem_uuid ],
-            columns: [ :uuid, :algorithm_names ]
-          }
+          exercise_calculations.sort_by(&ExerciseCalculation.sort_proc), validate: false
         )
 
         # Mark assignments that got new calculations (and any others we might have missed)
         mark_assignments_with_calculations(ec, st, aa)
-
-        # Cleanup AlgorithmExerciseCalculations that no longer have
-        # an associated ExerciseCalculation record
-        AlgorithmExerciseCalculation.unassociated.ordered_delete_all
 
         [ num_responses, course_pairs.size, assignment_pairs.size ]
       end
@@ -130,7 +136,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
       .where(
         ExerciseCalculation.where(
           ec[:student_uuid].eq(st[:uuid]).and ec[:ecosystem_uuid].eq(aa[:ecosystem_uuid])
-        ).exists
+        ).arel.exists
       )
       .lock('FOR NO KEY UPDATE OF "assignments" SKIP LOCKED')
       .pluck(:uuid)

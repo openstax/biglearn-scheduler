@@ -3,6 +3,10 @@ class ApplicationRecord < ActiveRecord::Base
 
   validates :uuid, presence: true, uniqueness: true
 
+  def self.sanitize(sql)
+    connection.quote sql
+  end
+
   def self.recursive_hash_to_array(hash)
     hash.respond_to?(:map) ? hash.map { |val| recursive_hash_to_array(val) } : hash
   end
@@ -25,7 +29,7 @@ class ApplicationRecord < ActiveRecord::Base
 
         scoped_to_table_name = scope_reflection.table_name.to_sym
         scope_columns = scope_reflection.klass.order_columns.map do |column|
-          "\"#{scoped_to_table_name}\".\"#{column}\""
+          Arel.sql "\"#{scoped_to_table_name}\".\"#{column}\""
         end
         rel = rel.order(*scope_columns)
       end
@@ -80,5 +84,27 @@ class ApplicationRecord < ActiveRecord::Base
 
     uniqueness_args = other_columns.empty? ? true : { scope: other_columns }
     validates last_column, presence: true, uniqueness: uniqueness_args
+  end
+end
+
+# https://github.com/rails/rails/issues/32374#issuecomment-378122738
+module ActiveRecord
+  class TableMetadata
+    def associated_table(table_name)
+      association = klass._reflect_on_association(table_name) || klass._reflect_on_association(table_name.to_s.singularize)
+
+      if !association && table_name == arel_table.name
+        return self
+      elsif association && !association.polymorphic?
+        association_klass = association.klass
+        arel_table = association_klass.arel_table
+      else
+        type_caster = TypeCaster::Connection.new(klass, table_name)
+        association_klass = nil
+        arel_table = Arel::Table.new(table_name, type_caster: type_caster)
+      end
+
+      TableMetadata.new(association_klass, arel_table, association)
+    end
   end
 end

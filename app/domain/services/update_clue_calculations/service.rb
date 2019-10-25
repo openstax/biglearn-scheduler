@@ -103,11 +103,12 @@ class Services::UpdateClueCalculations::Service < Services::ApplicationService
             StudentPe.clue_to_exercise_algorithm_name(calculation.algorithm_name)
           ]
         end
-        algorithm_exercise_calculation_join_query = <<-JOIN_SQL.strip_heredoc
+        algorithm_exercise_calculation_join_query = <<~JOIN_SQL
           INNER JOIN (#{ValuesTable.new(student_pes_values_array)})
             AS "values" ("student_uuid", "algorithm_name")
               ON "exercise_calculations"."student_uuid" = "values"."student_uuid"::uuid
                 AND "algorithm_exercise_calculations"."algorithm_name" = "values"."algorithm_name"
+                AND "exercise_calculations"."superseded_at" IS NULL
         JOIN_SQL
 
         AlgorithmExerciseCalculation

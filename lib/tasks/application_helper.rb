@@ -32,7 +32,7 @@ module Tasks
       }
     end
 
-    def run_daemon(task_name, args)
+    def run_daemon(task_name, args, run_every)
       task_name_string = task_name.to_s
       sanitized_task_name = sanitize_filename(task_name_string)
       options = get_daemon_options(sanitized_task_name, args)
@@ -56,18 +56,18 @@ module Tasks
           notify: false
         )
 
-        Worker.new(task_name_string).run
+        Worker.new(task_name_string).run run_every
       end
     end
 
-    def define_worker_tasks(task_name, worker_task_suffix = :worker)
+    def define_worker_tasks(task_name, run_every = 1.second, worker_task_suffix = :worker)
       task "#{task_name}:#{worker_task_suffix}" => :environment do |task, args|
-        run_daemon task_name, args
+        run_daemon task_name, args, run_every
       end
 
       DAEMON_COMMANDS.each do |command|
         task "#{task_name}:#{worker_task_suffix}:#{command}" => :environment do |task, args|
-          run_daemon task_name, [command.to_s] + args.to_a
+          run_daemon task_name, [command.to_s] + args.to_a, run_every
         end
       end
     end
