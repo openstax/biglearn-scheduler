@@ -10,7 +10,7 @@ http_interactions:
         UUID>","sequence_number_offset":42}]}'
     headers:
       User-Agent:
-      - Faraday v0.11.0
+      - Faraday v0.16.2
       Content-Type:
       - application/json
       Biglearn-Api-Token:
@@ -25,7 +25,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 24 Aug 2017 16:05:05 GMT
+      - Mon, 28 Oct 2019 21:53:48 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -34,20 +34,26 @@ http_interactions:
       - 1; mode=block
       X-Content-Type-Options:
       - nosniff
+      X-Download-Options:
+      - noopen
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"0a23665695af8eb3d58809f76433690f"
+      - W/"9bfcb4fe29a00a9d2191f40307f88835"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - e674568a-9270-4149-a752-9a6e33c6a820
+      - 199b72f2-51b1-47c3-8aa4-d69726b00abd
       X-Runtime:
-      - '0.044394'
+      - '0.026114'
     body:
       encoding: UTF-8
       string: '{"course_event_responses":[{"request_uuid":"<FETCH_COURSE_EVENTS EXAMPLE
         1 REQUEST 1 UUID>","course_uuid":"<COURSE UUID>","events":[],"is_gap":false,"is_end":true}]}'
     http_version: 
-  recorded_at: Thu, 24 Aug 2017 16:05:05 GMT
-recorded_with: VCR 3.0.3
+  recorded_at: Mon, 28 Oct 2019 21:53:48 GMT
+recorded_with: VCR 5.0.0

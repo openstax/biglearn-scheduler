@@ -45,38 +45,45 @@ module OpenStax::Biglearn::Api
     end
 
     def update_student_clues(student_clue_updates)
-      bulk_api_request method: :update_student_clues,
-                       requests: student_clue_updates,
-                       keys: [ :algorithm_name, :student_uuid, :book_container_uuid, :clue_data ]
+      bulk_api_request method: :update_student_clues, requests: student_clue_updates, keys: [
+        :algorithm_name, :student_uuid, :book_container_uuid, :clue_data, :calculation_uuid
+      ]
     end
 
     def update_teacher_clues(teacher_clue_updates)
-      bulk_api_request method: :update_teacher_clues,
-                       requests: teacher_clue_updates,
-                       keys: [
-                         :algorithm_name, :course_container_uuid, :book_container_uuid, :clue_data
-                       ]
+      bulk_api_request method: :update_teacher_clues, requests: teacher_clue_updates, keys: [
+        :algorithm_name, :course_container_uuid, :book_container_uuid, :clue_data, :calculation_uuid
+      ]
     end
 
     def update_assignment_pes(pe_updates)
-      bulk_api_request method: :update_assignment_pes,
-                       requests: pe_updates,
-                       keys: [ :algorithm_name, :assignment_uuid, :exercise_uuids ],
-                       optional_keys: :spy_info
+      bulk_api_request method: :update_assignment_pes, requests: pe_updates, keys: [
+        :algorithm_name,
+        :assignment_uuid,
+        :exercise_uuids,
+        :calculation_uuid,
+        :ecosystem_matrix_uuid
+      ], optional_keys: :spy_info
     end
 
     def update_assignment_spes(spe_updates)
-      bulk_api_request method: :update_assignment_spes,
-                       requests: spe_updates,
-                       keys: [ :algorithm_name, :assignment_uuid, :exercise_uuids ],
-                       optional_keys: :spy_info
+      bulk_api_request method: :update_assignment_spes, requests: spe_updates, keys: [
+        :algorithm_name,
+        :assignment_uuid,
+        :exercise_uuids,
+        :calculation_uuid,
+        :ecosystem_matrix_uuid
+      ], optional_keys: :spy_info
     end
 
     def update_practice_worst_areas(practice_worst_areas_updates)
-      bulk_api_request method: :update_practice_worst_areas,
-                       requests: practice_worst_areas_updates,
-                       keys: [ :algorithm_name, :student_uuid, :exercise_uuids ],
-                       optional_keys: :spy_info
+      bulk_api_request method: :update_practice_worst_areas, requests: practice_worst_areas_updates, keys: [
+        :algorithm_name,
+        :student_uuid,
+        :exercise_uuids,
+        :calculation_uuid,
+        :ecosystem_matrix_uuid
+      ], optional_keys: :spy_info
     end
 
     def use_fake_client

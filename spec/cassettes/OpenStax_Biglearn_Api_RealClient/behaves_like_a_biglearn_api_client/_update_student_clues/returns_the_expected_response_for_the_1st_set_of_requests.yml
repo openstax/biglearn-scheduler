@@ -7,11 +7,11 @@ http_interactions:
       encoding: UTF-8
       string: '{"student_clue_updates":[{"request_uuid":"<UPDATE_STUDENT_CLUES EXAMPLE
         1 REQUEST 1 UUID>","book_container_uuid":"<BOOK CONTAINER UUID>","student_uuid":"<STUDENT
-        UUID>","clue_data":{"minimum":0.000230118152324321,"most_likely":0.00238430855610272,"maximum":0.758108043561826,"is_real":true,"ecosystem_uuid":"<ECOSYSTEM
-        UUID>"},"algorithm_name":"local_query"}]}'
+        UUID>","clue_data":{"minimum":0.35006478710348476,"most_likely":0.3570685642453756,"maximum":0.3787248547380806,"is_real":false,"ecosystem_uuid":"<ECOSYSTEM
+        UUID>"},"algorithm_name":"local_query","calculation_uuid":"ef27914e-025b-46e1-9096-2fdafea23ffb"}]}'
     headers:
       User-Agent:
-      - Faraday v0.11.0
+      - Faraday v0.16.2
       Content-Type:
       - application/json
       Biglearn-Api-Token:
@@ -26,7 +26,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 27 Jun 2017 23:16:57 GMT
+      - Mon, 28 Oct 2019 21:53:48 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -35,20 +35,26 @@ http_interactions:
       - 1; mode=block
       X-Content-Type-Options:
       - nosniff
+      X-Download-Options:
+      - noopen
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"9fd0c1dc78f890aaf983d42787c2b7c5"
+      - W/"b6729e672b091d116f7787680095871e"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 24b1a22d-3e21-4d90-a753-76a7494d8a30
+      - b84ef90c-15c2-4540-b674-ef5c167016e3
       X-Runtime:
-      - '0.062809'
+      - '0.076362'
     body:
       encoding: UTF-8
       string: '{"student_clue_update_responses":[{"request_uuid":"<UPDATE_STUDENT_CLUES
         EXAMPLE 1 REQUEST 1 UUID>","update_status":"accepted"}]}'
     http_version: 
-  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
-recorded_with: VCR 3.0.3
+  recorded_at: Mon, 28 Oct 2019 21:53:48 GMT
+recorded_with: VCR 5.0.0
