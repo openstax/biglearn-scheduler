@@ -7,11 +7,11 @@ http_interactions:
       encoding: UTF-8
       string: '{"teacher_clue_updates":[{"request_uuid":"<UPDATE_TEACHER_CLUES EXAMPLE
         1 REQUEST 1 UUID>","book_container_uuid":"<BOOK CONTAINER UUID>","course_container_uuid":"<COURSE
-        CONTAINER UUID>","clue_data":{"minimum":0.000230118152324321,"most_likely":0.00238430855610272,"maximum":0.758108043561826,"is_real":true,"ecosystem_uuid":"<ECOSYSTEM
-        UUID>"},"algorithm_name":"local_query"}]}'
+        CONTAINER UUID>","clue_data":{"minimum":0.35006478710348476,"most_likely":0.3570685642453756,"maximum":0.3787248547380806,"is_real":false,"ecosystem_uuid":"<ECOSYSTEM
+        UUID>"},"algorithm_name":"local_query","calculation_uuid":"ef27914e-025b-46e1-9096-2fdafea23ffb"}]}'
     headers:
       User-Agent:
-      - Faraday v0.11.0
+      - Faraday v0.16.2
       Content-Type:
       - application/json
       Biglearn-Api-Token:
@@ -26,7 +26,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 27 Jun 2017 23:16:57 GMT
+      - Mon, 28 Oct 2019 21:53:48 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -35,20 +35,26 @@ http_interactions:
       - 1; mode=block
       X-Content-Type-Options:
       - nosniff
+      X-Download-Options:
+      - noopen
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"46a16a422f73e2dfc7340cfa289a2437"
+      - W/"bfe5712c7d6e464bf67a6d5a14519f6e"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 9ac14e0c-2d95-43d9-beac-5bb540128f8a
+      - ad901525-31f7-4b8e-bc62-951d1564a98b
       X-Runtime:
-      - '0.043770'
+      - '0.028728'
     body:
       encoding: UTF-8
       string: '{"teacher_clue_update_responses":[{"request_uuid":"<UPDATE_TEACHER_CLUES
         EXAMPLE 1 REQUEST 1 UUID>","update_status":"accepted"}]}'
     http_version: 
-  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
-recorded_with: VCR 3.0.3
+  recorded_at: Mon, 28 Oct 2019 21:53:48 GMT
+recorded_with: VCR 5.0.0

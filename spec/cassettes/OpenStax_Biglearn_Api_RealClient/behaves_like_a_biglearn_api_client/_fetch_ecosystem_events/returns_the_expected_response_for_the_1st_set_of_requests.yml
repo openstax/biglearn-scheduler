@@ -10,7 +10,7 @@ http_interactions:
         UUID>","sequence_number_offset":42}]}'
     headers:
       User-Agent:
-      - Faraday v0.11.0
+      - Faraday v0.16.2
       Content-Type:
       - application/json
       Biglearn-Api-Token:
@@ -25,7 +25,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Thu, 24 Aug 2017 16:05:04 GMT
+      - Mon, 28 Oct 2019 21:53:48 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -34,20 +34,26 @@ http_interactions:
       - 1; mode=block
       X-Content-Type-Options:
       - nosniff
+      X-Download-Options:
+      - noopen
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"99604f80068e8a5988550bed03b3e288"
+      - W/"991e960dc1852675467c79fc51443389"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - af629beb-3838-49bb-a4ef-1c257449df65
+      - 8926d327-ea5e-42bc-9e47-c3ea2f53fc42
       X-Runtime:
-      - '0.497502'
+      - '0.021800'
     body:
       encoding: UTF-8
       string: '{"ecosystem_event_responses":[{"request_uuid":"<FETCH_ECOSYSTEM_EVENTS
         EXAMPLE 1 REQUEST 1 UUID>","ecosystem_uuid":"<ECOSYSTEM UUID>","events":[],"is_gap":false,"is_end":true}]}'
     http_version: 
-  recorded_at: Thu, 24 Aug 2017 16:05:04 GMT
-recorded_with: VCR 3.0.3
+  recorded_at: Mon, 28 Oct 2019 21:53:48 GMT
+recorded_with: VCR 5.0.0

@@ -7,12 +7,12 @@ http_interactions:
       encoding: UTF-8
       string: '{"spe_updates":[{"request_uuid":"<UPDATE_ASSIGNMENT_SPES EXAMPLE 1
         REQUEST 1 UUID>","algorithm_name":"instructor_driven_local_query","assignment_uuid":"<ASSIGNMENT
-        UUID>","exercise_uuids":<EXERCISE UUIDS>,"spy_info":{"test":true}},{"request_uuid":"<UPDATE_ASSIGNMENT_SPES
+        UUID>","exercise_uuids":<EXERCISE UUIDS>,"spy_info":{"test":true},"calculation_uuid":"ef27914e-025b-46e1-9096-2fdafea23ffb","ecosystem_matrix_uuid":"45e9e448-21b5-41bf-a2f3-cbabde70fbee"},{"request_uuid":"<UPDATE_ASSIGNMENT_SPES
         EXAMPLE 1 REQUEST 2 UUID>","algorithm_name":"student_driven_local_query","assignment_uuid":"<ASSIGNMENT
-        UUID>","exercise_uuids":<EXERCISE UUIDS>,"spy_info":{"test":true}}]}'
+        UUID>","exercise_uuids":<EXERCISE UUIDS>,"spy_info":{"test":true},"calculation_uuid":"ef27914e-025b-46e1-9096-2fdafea23ffb","ecosystem_matrix_uuid":"45e9e448-21b5-41bf-a2f3-cbabde70fbee"}]}'
     headers:
       User-Agent:
-      - Faraday v0.11.0
+      - Faraday v0.16.2
       Content-Type:
       - application/json
       Biglearn-Api-Token:
@@ -27,7 +27,7 @@ http_interactions:
       message: OK
     headers:
       Date:
-      - Tue, 27 Jun 2017 23:16:57 GMT
+      - Mon, 28 Oct 2019 21:53:48 GMT
       Connection:
       - close
       X-Frame-Options:
@@ -36,21 +36,27 @@ http_interactions:
       - 1; mode=block
       X-Content-Type-Options:
       - nosniff
+      X-Download-Options:
+      - noopen
+      X-Permitted-Cross-Domain-Policies:
+      - none
+      Referrer-Policy:
+      - strict-origin-when-cross-origin
       Content-Type:
       - application/json; charset=utf-8
       Etag:
-      - W/"4150cd13490e0371247d1f5ba89d4da1"
+      - W/"ab48c9f7879dd1518113285432947ca1"
       Cache-Control:
       - max-age=0, private, must-revalidate
       X-Request-Id:
-      - 613dbb30-a9d7-4232-8b97-3d9424d0765a
+      - 1229654a-68a8-4ca0-b57f-5edb2bb1ea1f
       X-Runtime:
-      - '0.055405'
+      - '0.361545'
     body:
       encoding: UTF-8
       string: '{"spe_update_responses":[{"request_uuid":"<UPDATE_ASSIGNMENT_SPES EXAMPLE
         1 REQUEST 1 UUID>","update_status":"accepted"},{"request_uuid":"<UPDATE_ASSIGNMENT_SPES
         EXAMPLE 1 REQUEST 2 UUID>","update_status":"accepted"}]}'
     http_version: 
-  recorded_at: Tue, 27 Jun 2017 23:16:57 GMT
-recorded_with: VCR 3.0.3
+  recorded_at: Mon, 28 Oct 2019 21:53:48 GMT
+recorded_with: VCR 5.0.0
