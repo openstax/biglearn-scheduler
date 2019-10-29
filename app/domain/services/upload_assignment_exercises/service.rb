@@ -37,16 +37,18 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         algorithm_exercise_calculations_by_uuid = algorithm_exercise_calculations.index_by(&:uuid)
         algorithm_exercise_calculation_uuids = algorithm_exercise_calculations_by_uuid.keys
 
-        assignments = Assignment
-          .select(aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid'))
+        all_assignments = Assignment
+          .select(
+            aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid'), ec[:superseded_at]
+          )
           .joins(exercise_calculation: :algorithm_exercise_calculations)
           .where(uuid: algorithm_exercise_calculations.flat_map(&:pending_assignment_uuids))
           .where(
             exercise_calculation: {
-              algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids },
-              superseded_at: nil
+              algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids }
             }
           )
+        assignments = all_assignments.select { |assignment| assignment.superseded_at.nil? }
 
         # Delete relevant AssignmentPe and AssignmentSpes, since we are about to reupload them
         pe_assignments = assignments.select(&:needs_pes?)
@@ -554,8 +556,10 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
                        .ordered_delete_all
         end
 
-        # Mark the AlgorithmExerciseCalculations as uploaded
-        assignments.group_by(&:algorithm_exercise_calculation_uuid).each do |calc_uuid, assignments|
+        # Mark the AlgorithmExerciseCalculations as uploaded (even the superseded ones)
+        all_assignments.group_by(
+          &:algorithm_exercise_calculation_uuid
+        ).each do |calc_uuid, assignments|
           algorithm_exercise_calculation = algorithm_exercise_calculations_by_uuid[calc_uuid]
           algorithm_exercise_calculation.pending_assignment_uuids -= assignments.map(&:uuid)
         end

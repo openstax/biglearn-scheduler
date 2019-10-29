@@ -21,7 +21,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
         # Find algorithm_exercise_calculations with students that need PEs
         # No order needed because of SKIP LOCKED
         algorithm_exercise_calculations = AlgorithmExerciseCalculation
-          .select(:uuid, :algorithm_name, :exercise_uuids)
+          .select(:uuid, :algorithm_name, :exercise_uuids, :ecosystem_matrix_uuid)
           .where(is_pending_for_student: true)
           .lock('FOR NO KEY UPDATE SKIP LOCKED')
           .take(BATCH_SIZE)
@@ -203,6 +203,7 @@ class Services::UploadStudentExercises::Service < Services::ApplicationService
 
           student_pe_request = {
             calculation_uuid: algorithm_exercise_calculation_uuid,
+            ecosystem_matrix_uuid: algorithm_exercise_calculation.ecosystem_matrix_uuid,
             student_uuid: student_uuid,
             exercise_uuids: chosen_pe_uuids,
             algorithm_name: exercise_algorithm_name,
