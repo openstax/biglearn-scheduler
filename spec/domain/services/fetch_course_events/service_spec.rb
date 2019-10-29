@@ -524,6 +524,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           spes_are_assigned: spes_are_assigned,
           goal_num_tutor_assigned_pes: goal_num_tutor_assigned_pes,
           pes_are_assigned: pes_are_assigned,
+          is_deleted: true,
           assigned_exercises: assigned_exercises
         }
       end
@@ -554,7 +555,9 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
                                     end.from(false).to(true)
                                   )
                                   .and not_change { other_assignment.reload.spes_are_assigned }
-                                  .and not_change { other_assignment.reload.pes_are_assigned }
+                                  .and not_change { other_assignment.pes_are_assigned }
+                                  .and not_change { other_assignment.is_deleted }
+                                  .and not_change { other_assignment.has_exercise_calculation }
                                   .and change     { course.reload.sequence_number }
                                                     .from(0).to(sequence_number + 1)
                                   .and not_change { course.ecosystem_uuid }
@@ -577,6 +580,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         expect(assignment.spes_are_assigned).to eq spes_are_assigned
         expect(assignment.goal_num_tutor_assigned_pes).to eq goal_num_tutor_assigned_pes
         expect(assignment.pes_are_assigned).to eq pes_are_assigned
+        expect(assignment.is_deleted).to eq true
+        expect(assignment.has_exercise_calculation).to eq true
       end
 
       context 'with an existing assignment with SPE/PE calculations and associated records' do

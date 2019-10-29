@@ -35,59 +35,74 @@ RSpec.describe Assignment, type: :model do
 
     let!(:assignment_1) do
       FactoryBot.create :assignment, student_uuid: student_uuid,
-                                      assignment_type: assignment_type,
-                                      due_at: current_time.yesterday,
-                                      opens_at: current_time.yesterday - 2.days,
-                                      student_history_at: current_time
+                                     assignment_type: assignment_type,
+                                     due_at: current_time.yesterday,
+                                     opens_at: current_time.yesterday - 2.days,
+                                     student_history_at: current_time,
+                                     is_deleted: false
     end
     let!(:assignment_2) do
       FactoryBot.create :assignment, student_uuid: student_uuid,
-                                      assignment_type: assignment_type,
-                                      due_at: current_time.yesterday,
-                                      opens_at: current_time.yesterday - 2.days,
-                                      student_history_at: current_time
+                                     assignment_type: assignment_type,
+                                     due_at: current_time.yesterday,
+                                     opens_at: current_time.yesterday - 2.days,
+                                     student_history_at: current_time,
+                                     is_deleted: false
     end
     let!(:assignment_3) do
       FactoryBot.create :assignment, student_uuid: student_uuid,
-                                      assignment_type: assignment_type,
-                                      due_at: current_time.yesterday,
-                                      opens_at: current_time.yesterday - 1.day,
-                                      student_history_at: current_time - 1.day
+                                     assignment_type: assignment_type,
+                                     due_at: current_time.yesterday,
+                                     opens_at: current_time.yesterday - 1.day,
+                                     student_history_at: current_time - 1.day,
+                                     is_deleted: false
     end
     let!(:assignment_4) do
       FactoryBot.create :assignment, student_uuid: student_uuid,
-                                      assignment_type: assignment_type,
-                                      due_at: current_time.yesterday,
-                                      opens_at: current_time.yesterday - 1.day,
-                                      student_history_at: current_time - 1.day
+                                     assignment_type: assignment_type,
+                                     due_at: current_time.yesterday,
+                                     opens_at: current_time.yesterday - 1.day,
+                                     student_history_at: current_time - 1.day,
+                                     is_deleted: false
     end
     let!(:assignment_5) do
       FactoryBot.create :assignment, student_uuid: student_uuid,
-                                      assignment_type: assignment_type,
-                                      due_at: current_time,
-                                      opens_at: current_time.yesterday - 2.days
+                                     assignment_type: assignment_type,
+                                     due_at: current_time,
+                                     opens_at: current_time.yesterday - 2.days,
+                                     is_deleted: false
     end
     let!(:assignment_6) do
       FactoryBot.create :assignment, student_uuid: student_uuid,
-                                      assignment_type: assignment_type,
-                                      due_at: current_time,
-                                      opens_at: current_time.yesterday - 2.days
+                                     assignment_type: assignment_type,
+                                     due_at: current_time,
+                                     opens_at: current_time.yesterday - 2.days,
+                                     is_deleted: false
     end
     let!(:assignment_7) do
       FactoryBot.create :assignment, student_uuid: student_uuid,
-                                      assignment_type: assignment_type,
-                                      due_at: current_time,
-                                      opens_at: current_time.yesterday - 1.day
+                                     assignment_type: assignment_type,
+                                     due_at: current_time,
+                                     opens_at: current_time.yesterday - 1.day,
+                                     is_deleted: false
     end
     let!(:assignment_8) do
       FactoryBot.create :assignment, student_uuid: student_uuid,
-                                      assignment_type: assignment_type,
-                                      due_at: current_time,
-                                      opens_at: current_time.yesterday - 1.day
+                                     assignment_type: assignment_type,
+                                     due_at: current_time,
+                                     opens_at: current_time.yesterday - 1.day,
+                                     is_deleted: false
+    end
+    let!(:deleted_assignment) do
+      FactoryBot.create :assignment, student_uuid: student_uuid,
+                                     assignment_type: assignment_type,
+                                     due_at: current_time,
+                                     opens_at: current_time.yesterday - 2.days,
+                                     is_deleted: true
     end
 
     context '#with_instructor_and_student_driven_sequence_numbers_subquery' do
-      it 'assigns instructor_driven_sequence_numbers based on due_at, opens_at and created_at' do
+      it 'assigns instructor sequence_numbers from is_deleted, due_at, opens_at and created_at' do
         assignments = Assignment.with_instructor_and_student_driven_sequence_numbers_subquery(
           student_uuids: [ student_uuid ], assignment_types: [ assignment_type ]
         ).to_a
@@ -101,7 +116,7 @@ RSpec.describe Assignment, type: :model do
         end
       end
 
-      it 'assigns student_driven_sequence_numbers based on student_history_at and tiebreakers' do
+      it 'assigns student sequence_numbers from is_deleted, student_history_at and tiebreakers' do
         assignments = Assignment.with_instructor_and_student_driven_sequence_numbers_subquery(
           student_uuids: [ student_uuid ], assignment_types: [ assignment_type ]
         ).to_a

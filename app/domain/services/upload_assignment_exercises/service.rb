@@ -48,7 +48,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
               algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids }
             }
           )
-        assignments = all_assignments.select { |assignment| assignment.superseded_at.nil? }
+        assignments = all_assignments.select do |assignment|
+          !assignment.is_deleted && assignment.superseded_at.nil?
+        end
 
         # Delete relevant AssignmentPe and AssignmentSpes, since we are about to reupload them
         pe_assignments = assignments.select(&:needs_pes?)
