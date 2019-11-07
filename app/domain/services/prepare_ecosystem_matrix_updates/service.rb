@@ -122,9 +122,13 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
             )
           end
 
+          ecosystem_matrix_update_uuids = EcosystemMatrixUpdate.where(
+            ecosystem_uuid: ecosystem_uuids
+          ).ordered.lock('FOR UPDATE').pluck(:uuid)
+
           # Record any new ecosystem matrix updates
           EcosystemMatrixUpdate.import(
-            ecosystem_matrix_updates.sort_by(&EcosystemMatrixUpdate.sort_proc),
+            ecosystem_matrix_updates,
             validate: false, on_duplicate_key_update: {
               conflict_target: [ :ecosystem_uuid ], columns: [ :uuid, :algorithm_names ]
             }
@@ -132,7 +136,9 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
 
           # Cleanup AlgorithmEcosystemMatrixUpdates that no longer have
           # an associated EcosystemMatrixUpdate record
-          AlgorithmEcosystemMatrixUpdate.unassociated.ordered_delete_all
+          AlgorithmEcosystemMatrixUpdate.where(
+            ecosystem_matrix_update_uuid: ecosystem_matrix_update_uuids
+          ).delete_all
 
           [ num_exercise_groups, num_ecosystems ]
         end
