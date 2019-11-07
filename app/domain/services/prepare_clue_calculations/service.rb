@@ -572,10 +572,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         # an associated ClueCalculation record
         AlgorithmStudentClueCalculation.where(
           student_clue_calculation_uuid: updated_scc_uuids
-        ).ordered_delete_all
+        ).delete_all
         AlgorithmTeacherClueCalculation.where(
           teacher_clue_calculation_uuid: updated_tcc_uuids
-        ).ordered_delete_all
+        ).delete_all
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
         # No order needed because already locked above

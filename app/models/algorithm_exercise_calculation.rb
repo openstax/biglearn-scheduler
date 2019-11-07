@@ -16,15 +16,7 @@ class AlgorithmExerciseCalculation < ApplicationRecord
                                     foreign_key: :exercise_calculation_uuid,
                                     inverse_of: :algorithm_exercise_calculations
 
-  unique_index :exercise_calculation_uuid, :algorithm_name, scoped_to: :exercise_calculation
+  unique_index :exercise_calculation_uuid, :algorithm_name
 
   validates :exercise_uuids, presence: true
-
-  scope :unassociated, -> do
-    where.not(
-      ExerciseCalculation.where(
-        '"uuid" = "algorithm_exercise_calculations"."exercise_calculation_uuid"'
-      ).arel.exists
-    )
-  end
 end
