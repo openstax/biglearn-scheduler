@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_10_04_150206) do
+ActiveRecord::Schema.define(version: 2019_10_29_193215) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
@@ -130,6 +130,7 @@ ActiveRecord::Schema.define(version: 2019_10_04_150206) do
     t.datetime "updated_at", null: false
     t.datetime "student_history_at"
     t.boolean "has_exercise_calculation", null: false
+    t.boolean "is_deleted", null: false
     t.index ["course_uuid"], name: "index_assignments_on_course_uuid"
     t.index ["due_at", "opens_at", "created_at"], name: "index_assignments_on_due_at_and_opens_at_and_created_at"
     t.index ["due_at", "student_history_at"], name: "index_assignments_on_due_at_and_student_history_at"

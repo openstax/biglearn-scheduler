@@ -314,7 +314,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         goal_num_tutor_assigned_spes: 0,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 0,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        is_deleted: false
       )
 
       # 2 SPEs (1 random-ago), 1 PEs requested; PE is filled
@@ -337,7 +338,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         goal_num_tutor_assigned_spes: 2,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 1,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        is_deleted: false
       )
 
       # 3 SPEs (1 random-ago), 2 PEs requested; PEs are filled taking 2 out of 3 available exercises
@@ -360,7 +362,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 2,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        is_deleted: false
       )
 
       # These homeworks are taking all available exercises, so no PEs are possible
@@ -386,7 +389,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 1,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        is_deleted: false
       )
 
       # Immediate feedback
@@ -411,7 +415,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         goal_num_tutor_assigned_spes: 2,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 1,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        is_deleted: false
       )
 
       # Feedback on due date
@@ -435,7 +440,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         goal_num_tutor_assigned_spes: 3,
         spes_are_assigned: false,
         goal_num_tutor_assigned_pes: 1,
-        pes_are_assigned: false
+        pes_are_assigned: false,
+        is_deleted: false
       )
 
       exercise_calculation_1 = FactoryBot.create(

@@ -100,7 +100,7 @@ class Assignment < ApplicationRecord
               END ASC
           ) AS "student_driven_sequence_number"
       SELECT_SQL
-    )
+    ).where(is_deleted: false)
 
     rel = rel.where(student_uuid: student_uuids) unless student_uuids.nil?
     rel = rel.where(assignment_type: assignment_types) unless assignment_types.nil?

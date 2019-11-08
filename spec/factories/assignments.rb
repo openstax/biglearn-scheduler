@@ -16,6 +16,7 @@ FactoryBot.define do
     spes_are_assigned             { [true, false].sample }
     goal_num_tutor_assigned_pes   { [rand(10), nil].sample }
     pes_are_assigned              { [true, false].sample }
+    is_deleted                    { [true, false].sample }
     has_exercise_calculation      { [true, false].sample }
 
     after(:create) do |assignment|
