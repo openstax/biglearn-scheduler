@@ -12,30 +12,13 @@ class ApplicationRecord < ActiveRecord::Base
   end
 
   # The columns listed here should make up a unique index that exists on the record's table
-  def self.unique_index(*columns, scoped_to: nil)
+  def self.unique_index(*columns)
     raise ArgumentError if columns.size == 0
 
     class_attribute :order_columns
     self.order_columns = columns
 
-    scope_reflection = reflect_on_association(scoped_to) unless scoped_to.nil?
-
-    scope :ordered, -> do
-      rel = all
-
-      if scope_reflection
-        joins = recursive_hash_to_array(rel.joins_values).flatten
-        rel = rel.left_outer_joins(scoped_to) unless joins.include?(scoped_to.to_sym)
-
-        scoped_to_table_name = scope_reflection.table_name.to_sym
-        scope_columns = scope_reflection.klass.order_columns.map do |column|
-          Arel.sql "\"#{scoped_to_table_name}\".\"#{column}\""
-        end
-        rel = rel.order(*scope_columns)
-      end
-
-      rel.order(*order_columns)
-    end
+    scope :ordered, -> { order(*order_columns) }
 
     # Not quite random order, but gives us 1 of 4 possible orderings, which should reduce collisions
     scope :random_ordered, -> do
@@ -44,17 +27,7 @@ class ApplicationRecord < ActiveRecord::Base
     end
 
     define_singleton_method :sort_proc do
-      ->(model) do
-        scope_order = []
-
-        if scope_reflection
-          scope = model.public_send(scoped_to)
-
-          scope_order = scope.class.sort_proc.call(scope) unless scope.nil?
-        end
-
-        scope_order + order_columns.map { |column| model.public_send column }
-      end
+      ->(model) { order_columns.map { |column| model.public_send column } }
     end
 
     # Deadlock-resistant update_all and delete_all

@@ -3,7 +3,7 @@ class CourseContainer < ApplicationRecord
                       foreign_key: :course_uuid,
                       inverse_of: :course_containers
 
-  unique_index :uuid, scoped_to: :course
+  unique_index :uuid
 
   validates :course_uuid, presence: true
 end

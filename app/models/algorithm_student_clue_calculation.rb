@@ -3,7 +3,7 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
                                         foreign_key: :student_clue_calculation_uuid,
                                         inverse_of: :algorithm_student_clue_calculations
 
-  unique_index :student_clue_calculation_uuid, :algorithm_name, scoped_to: :student_clue_calculation
+  unique_index :student_clue_calculation_uuid, :algorithm_name
 
   validates :clue_data, presence: true
   validates :clue_value, presence: true
@@ -51,14 +51,6 @@ class AlgorithmStudentClueCalculation < ApplicationRecord
           #{"WHERE #{wheres.join(' AND ')}" unless wheres.empty?}
         ) AS algorithm_student_clue_calculations
       SQL
-    )
-  end
-
-  scope :unassociated, -> do
-    where.not(
-      StudentClueCalculation.where(
-        '"uuid" = "algorithm_student_clue_calculations"."student_clue_calculation_uuid"'
-      ).arel.exists
     )
   end
 end

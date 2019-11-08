@@ -20,12 +20,4 @@ class AssignmentSpe < ApplicationRecord
   end
 
   unique_index :assignment_uuid, :algorithm_exercise_calculation_uuid, :history_type, :exercise_uuid
-
-  scope :unassociated, -> do
-    where.not(
-      AlgorithmExerciseCalculation.where(
-        '"uuid" = "assignment_spes"."algorithm_exercise_calculation_uuid"'
-      ).arel.exists
-    )
-  end
 end

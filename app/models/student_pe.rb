@@ -9,14 +9,6 @@ class StudentPe < ApplicationRecord
   validates :exercise_uuid, presence: true,
                             uniqueness: { scope: :algorithm_exercise_calculation_uuid }
 
-  scope :unassociated, -> do
-    where.not(
-      AlgorithmExerciseCalculation.where(
-        '"uuid" = "student_pes"."algorithm_exercise_calculation_uuid"'
-      ).arel.exists
-    )
-  end
-
   # In case we have to map algorithm names in the future
   def self.clue_to_exercise_algorithm_name(algorithm_name)
     algorithm_name

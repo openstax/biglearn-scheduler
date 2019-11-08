@@ -34,8 +34,8 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
         response_uuids = responses.map(&:uuid)
         responses_by_ecosystem_uuid = responses.group_by(&:ecosystem_uuid)
-        scc_uuids = sccs.map(&:uuid)
-        tcc_uuids = tccs.map(&:uuid)
+        existing_scc_uuids = sccs.map(&:uuid)
+        existing_tcc_uuids = tccs.map(&:uuid)
         student_uuids = (responses + sccs).map(&:student_uuid)
         sccs_by_ecosystem_uuid = sccs.group_by(&:ecosystem_uuid)
         tccs_by_ecosystem_uuid = tccs.group_by(&:ecosystem_uuid)
@@ -71,11 +71,11 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           .pluck(:ecosystem_uuid, :exercise_uuid, :book_container_uuids)
         scc_ecosystem_exercises = EcosystemExercise
           .joins(:student_clue_calculations)
-          .where(student_clue_calculations: { uuid: scc_uuids })
+          .where(student_clue_calculations: { uuid: existing_scc_uuids })
           .pluck(:ecosystem_uuid, :exercise_uuid, :book_container_uuids)
         tcc_ecosystem_exercises = EcosystemExercise
           .joins(:teacher_clue_calculations)
-          .where(teacher_clue_calculations: { uuid: tcc_uuids })
+          .where(teacher_clue_calculations: { uuid: existing_tcc_uuids })
           .pluck(:ecosystem_uuid, :exercise_uuid, :book_container_uuids)
         ecosystem_exercises = response_ecosystem_exercises +
                               scc_ecosystem_exercises +
@@ -498,9 +498,37 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           end
         end
 
+        # Get uuids of records that will be updated
+        student_clue_calculation_values = student_clue_calculations.map do |scc|
+          [ scc.student_uuid, scc.book_container_uuid ]
+        end
+        updated_scc_uuids = StudentClueCalculation.joins(
+          <<~JOIN_SQL
+            INNER JOIN (#{ValuesTable.new(student_clue_calculation_values)}) AS "values"
+              ("student_uuid", "book_container_uuid")
+              ON "student_clue_calculations"."student_uuid" = "values"."student_uuid"::uuid
+                AND "student_clue_calculations"."book_container_uuid" =
+                  "values"."book_container_uuid"::uuid
+          JOIN_SQL
+        ).ordered.lock('FOR UPDATE').pluck(:uuid)
+
+        teacher_clue_calculation_values = teacher_clue_calculations.map do |tcc|
+          [ tcc.course_container_uuid, tcc.book_container_uuid ]
+        end
+        updated_tcc_uuids = TeacherClueCalculation.joins(
+          <<~JOIN_SQL
+            INNER JOIN (#{ValuesTable.new(teacher_clue_calculation_values)}) AS "values"
+              ("course_container_uuid", "book_container_uuid")
+              ON "teacher_clue_calculations"."course_container_uuid" =
+                "values"."course_container_uuid"::uuid
+                AND "teacher_clue_calculations"."book_container_uuid" =
+                  "values"."book_container_uuid"::uuid
+          JOIN_SQL
+        ).ordered.lock('FOR UPDATE').pluck(:uuid)
+
         # Record the ClueCalculations
         StudentClueCalculation.import(
-          student_clue_calculations.sort_by(&StudentClueCalculation.sort_proc),
+          student_clue_calculations,
           validate: false, on_duplicate_key_update: {
             conflict_target: [ :student_uuid, :book_container_uuid ],
             columns: [
@@ -512,8 +540,9 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
             ]
           }
         )
+
         TeacherClueCalculation.import(
-          teacher_clue_calculations.sort_by(&TeacherClueCalculation.sort_proc),
+          teacher_clue_calculations,
           validate: false, on_duplicate_key_update: {
             conflict_target: [ :course_container_uuid, :book_container_uuid ],
             columns: [
@@ -532,13 +561,21 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         # Just so we don't keep retrying to update ClueCalculations that will never succeed
         # (for example, due to an Ecosystem update)
         # No order needed because already locked above
-        StudentClueCalculation.where(uuid: scc_uuids).update_all(recalculate_at: nil)
-        TeacherClueCalculation.where(uuid: tcc_uuids).update_all(recalculate_at: nil)
+        StudentClueCalculation.where(
+          uuid: existing_scc_uuids - updated_scc_uuids
+        ).update_all(recalculate_at: nil)
+        TeacherClueCalculation.where(
+          uuid: existing_tcc_uuids - updated_tcc_uuids
+        ).update_all(recalculate_at: nil)
 
         # Cleanup AlgorithmClueCalculations that no longer have
         # an associated ClueCalculation record
-        AlgorithmStudentClueCalculation.unassociated.ordered_delete_all
-        AlgorithmTeacherClueCalculation.unassociated.ordered_delete_all
+        AlgorithmStudentClueCalculation.where(
+          student_clue_calculation_uuid: updated_scc_uuids
+        ).delete_all
+        AlgorithmTeacherClueCalculation.where(
+          teacher_clue_calculation_uuid: updated_tcc_uuids
+        ).delete_all
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
         # No order needed because already locked above

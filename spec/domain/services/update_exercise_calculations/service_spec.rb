@@ -68,7 +68,10 @@ RSpec.describe Services::UpdateExerciseCalculations::Service, type: :service do
     context 'when non-existing AlgorithmExerciseCalculation' +
             ' algorithm_name and calculation_uuids are given' do
       it 'creates new records and returns calculation_status: "calculation_accepted"' do
-        expect { action }.to change { AlgorithmExerciseCalculation.count }.by(2)
+        expect { action }.to  change     { AlgorithmExerciseCalculation.count }.by(2)
+                         .and not_change { AssignmentPe.count  }
+                         .and not_change { AssignmentSpe.count }
+                         .and not_change { StudentPe.count     }
 
         results.each { |result| expect(result[:calculation_status]).to eq 'calculation_accepted' }
 
@@ -84,17 +87,34 @@ RSpec.describe Services::UpdateExerciseCalculations::Service, type: :service do
     context 'when previously-existing AlgorithmExerciseCalculation' +
             ' algorithm_name and calculation_uuids are given' do
       before do
-        FactoryBot.create :algorithm_exercise_calculation,
-                           exercise_calculation: exercise_calculation_1,
-                           algorithm_name: given_algorithm_name
+        algorithm_exercise_calculation_1 = FactoryBot.create(
+          :algorithm_exercise_calculation,
+          exercise_calculation: exercise_calculation_1, algorithm_name: given_algorithm_name
+        )
+        FactoryBot.create :assignment_pe,
+                          algorithm_exercise_calculation: algorithm_exercise_calculation_1
+        FactoryBot.create :assignment_spe,
+                          algorithm_exercise_calculation: algorithm_exercise_calculation_1
+        FactoryBot.create :student_pe,
+                          algorithm_exercise_calculation: algorithm_exercise_calculation_1
 
-        FactoryBot.create :algorithm_exercise_calculation,
-                           exercise_calculation: exercise_calculation_2,
-                           algorithm_name: given_algorithm_name
+        algorithm_exercise_calculation_2 = FactoryBot.create(
+          :algorithm_exercise_calculation,
+          exercise_calculation: exercise_calculation_2, algorithm_name: given_algorithm_name
+        )
+        FactoryBot.create :assignment_pe,
+                          algorithm_exercise_calculation: algorithm_exercise_calculation_2
+        FactoryBot.create :assignment_spe,
+                          algorithm_exercise_calculation: algorithm_exercise_calculation_2
+        FactoryBot.create :student_pe,
+                          algorithm_exercise_calculation: algorithm_exercise_calculation_2
       end
 
       it 'updates the records and returns calculation_status: "calculation_accepted"' do
-        expect { action }.not_to change { AlgorithmExerciseCalculation.count }
+        expect { action }.to  not_change { AlgorithmExerciseCalculation.count }
+                         .and change     { AssignmentPe.count  }.by(-2)
+                         .and change     { AssignmentSpe.count }.by(-2)
+                         .and change     { StudentPe.count     }.by(-2)
 
         results.each { |result| expect(result[:calculation_status]).to eq 'calculation_accepted' }
 

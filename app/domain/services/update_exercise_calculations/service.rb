@@ -53,34 +53,49 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
         end
       end
 
-      AlgorithmExerciseCalculation.import(
-        algorithm_exercise_calculations.sort_by(&AlgorithmExerciseCalculation.sort_proc),
-        validate: false, on_duplicate_key_update: {
-          conflict_target: [ :exercise_calculation_uuid, :algorithm_name ],
-          columns: [
-            :uuid,
-            :ecosystem_matrix_uuid,
-            :exercise_uuids,
-            :pending_assignment_uuids,
-            :is_pending_for_student
-          ]
-        }
-      )
+      unless algorithm_exercise_calculations.empty?
+        algorithm_exercise_calculation_values = algorithm_exercise_calculations.map do |aec|
+          [ aec.exercise_calculation_uuid, aec.algorithm_name ]
+        end
+        updated_aec_uuids = AlgorithmExerciseCalculation.joins(
+          <<~JOIN_SQL
+            INNER JOIN (#{ValuesTable.new(algorithm_exercise_calculation_values)}) AS "values"
+              ("exercise_calculation_uuid", "algorithm_name")
+              ON "algorithm_exercise_calculations"."exercise_calculation_uuid" =
+                "values"."exercise_calculation_uuid"::uuid
+                AND "algorithm_exercise_calculations"."algorithm_name" = "values"."algorithm_name"
+          JOIN_SQL
+        ).ordered.lock('FOR UPDATE').pluck(:uuid)
 
-      exercise_calculation_uuids_by_algorithm_names.each do |algorithm_name, uuids|
-        sanitized_algorithm_name = ExerciseCalculation.sanitize(algorithm_name.downcase)
-
-        # No order needed because already locked above
-        ExerciseCalculation.where(uuid: uuids).update_all(
-          "\"algorithm_names\" = \"algorithm_names\" || #{sanitized_algorithm_name}::varchar"
+        AlgorithmExerciseCalculation.import(
+          algorithm_exercise_calculations,
+          validate: false, on_duplicate_key_update: {
+            conflict_target: [ :exercise_calculation_uuid, :algorithm_name ],
+            columns: [
+              :uuid,
+              :ecosystem_matrix_uuid,
+              :exercise_uuids,
+              :pending_assignment_uuids,
+              :is_pending_for_student
+            ]
+          }
         )
-      end
 
-      # Cleanup AssignmentSpes, AssignmentPes and StudentPes that no longer have
-      # an associated AlgorithmExerciseCalculation record
-      AssignmentPe.unassociated.ordered_delete_all
-      AssignmentSpe.unassociated.ordered_delete_all
-      StudentPe.unassociated.ordered_delete_all
+        exercise_calculation_uuids_by_algorithm_names.each do |algorithm_name, uuids|
+          sanitized_algorithm_name = ExerciseCalculation.sanitize(algorithm_name.downcase)
+
+          # No order needed because already locked above
+          ExerciseCalculation.where(uuid: uuids).update_all(
+            "\"algorithm_names\" = \"algorithm_names\" || #{sanitized_algorithm_name}::varchar"
+          )
+        end
+
+        # Cleanup AssignmentSpes, AssignmentPes and StudentPes that no longer have
+        # an associated AlgorithmExerciseCalculation record
+        AssignmentPe.where( algorithm_exercise_calculation_uuid: updated_aec_uuids).delete_all
+        AssignmentSpe.where(algorithm_exercise_calculation_uuid: updated_aec_uuids).delete_all
+        StudentPe.where(    algorithm_exercise_calculation_uuid: updated_aec_uuids).delete_all
+      end
 
       { exercise_calculation_update_responses: exercise_calculation_update_responses }
     end
