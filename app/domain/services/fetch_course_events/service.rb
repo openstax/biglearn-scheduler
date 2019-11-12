@@ -131,21 +131,30 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       course_uuids_to_requery << course.uuid \
         unless course_event_response.fetch(:is_gap) || course_event_response.fetch(:is_end)
 
+      limit_sequence_number = [
+        course.sequence_number, events.map { |event| event.fetch(:sequence_number) }.max + 1
+      ].max
+
       events_by_type = events.group_by { |event| event.fetch(:event_type) }
 
       # Prepare course ecosystem is stored for a future update
       # and used as a signal to start precomputing CLUes and PracticeWorstAreas
       prepare_ecosystems = events_by_type['prepare_course_ecosystem'] || []
-      course_ecosystem_preparations = prepare_ecosystems.map do |prepare_course_ecosystem|
+      book_container_mappings_by_sequence_number = {}
+      ecosystem_preparations_by_sequence_number = {}
+      prepare_ecosystems.each do |prepare_course_ecosystem|
         data = prepare_course_ecosystem.fetch(:event_data)
 
         ecosystem_map = data.fetch(:ecosystem_map)
 
+        sequence_number = prepare_course_ecosystem.fetch :sequence_number
+
         # Forward mappings
         from_ecosystem_uuid = ecosystem_map.fetch(:from_ecosystem_uuid)
         to_ecosystem_uuid = ecosystem_map.fetch(:to_ecosystem_uuid)
-        ecosystem_map.fetch(:book_container_mappings).each do |mapping|
-          book_container_mappings << BookContainerMapping.new(
+        book_container_mappings_by_sequence_number[sequence_number] = \
+          ecosystem_map.fetch(:book_container_mappings).map do |mapping|
+          BookContainerMapping.new(
             uuid: SecureRandom.uuid,
             from_ecosystem_uuid: from_ecosystem_uuid,
             to_ecosystem_uuid: to_ecosystem_uuid,
@@ -154,13 +163,11 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           )
         end
 
-        EcosystemPreparation.new(
+        ecosystem_preparations_by_sequence_number[sequence_number] = EcosystemPreparation.new(
           uuid: data.fetch(:preparation_uuid),
           course_uuid: data.fetch(:course_uuid),
           ecosystem_uuid: data.fetch(:ecosystem_uuid)
-        ).tap do |ecosystem_preparation|
-          ecosystem_preparations << ecosystem_preparation
-        end
+        )
       end
 
       # Update course ecosystem changes the course ecosystem and is used as a signal
@@ -171,11 +178,33 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         preparation_uuid = last_update_ecosystem.fetch(:event_data).fetch(:preparation_uuid)
         # Look in the current updates for the EcosystemPreparation
         # If not found, look in the database
-        preparation = course_ecosystem_preparations.find { |prep| prep.uuid == preparation_uuid }
+        preparation = ecosystem_preparations_by_sequence_number.values.find do |prep|
+          prep.uuid == preparation_uuid
+        end
         preparation ||= EcosystemPreparation.find_by uuid: preparation_uuid
-        course.ecosystem_uuid = preparation.ecosystem_uuid
-        course_uuids_with_changed_ecosystems << course.uuid
+
+        if preparation.nil?
+          # Stop right before this event if the preparation was not found
+          # We'll retry later and hopefully find the missing preparation or skip over it
+          limit_sequence_number = last_update_ecosystem.fetch :sequence_number
+
+          events_by_type.each do |_, events|
+            events.reject! { |event| event.fetch(:sequence_number) >= limit_sequence_number }
+          end
+          book_container_mappings_by_sequence_number.delete_if do |sequence_number, _|
+            sequence_number >= limit_sequence_number
+          end
+          ecosystem_preparations_by_sequence_number.delete_if do |sequence_number, _|
+            sequence_number >= limit_sequence_number
+          end
+        else
+          course.ecosystem_uuid = preparation.ecosystem_uuid
+          course_uuids_with_changed_ecosystems << course.uuid
+        end
       end
+
+      book_container_mappings.concat book_container_mappings_by_sequence_number.values.flatten
+      ecosystem_preparations.concat ecosystem_preparations_by_sequence_number.values
 
       # Update roster changes the students and periods we compute CLUes for
       update_rosters = events_by_type['update_roster'] || []
@@ -312,7 +341,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           spes_are_assigned: data.fetch(:spes_are_assigned),
           goal_num_tutor_assigned_pes: data[:goal_num_tutor_assigned_pes],
           pes_are_assigned: data.fetch(:pes_are_assigned),
-          is_deleted: data.fetch(:is_deleted),
+          is_deleted: data.fetch(:is_deleted, false),
           has_exercise_calculation: !pe_calculation_uuid.nil? || !spe_calculation_uuid.nil?
         )
 
@@ -354,9 +383,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         )
       end
 
-      course.sequence_number = [
-        course.sequence_number, events.map { |event| event.fetch(:sequence_number) }.max + 1
-      ].max
+      course.sequence_number = limit_sequence_number
 
       course
     end.compact
