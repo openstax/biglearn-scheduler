@@ -131,9 +131,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       course_uuids_to_requery << course.uuid \
         unless course_event_response.fetch(:is_gap) || course_event_response.fetch(:is_end)
 
-      limit_sequence_number = [
-        course.sequence_number, events.map { |event| event.fetch(:sequence_number) }.max + 1
-      ].max
+      limit_sequence_number = (
+        [ course.sequence_number ] + events.map { |event| event.fetch(:sequence_number) + 1 }
+      ).max
 
       events_by_type = events.group_by { |event| event.fetch(:event_type) }
 
