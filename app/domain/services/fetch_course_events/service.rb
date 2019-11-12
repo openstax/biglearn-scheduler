@@ -611,16 +611,6 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
       .pluck(:uuid)
 
-      # Anti-cheating: we don't allow StudentPes that have already been assigned elsewhere
-      # Recalculate Student PEs that conflict with the AssignedExercises that were just created
-      AlgorithmExerciseCalculation
-        .joins(
-          :student_pes, exercise_calculation: { student: { assignments: :assigned_exercises } }
-        )
-        .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
-        .where(assigned_exercises: { uuid: assigned_exercise_uuids })
-        .ordered_update_all(is_pending_for_student: true) unless assigned_exercise_uuids.empty?
-
       # Recalculate Assignment PEs and SPEs for updated assignments and
       # Assignment PEs and SPEs that conflict with the AssignedExercises that were just
       # created to prevent any assignment from getting a PE or SPE that was already used elsewhere
@@ -683,6 +673,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       algorithm_exercise_calculation_values = []
       AlgorithmExerciseCalculation
         .where(exercise_calculation_uuid: exercise_calculation_uuids)
+        .ordered
+        .lock('FOR NO KEY UPDATE')
         .pluck(:uuid, :exercise_calculation_uuid, :pending_assignment_uuids)
         .each do |uuid, exercise_calculation_uuid, pending_assignment_uuids|
         used_exercise_calculations_uuids << exercise_calculation_uuid \
@@ -710,6 +702,16 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           UPDATE_SQL
         )
       end
+
+      # Anti-cheating: we don't allow StudentPes that have already been assigned elsewhere
+      # Recalculate Student PEs that conflict with the AssignedExercises that were just created
+      AlgorithmExerciseCalculation
+        .joins(
+          :student_pes, exercise_calculation: { student: { assignments: :assigned_exercises } }
+        )
+        .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
+        .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+        .ordered_update_all(is_pending_for_student: true) unless assigned_exercise_uuids.empty?
     end
 
     # No sort needed because already locked above
