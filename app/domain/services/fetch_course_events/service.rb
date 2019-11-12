@@ -341,7 +341,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           spes_are_assigned: data.fetch(:spes_are_assigned),
           goal_num_tutor_assigned_pes: data[:goal_num_tutor_assigned_pes],
           pes_are_assigned: data.fetch(:pes_are_assigned),
-          is_deleted: data.fetch(:is_deleted, false),
+          is_deleted: data[:is_deleted] || false,
           has_exercise_calculation: !pe_calculation_uuid.nil? || !spe_calculation_uuid.nil?
         )
 
