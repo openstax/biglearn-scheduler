@@ -498,63 +498,84 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           end
         end
 
-        # Get uuids of records that will be updated
-        student_clue_calculation_values = student_clue_calculations.map do |scc|
-          [ scc.student_uuid, scc.book_container_uuid ]
+        if student_clue_calculations.empty?
+          updated_scc_uuids = []
+        else
+          # Get uuids of records that will be updated
+          student_clue_calculation_values = student_clue_calculations.map do |scc|
+            [ scc.student_uuid, scc.book_container_uuid ]
+          end
+          updated_scc_uuids = StudentClueCalculation.joins(
+            <<~JOIN_SQL
+              INNER JOIN (#{ValuesTable.new(student_clue_calculation_values)}) AS "values"
+                ("student_uuid", "book_container_uuid")
+                ON "student_clue_calculations"."student_uuid" = "values"."student_uuid"::uuid
+                  AND "student_clue_calculations"."book_container_uuid" =
+                    "values"."book_container_uuid"::uuid
+            JOIN_SQL
+          ).ordered.lock('FOR UPDATE').pluck(:uuid)
+
+          # Record the ClueCalculations
+          StudentClueCalculation.import(
+            student_clue_calculations,
+            validate: false, on_duplicate_key_update: {
+              conflict_target: [ :student_uuid, :book_container_uuid ],
+              columns: [
+                :uuid,
+                :exercise_uuids,
+                :responses,
+                :recalculate_at,
+                :algorithm_names
+              ]
+            }
+          )
+
+          # Cleanup AlgorithmClueCalculations that no longer have
+          # an associated ClueCalculation record
+          AlgorithmStudentClueCalculation.where(
+            student_clue_calculation_uuid: updated_scc_uuids
+          ).delete_all
         end
-        updated_scc_uuids = StudentClueCalculation.joins(
-          <<~JOIN_SQL
-            INNER JOIN (#{ValuesTable.new(student_clue_calculation_values)}) AS "values"
-              ("student_uuid", "book_container_uuid")
-              ON "student_clue_calculations"."student_uuid" = "values"."student_uuid"::uuid
-                AND "student_clue_calculations"."book_container_uuid" =
-                  "values"."book_container_uuid"::uuid
-          JOIN_SQL
-        ).ordered.lock('FOR UPDATE').pluck(:uuid)
 
-        teacher_clue_calculation_values = teacher_clue_calculations.map do |tcc|
-          [ tcc.course_container_uuid, tcc.book_container_uuid ]
+        if teacher_clue_calculations.empty?
+          updated_tcc_uuids = []
+        else
+          teacher_clue_calculation_values = teacher_clue_calculations.map do |tcc|
+            [ tcc.course_container_uuid, tcc.book_container_uuid ]
+          end
+          updated_tcc_uuids = TeacherClueCalculation.joins(
+            <<~JOIN_SQL
+              INNER JOIN (#{ValuesTable.new(teacher_clue_calculation_values)}) AS "values"
+                ("course_container_uuid", "book_container_uuid")
+                ON "teacher_clue_calculations"."course_container_uuid" =
+                  "values"."course_container_uuid"::uuid
+                  AND "teacher_clue_calculations"."book_container_uuid" =
+                    "values"."book_container_uuid"::uuid
+            JOIN_SQL
+          ).ordered.lock('FOR UPDATE').pluck(:uuid)
+
+          # Record the ClueCalculations
+          TeacherClueCalculation.import(
+            teacher_clue_calculations,
+            validate: false, on_duplicate_key_update: {
+              conflict_target: [ :course_container_uuid, :book_container_uuid ],
+              columns: [
+                :uuid,
+                :student_uuids,
+                :exercise_uuids,
+                :responses,
+                :recalculate_at,
+                :algorithm_names
+              ]
+            }
+          )
+
+          # Cleanup AlgorithmClueCalculations that no longer have
+          # an associated ClueCalculation record
+          AlgorithmTeacherClueCalculation.where(
+            teacher_clue_calculation_uuid: updated_tcc_uuids
+          ).delete_all
         end
-        updated_tcc_uuids = TeacherClueCalculation.joins(
-          <<~JOIN_SQL
-            INNER JOIN (#{ValuesTable.new(teacher_clue_calculation_values)}) AS "values"
-              ("course_container_uuid", "book_container_uuid")
-              ON "teacher_clue_calculations"."course_container_uuid" =
-                "values"."course_container_uuid"::uuid
-                AND "teacher_clue_calculations"."book_container_uuid" =
-                  "values"."book_container_uuid"::uuid
-          JOIN_SQL
-        ).ordered.lock('FOR UPDATE').pluck(:uuid)
-
-        # Record the ClueCalculations
-        StudentClueCalculation.import(
-          student_clue_calculations,
-          validate: false, on_duplicate_key_update: {
-            conflict_target: [ :student_uuid, :book_container_uuid ],
-            columns: [
-              :uuid,
-              :exercise_uuids,
-              :responses,
-              :recalculate_at,
-              :algorithm_names
-            ]
-          }
-        )
-
-        TeacherClueCalculation.import(
-          teacher_clue_calculations,
-          validate: false, on_duplicate_key_update: {
-            conflict_target: [ :course_container_uuid, :book_container_uuid ],
-            columns: [
-              :uuid,
-              :student_uuids,
-              :exercise_uuids,
-              :responses,
-              :recalculate_at,
-              :algorithm_names
-            ]
-          }
-        )
 
         # Any ClueCalculations that did not get updated (still have the same UUID)
         # have their recalculate_ats cleared
@@ -567,15 +588,6 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         TeacherClueCalculation.where(
           uuid: existing_tcc_uuids - updated_tcc_uuids
         ).update_all(recalculate_at: nil)
-
-        # Cleanup AlgorithmClueCalculations that no longer have
-        # an associated ClueCalculation record
-        AlgorithmStudentClueCalculation.where(
-          student_clue_calculation_uuid: updated_scc_uuids
-        ).delete_all
-        AlgorithmTeacherClueCalculation.where(
-          teacher_clue_calculation_uuid: updated_tcc_uuids
-        ).delete_all
 
         # Record the fact that the CLUes are up-to-date with the latest Responses
         # No order needed because already locked above

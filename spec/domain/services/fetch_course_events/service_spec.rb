@@ -177,30 +177,58 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           request_uuid: event_uuid,
           course_uuid: course.uuid,
           sequence_number: sequence_number,
-          preparation_uuid: preparation.uuid
+          preparation_uuid: preparation_uuid
         }
       end
 
-      it "updates the Course's ecosystem_uuid" do
-        new_ecosystem_uuid = preparation.ecosystem_uuid
+      context 'with no preexisting ecosystem preparations' do
+        let(:preparation_uuid) { SecureRandom.uuid }
 
-        expect { subject.process }.to  not_change { Course.count }
-                                  .and not_change { EcosystemPreparation.count }
-                                  .and not_change { BookContainerMapping.count }
-                                  .and not_change { CourseContainer.count }
-                                  .and not_change { Student.count }
-                                  .and not_change { Assignment.count }
-                                  .and not_change { AssignedExercise.count }
-                                  .and not_change { Response.count }
-                                  .and change     { course.reload.sequence_number }
-                                                    .from(0).to(sequence_number + 1)
-                                  .and change     { course.ecosystem_uuid }.to(new_ecosystem_uuid)
-                                  .and not_change { course.starts_at }
-                                  .and not_change { course.ends_at }
-                                  .and not_change { course.course_excluded_exercise_uuids }
-                                  .and not_change { course.course_excluded_exercise_group_uuids }
-                                  .and not_change { course.global_excluded_exercise_uuids }
-                                  .and not_change { course.global_excluded_exercise_group_uuids }
+        it 'stops right before processing the event' do
+          expect { subject.process }.to  not_change { Course.count }
+                                    .and not_change { EcosystemPreparation.count }
+                                    .and not_change { BookContainerMapping.count }
+                                    .and not_change { CourseContainer.count }
+                                    .and not_change { Student.count }
+                                    .and not_change { Assignment.count }
+                                    .and not_change { AssignedExercise.count }
+                                    .and not_change { Response.count }
+                                    .and change     { course.reload.sequence_number }
+                                                      .from(0).to(sequence_number)
+                                    .and not_change { course.ecosystem_uuid }
+                                    .and not_change { course.starts_at }
+                                    .and not_change { course.ends_at }
+                                    .and not_change { course.course_excluded_exercise_uuids }
+                                    .and not_change { course.course_excluded_exercise_group_uuids }
+                                    .and not_change { course.global_excluded_exercise_uuids }
+                                    .and not_change { course.global_excluded_exercise_group_uuids }
+        end
+      end
+
+      context 'with a preexisting ecosystem preparation' do
+        let(:preparation_uuid) { preparation.uuid }
+
+        it "updates the Course's ecosystem_uuid" do
+          new_ecosystem_uuid = preparation.ecosystem_uuid
+
+          expect { subject.process }.to  not_change { Course.count }
+                                    .and not_change { EcosystemPreparation.count }
+                                    .and not_change { BookContainerMapping.count }
+                                    .and not_change { CourseContainer.count }
+                                    .and not_change { Student.count }
+                                    .and not_change { Assignment.count }
+                                    .and not_change { AssignedExercise.count }
+                                    .and not_change { Response.count }
+                                    .and change     { course.reload.sequence_number }
+                                                      .from(0).to(sequence_number + 1)
+                                    .and change     { course.ecosystem_uuid }.to(new_ecosystem_uuid)
+                                    .and not_change { course.starts_at }
+                                    .and not_change { course.ends_at }
+                                    .and not_change { course.course_excluded_exercise_uuids }
+                                    .and not_change { course.course_excluded_exercise_group_uuids }
+                                    .and not_change { course.global_excluded_exercise_uuids }
+                                    .and not_change { course.global_excluded_exercise_group_uuids }
+        end
       end
     end
 
@@ -463,7 +491,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
     context 'create_update_assignment events' do
       let(:event_type)                        { 'create_update_assignment' }
       let(:assignment_uuid)                   { SecureRandom.uuid }
-      let(:is_deleted)                        { [true, false].sample }
+      let(:is_deleted)                        { [true, false, nil].sample }
       let(:ecosystem_uuid)                    { SecureRandom.uuid }
       let(:student)                           { FactoryBot.create :student, course: course }
       let(:student_uuid)                      { student.uuid }
@@ -505,7 +533,6 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           course_uuid: course.uuid,
           sequence_number: sequence_number,
           assignment_uuid: assignment_uuid,
-          is_deleted: is_deleted,
           ecosystem_uuid: ecosystem_uuid,
           student_uuid: student_uuid,
           assignment_type: assignment_type,
@@ -524,9 +551,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
           spes_are_assigned: spes_are_assigned,
           goal_num_tutor_assigned_pes: goal_num_tutor_assigned_pes,
           pes_are_assigned: pes_are_assigned,
-          is_deleted: true,
           assigned_exercises: assigned_exercises
-        }
+        }.tap { |data| data[:is_deleted] = is_deleted unless is_deleted.nil? }
       end
 
       let!(:other_assignment)      do
@@ -580,7 +606,7 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         expect(assignment.spes_are_assigned).to eq spes_are_assigned
         expect(assignment.goal_num_tutor_assigned_pes).to eq goal_num_tutor_assigned_pes
         expect(assignment.pes_are_assigned).to eq pes_are_assigned
-        expect(assignment.is_deleted).to eq true
+        expect(assignment.is_deleted).to eq is_deleted.nil? ? false : is_deleted
         expect(assignment.has_exercise_calculation).to eq true
       end
 
