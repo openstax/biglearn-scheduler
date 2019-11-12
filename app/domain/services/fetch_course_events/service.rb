@@ -362,7 +362,6 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     end.compact
 
     # Update all the records in as few queries as possible
-    results = []
 
     results << EcosystemPreparation.import(
       ecosystem_preparations, validate: false, on_duplicate_key_ignore: {
@@ -550,6 +549,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       assignment_uuids = assignments_hash.keys
       assigned_exercise_uuids = assigned_exercises.map(&:uuid)
 
+      # Find relevant ExerciseCalculations
       # The ExerciseCalculation lock ensures we don't miss updates on
       # concurrent Assignment and AlgorithmExerciseCalculation inserts
       exercise_calculation_uuids = ExerciseCalculation.where(
@@ -558,12 +558,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             #{
               ExerciseCalculation
                 .select(:uuid)
-                .joins(:algorithm_exercise_calculations)
-                .where(
-                  algorithm_exercise_calculations: {
-                    uuid: used_algorithm_exercise_calculation_uuids
-                  }
-                )
+                .joins(:assignments)
+                .where(assignments: { uuid: assignment_uuids })
                 .to_sql
             }
             UNION ALL
@@ -582,14 +578,6 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             #{
               ExerciseCalculation
                 .select(:uuid)
-                .joins(:assignments)
-                .where(assignments: { uuid: assignment_uuids })
-                .to_sql
-            }
-            UNION ALL
-            #{
-              ExerciseCalculation
-                .select(:uuid)
                 .joins(assignments: :assignment_pes, student: { assignments: :assigned_exercises })
                 .where('"assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"')
                 .where(assigned_exercises: { uuid: assigned_exercise_uuids })
@@ -602,6 +590,18 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 .joins(assignments: :assignment_spes, student: { assignments: :assigned_exercises })
                 .where('"assigned_exercises"."exercise_uuid" = "assignment_spes"."exercise_uuid"')
                 .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+                .to_sql
+            }
+            UNION ALL
+            #{
+              ExerciseCalculation
+                .select(:uuid)
+                .joins(:algorithm_exercise_calculations)
+                .where(
+                  algorithm_exercise_calculations: {
+                    uuid: used_algorithm_exercise_calculation_uuids
+                  }
+                )
                 .to_sql
             }
           )
@@ -679,31 +679,37 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
       end
 
-      algorithm_exercise_calculations = AlgorithmExerciseCalculation
-        .where(exercise_calculation_uuid: exercise_calculation_uuids)
-        .to_a
-
       used_exercise_calculations_uuids = []
-      algorithm_exercise_calculations.each do |algorithm_exercise_calculation|
-        exercise_calculation_uuid = algorithm_exercise_calculation.exercise_calculation_uuid
-        algorithm_exercise_calculation.pending_assignment_uuids = (
-          algorithm_exercise_calculation.pending_assignment_uuids +
-          assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid]
-        ).uniq
-
+      algorithm_exercise_calculation_values = []
+      AlgorithmExerciseCalculation
+        .where(exercise_calculation_uuid: exercise_calculation_uuids)
+        .pluck(:uuid, :exercise_calculation_uuid, :pending_assignment_uuids)
+        .each do |uuid, exercise_calculation_uuid, pending_assignment_uuids|
         used_exercise_calculations_uuids << exercise_calculation_uuid \
-          if used_algorithm_exercise_calculation_uuids.include? algorithm_exercise_calculation.uuid
+          if used_algorithm_exercise_calculation_uuids.include? uuid
+
+        assignment_uuids = assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid]
+        # Don't bother updating records where assignment_uuids is empty
+        algorithm_exercise_calculation_values << [
+          uuid, (pending_assignment_uuids + assignment_uuids).uniq
+        ] unless assignment_uuids.empty?
       end
 
       ExerciseCalculation.where(uuid: used_exercise_calculations_uuids)
                          .ordered_update_all(is_used_in_assignments: true) \
         unless used_exercise_calculations_uuids.empty?
 
-      results << AlgorithmExerciseCalculation.import(
-        algorithm_exercise_calculations, validate: false, on_duplicate_key_update: {
-          conflict_target: [ :uuid ], columns: [ :pending_assignment_uuids ]
-        }
-      )
+      unless algorithm_exercise_calculation_values.empty?
+        algorithm_exercise_calculation_uuids = algorithm_exercise_calculation_values.map(&:first)
+        AlgorithmExerciseCalculation.update_all(
+          <<~UPDATE_SQL
+            "pending_assignment_uuids" = "values"."pending_assignment_uuids"
+            FROM (#{ValuesTable.new(algorithm_exercise_calculation_values)}) AS "values"
+              ("uuid", "pending_assignment_uuids")
+            WHERE "algorithm_exercise_calculations"."uuid" = "values"."uuid"::uuid
+          UPDATE_SQL
+        )
+      end
     end
 
     # No sort needed because already locked above

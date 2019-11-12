@@ -11,10 +11,13 @@ class ValuesTable
     raise 'ValuesTable cannot be given an empty array' if values_array.empty?
     raise 'ValuesTable cannot be given an array containing empty arrays' \
       if values_array.any?(&:empty?)
+    # Ideally we wouldn't do this, but empty arrays in Postgres
+    # are hard to deal with and require typecasting
     raise 'ValuesTable must be given at least 1 valid row' \
       if values_array.all? { |values| values.any? { |value| value.is_a?(Array) && value.empty? } }
 
     "VALUES #{values_array.map do |values|
+      # See comment above
       next if values.any? { |value| value.is_a?(Array) && value.empty? }
 
       "(#{values.map { |value| sanitize value }.join(', ')})"
