@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2019_10_29_193215) do
+ActiveRecord::Schema.define(version: 2019_11_16_021954) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
@@ -143,7 +143,7 @@ ActiveRecord::Schema.define(version: 2019_10_29_193215) do
     t.index ["pes_are_assigned"], name: "index_assignments_on_pes_are_assigned"
     t.index ["spes_are_assigned"], name: "index_assignments_on_spes_are_assigned"
     t.index ["student_history_at"], name: "index_assignments_on_student_history_at"
-    t.index ["student_uuid"], name: "index_assignments_on_student_uuid"
+    t.index ["student_uuid", "ecosystem_uuid"], name: "index_assignments_on_student_uuid_and_ecosystem_uuid"
     t.index ["uuid"], name: "index_assignments_on_uuid", unique: true
   end
 
