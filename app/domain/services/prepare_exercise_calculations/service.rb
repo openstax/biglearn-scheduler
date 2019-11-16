@@ -96,7 +96,7 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
               ON "exercise_calculations"."student_uuid" = "values"."student_uuid"::uuid
                 AND "exercise_calculations"."ecosystem_uuid" = "values"."ecosystem_uuid"::uuid
           JOIN_SQL
-        ).where(superseded_at: nil).update_all superseded_at: start_time
+        ).where(superseded_at: nil).ordered_update_all superseded_at: start_time
 
         # Record the ExerciseCalculations
         ExerciseCalculation.import(
