@@ -110,32 +110,27 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           .flat_map do |from_ecosystem_uuid, responses|
           from_eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
 
-          responses.map do |response|
-            next if response.latest_ecosystem_uuid == from_ecosystem_uuid
-
+          responses.select { |response| response.latest_ecosystem_uuid != from_ecosystem_uuid }
+                   .map do |response|
             exercise_uuid = response.exercise_uuid
             from_book_container_uuids = from_eco_book_container_uuids_map[exercise_uuid]
 
             [ from_ecosystem_uuid, response.latest_ecosystem_uuid, from_book_container_uuids ]
-          end.compact
+          end
         end + sccs_by_ecosystem_uuid.flat_map do |from_ecosystem_uuid, sccs|
           from_eco_book_container_uuids_map =
             from_book_container_uuids_map[from_ecosystem_uuid]
 
-          sccs.map do |scc|
-            next if scc.latest_ecosystem_uuid == from_ecosystem_uuid
-
+          sccs.select { |scc| scc.latest_ecosystem_uuid != from_ecosystem_uuid }.map do |scc|
             [ from_ecosystem_uuid, scc.latest_ecosystem_uuid, [ scc.book_container_uuid ] ]
-          end.compact
+          end
         end + tccs_by_ecosystem_uuid.flat_map do |from_ecosystem_uuid, tccs|
           from_eco_book_container_uuids_map =
             from_book_container_uuids_map[from_ecosystem_uuid]
 
-          tccs.map do |tcc|
-            next if tcc.latest_ecosystem_uuid == from_ecosystem_uuid
-
+          tccs.select { |tcc| tcc.latest_ecosystem_uuid != from_ecosystem_uuid }.map do |tcc|
             [ from_ecosystem_uuid, tcc.latest_ecosystem_uuid, [ tcc.book_container_uuid ] ]
-          end.compact
+          end
         end
         unless forward_mapping_values_array.empty?
           forward_mapping_join_query = <<~JOIN_SQL
