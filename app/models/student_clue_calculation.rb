@@ -28,11 +28,15 @@ class StudentClueCalculation < ApplicationRecord
     )
   end
 
+  belongs_to :student, primary_key: :uuid,
+                       foreign_key: :student_uuid,
+                       inverse_of: :student_clue_calculations
+
   unique_index :student_uuid, :book_container_uuid
 
   validates :ecosystem_uuid,      presence: true
   validates :book_container_uuid, presence: true
-  validates :student_uuid,        presence: true, uniqueness: { scope: :book_container_uuid }
+  validates :student_uuid,        uniqueness: { scope: :book_container_uuid }
   validates :exercise_uuids,      presence: true
   validates :responses,           presence: true
 
