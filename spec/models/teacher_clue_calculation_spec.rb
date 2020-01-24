@@ -6,6 +6,8 @@ RSpec.describe TeacherClueCalculation, type: :model do
   it { is_expected.to have_many(:algorithm_teacher_clue_calculations).dependent(:destroy) }
   it { is_expected.to have_many(:ecosystem_exercises) }
 
+  it { is_expected.to belong_to :course_container }
+
   it { is_expected.to validate_presence_of :ecosystem_uuid      }
   it { is_expected.to validate_presence_of :book_container_uuid }
   it { is_expected.to validate_presence_of :student_uuids       }

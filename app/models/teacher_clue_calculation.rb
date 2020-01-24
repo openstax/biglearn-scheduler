@@ -28,6 +28,10 @@ class TeacherClueCalculation < ApplicationRecord
     )
   end
 
+  belongs_to :course_container, primary_key: :uuid,
+                                foreign_key: :course_container_uuid,
+                                inverse_of: :teacher_clue_calculations
+
   unique_index :course_container_uuid, :book_container_uuid
 
   validates :ecosystem_uuid,      presence: true

@@ -578,7 +578,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
       # Find relevant ExerciseCalculations
       # The ExerciseCalculation lock ensures we don't miss updates on
-      # concurrent Assignment and AlgorithmExerciseCalculation inserts
+      # concurrent AlgorithmExerciseCalculation inserts
       exercise_calculation_uuids = ExerciseCalculation.where(
         <<~WHERE_SQL
           "exercise_calculations"."uuid" IN (

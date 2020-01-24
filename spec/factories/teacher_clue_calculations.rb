@@ -7,9 +7,9 @@ FactoryBot.define do
     end
 
     uuid                  { SecureRandom.uuid }
+    course_container
     ecosystem_uuid        { SecureRandom.uuid }
     book_container_uuid   { SecureRandom.uuid }
-    course_container_uuid { SecureRandom.uuid }
     student_uuids         { num_student_uuids.times.map  { SecureRandom.uuid } }
     exercise_uuids        { num_exercise_uuids.times.map { SecureRandom.uuid } }
     responses             do

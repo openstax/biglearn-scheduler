@@ -5,6 +5,8 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
     start_time = Time.current
     log(:debug) { "Started at #{start_time}" }
 
+    re = Response.arel_table
+    co = Course.arel_table
     scc = StudentClueCalculation.arel_table
     tcc = TeacherClueCalculation.arel_table
 
@@ -16,19 +18,25 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         # Get Responses that have not yet been used in CLUes
         # Responses with no AssignedExercise or Assignment are completely ignored
         # No order needed because of SKIP LOCKED
-        responses = Response.joins(assigned_exercise: :assignment)
-                            .where(is_used_in_clue_calculations: false)
-                            .lock('FOR NO KEY UPDATE OF "responses" SKIP LOCKED')
-                            .take(BATCH_SIZE)
+        responses = Response
+          .select(re[Arel.star], co[:ecosystem_uuid].as('latest_ecosystem_uuid'))
+          .joins(student: :course, assigned_exercise: :assignment)
+          .where(is_used_in_clue_calculations: false)
+          .lock('FOR NO KEY UPDATE OF "responses" SKIP LOCKED')
+          .take(BATCH_SIZE)
         # Get any ClueCalculations that need to be recalculated
         # No order needed because of SKIP LOCKED
         sccs = StudentClueCalculation
+          .select(scc[Arel.star], co[:ecosystem_uuid].as('latest_ecosystem_uuid'))
+          .joins(student: :course)
           .where(scc[:recalculate_at].lteq(start_time))
-          .lock('FOR UPDATE SKIP LOCKED')
+          .lock('FOR UPDATE OF "student_clue_calculations" SKIP LOCKED')
           .take(BATCH_SIZE)
         tccs = TeacherClueCalculation
+          .select(tcc[Arel.star], co[:ecosystem_uuid].as('latest_ecosystem_uuid'))
+          .joins(course_container: :course)
           .where(tcc[:recalculate_at].lteq(start_time))
-          .lock('FOR UPDATE SKIP LOCKED')
+          .lock('FOR UPDATE OF "teacher_clue_calculations" SKIP LOCKED')
           .take(BATCH_SIZE)
         next [ 0, 0, 0 ] if responses.empty? && sccs.empty? && tccs.empty?
 
@@ -40,13 +48,10 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
         sccs_by_ecosystem_uuid = sccs.group_by(&:ecosystem_uuid)
         tccs_by_ecosystem_uuid = tccs.group_by(&:ecosystem_uuid)
 
-        # Map the students to courses and course containers (for student CLUes)
-        course_uuid_by_student_uuid = {}
+        # Map the students to course containers (for student CLUes)
         course_container_uuids_by_student_uuids = {}
         Student.where(uuid: student_uuids).each do |student|
-          uuid = student.uuid
-          course_uuid_by_student_uuid[uuid] = student.course_uuid
-          course_container_uuids_by_student_uuids[uuid] = student.course_container_uuids
+          course_container_uuids_by_student_uuids[student.uuid] = student.course_container_uuids
         end
 
         # Map the course containers back to students (for teacher CLUes)
@@ -96,12 +101,6 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           end
         end
 
-        # Map the courses to latest ecosystems
-        course_uuids = course_uuid_by_course_container_uuid.values
-        latest_ecosystem_uuid_by_course_uuid = Course.where(uuid: course_uuids)
-                                                     .pluck(:uuid, :ecosystem_uuid)
-                                                     .to_h
-
         # Create queries to map the book_container_uuids to
         # book_container_uuids in the courses' latest ecosystems
         forward_mappings = Hash.new do |hash, key|
@@ -111,39 +110,27 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           .flat_map do |from_ecosystem_uuid, responses|
           from_eco_book_container_uuids_map = from_book_container_uuids_map[from_ecosystem_uuid]
 
-          responses.map do |response|
-            student_uuid = response.student_uuid
-            course_uuid = course_uuid_by_student_uuid[student_uuid]
-            to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
-            next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
-
+          responses.select { |response| response.latest_ecosystem_uuid != from_ecosystem_uuid }
+                   .map do |response|
             exercise_uuid = response.exercise_uuid
             from_book_container_uuids = from_eco_book_container_uuids_map[exercise_uuid]
 
-            [ from_ecosystem_uuid, to_ecosystem_uuid, from_book_container_uuids ]
-          end.compact
+            [ from_ecosystem_uuid, response.latest_ecosystem_uuid, from_book_container_uuids ]
+          end
         end + sccs_by_ecosystem_uuid.flat_map do |from_ecosystem_uuid, sccs|
           from_eco_book_container_uuids_map =
             from_book_container_uuids_map[from_ecosystem_uuid]
 
-          sccs.map do |scc|
-            course_uuid = course_uuid_by_student_uuid[scc.student_uuid]
-            to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
-            next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
-
-            [ from_ecosystem_uuid, to_ecosystem_uuid, [ scc.book_container_uuid ] ]
-          end.compact
+          sccs.select { |scc| scc.latest_ecosystem_uuid != from_ecosystem_uuid }.map do |scc|
+            [ from_ecosystem_uuid, scc.latest_ecosystem_uuid, [ scc.book_container_uuid ] ]
+          end
         end + tccs_by_ecosystem_uuid.flat_map do |from_ecosystem_uuid, tccs|
           from_eco_book_container_uuids_map =
             from_book_container_uuids_map[from_ecosystem_uuid]
 
-          tccs.map do |tcc|
-            course_uuid = course_uuid_by_course_container_uuid[tcc.course_container_uuid]
-            to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
-            next if to_ecosystem_uuid.nil? || to_ecosystem_uuid == from_ecosystem_uuid
-
-            [ from_ecosystem_uuid, to_ecosystem_uuid, [ tcc.book_container_uuid ] ]
-          end.compact
+          tccs.select { |tcc| tcc.latest_ecosystem_uuid != from_ecosystem_uuid }.map do |tcc|
+            [ from_ecosystem_uuid, tcc.latest_ecosystem_uuid, [ tcc.book_container_uuid ] ]
+          end
         end
         unless forward_mapping_values_array.empty?
           forward_mapping_join_query = <<~JOIN_SQL
@@ -198,8 +185,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
 
             # Find which is the response's book_container_uuid
             # and which ecosystem it must map to
-            course_uuid = course_uuid_by_student_uuid[student_uuid]
-            to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
+            to_ecosystem_uuid = response.latest_ecosystem_uuid
             from_book_container_uuids =
               from_book_container_uuids_map[from_ecosystem_uuid][exercise_uuid]
 
@@ -228,8 +214,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           sccs.each do |scc|
             # Find the student's course and its latest ecosystem
             student_uuid = scc.student_uuid
-            course_uuid = course_uuid_by_student_uuid[student_uuid]
-            to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
+            to_ecosystem_uuid = scc.latest_ecosystem_uuid
 
             # Forward map the from_book_container_uuid to find the to_book_container_uuid
             from_book_container_uuid = scc.book_container_uuid
@@ -247,8 +232,7 @@ class Services::PrepareClueCalculations::Service < Services::ApplicationService
           tccs.each do |tcc|
             # Find the course container's course and its latest ecosystem
             course_container_uuid = tcc.course_container_uuid
-            course_uuid = course_uuid_by_course_container_uuid[course_container_uuid]
-            to_ecosystem_uuid = latest_ecosystem_uuid_by_course_uuid[course_uuid]
+            to_ecosystem_uuid = tcc.latest_ecosystem_uuid
 
             # Forward map the from_book_container_uuid to find the to_book_container_uuid
             from_book_container_uuid = tcc.book_container_uuid
