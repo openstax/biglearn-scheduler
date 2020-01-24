@@ -550,28 +550,6 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
     # Event side-effects
 
-    unless course_uuids_with_changed_ecosystems.empty?
-      # Get students in courses with updated ecosystems
-      changed_student_uuids = Student
-        .where(course_uuid: course_uuids_with_changed_ecosystems)
-        .pluck(:uuid)
-
-      # Mark student CLUes for recalculation for students in courses with updated ecosystems
-      StudentClueCalculation.where(student_uuid: changed_student_uuids)
-                            .ordered_update_all(recalculate_at: current_time)
-    end
-
-    unless course_uuids_with_changed_rosters.empty?
-      # Get course containers in courses with updated rosters
-      changed_course_container_uuids = CourseContainer
-        .where(course_uuid: course_uuids_with_changed_rosters)
-        .pluck(:uuid)
-
-      # Mark teacher CLUes for recalculation for course containers in courses with updated rosters
-      TeacherClueCalculation.where(course_container_uuid: changed_course_container_uuids)
-                            .ordered_update_all(recalculate_at: current_time)
-    end
-
     unless assignments_hash.empty?
       assignment_uuids = assignments_hash.keys
       assigned_exercise_uuids = assigned_exercises.map(&:uuid)
@@ -739,6 +717,28 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
         .where(assigned_exercises: { uuid: assigned_exercise_uuids })
         .ordered_update_all(is_pending_for_student: true) unless assigned_exercise_uuids.empty?
+    end
+
+    unless course_uuids_with_changed_ecosystems.empty?
+      # Get students in courses with updated ecosystems
+      changed_student_uuids = Student
+        .where(course_uuid: course_uuids_with_changed_ecosystems)
+        .pluck(:uuid)
+
+      # Mark student CLUes for recalculation for students in courses with updated ecosystems
+      StudentClueCalculation.where(student_uuid: changed_student_uuids)
+                            .ordered_update_all(recalculate_at: current_time)
+    end
+
+    unless course_uuids_with_changed_rosters.empty?
+      # Get course containers in courses with updated rosters
+      changed_course_container_uuids = CourseContainer
+        .where(course_uuid: course_uuids_with_changed_rosters)
+        .pluck(:uuid)
+
+      # Mark teacher CLUes for recalculation for course containers in courses with updated rosters
+      TeacherClueCalculation.where(course_container_uuid: changed_course_container_uuids)
+                            .ordered_update_all(recalculate_at: current_time)
     end
 
     # No sort needed because already locked above
