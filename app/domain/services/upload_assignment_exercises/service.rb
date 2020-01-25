@@ -259,68 +259,9 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           end
         end
 
-        # Get exercise exclusions for each course
-        course_uuids = assignments.map(&:course_uuid)
-        course_exclusions_by_course_uuid = Course.where(uuid: course_uuids).pluck(
-          :uuid,
-          :global_excluded_exercise_uuids,
-          :course_excluded_exercise_uuids,
-          :global_excluded_exercise_group_uuids,
-          :course_excluded_exercise_group_uuids
-        ).index_by(&:first)
-
-        # Get assignments that should have hidden feedback for each student
-        student_uuids = assignments.map(&:student_uuid)
-        no_feedback_yet_assignments = Assignment
-                                        .where(student_uuid: student_uuids)
-                                        .where(aa[:feedback_at].gt(start_time))
-                                        .pluck(:student_uuid, :assigned_exercise_uuids)
-
-        # Convert excluded exercise uuids to group uuids
-        assigned_exercise_uuids = no_feedback_yet_assignments.flat_map(&:second)
-        assigned_exercise_group_uuid_by_uuid = Exercise.where(uuid: assigned_exercise_uuids)
-                                                       .pluck(:uuid, :group_uuid)
-                                                       .to_h
-
-        # Convert exclusion group uuids to uuids
-        excluded_exercise_group_uuids = course_exclusions_by_course_uuid.values.flat_map(&:fourth) +
-                                        course_exclusions_by_course_uuid.values.flat_map(&:fifth) +
-                                        assigned_exercise_group_uuid_by_uuid.values
-        excluded_exercise_uuids_by_group_uuid = Hash.new { |hash, key| hash[key] = [] }
-        Exercise.where(group_uuid: excluded_exercise_group_uuids)
-                .pluck(:group_uuid, :uuid)
-                .each do |group_uuid, uuid|
-          excluded_exercise_uuids_by_group_uuid[group_uuid] << uuid
-        end
-
-        # Create a map of excluded exercise uuids for each student
-        excluded_uuids_by_student_uuid = Hash.new { |hash, key| hash[key] = [] }
-
-        # Add the course exclusions to the map above
-        assignments.group_by(&:course_uuid).each do |course_uuid, assignments|
-          course_exclusions = course_exclusions_by_course_uuid[course_uuid]
-          next if course_exclusions.nil?
-
-          group_uuids = course_exclusions.fourth + course_exclusions.fifth
-          converted_excluded_exercise_uuids =
-            excluded_exercise_uuids_by_group_uuid.values_at(*group_uuids).flatten
-          course_excluded_uuids = course_exclusions.second +
-                                  course_exclusions.third +
-                                  converted_excluded_exercise_uuids
-
-          assignments.each do |assignment|
-            excluded_uuids_by_student_uuid[assignment.student_uuid].concat course_excluded_uuids
-          end
-        end
-
-        # Add the exclusions from no_feedback_yet_assignments to the map above
-        no_feedback_yet_assignments.each do |student_uuid, assigned_exercise_uuids|
-          excluded_group_uuids =
-            assigned_exercise_group_uuid_by_uuid.values_at(*assigned_exercise_uuids)
-          excluded_exercise_uuids =
-            excluded_exercise_uuids_by_group_uuid.values_at(*excluded_group_uuids).flatten
-          excluded_uuids_by_student_uuid[student_uuid].concat excluded_exercise_uuids
-        end
+        excluded_uuids_by_student_uuid = get_excluded_exercises_by_student_uuid(
+          assignments, current_time: start_time
+        )
 
         # Map book_container_uuids with exercises to the current assignment's ecosystem
         # Also store assignment_uuids for use in the SPE spy info

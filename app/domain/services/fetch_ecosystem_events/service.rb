@@ -178,10 +178,9 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         ecosystem.sequence_number, events.map { |event| event.fetch(:sequence_number) }.max + 1
       ].max
 
-      exercise_calculations << ExerciseCalculation.new(
+      exercise_calculations << ExerciseCalculation.default.new(
         uuid: ecosystem_uuid,
         ecosystem_uuid: ecosystem_uuid,
-        student_uuid: '00000000-0000-0000-0000-000000000000',
         is_used_in_assignments: true
       )
 

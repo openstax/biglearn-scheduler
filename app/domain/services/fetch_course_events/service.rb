@@ -1,4 +1,6 @@
 class Services::FetchCourseEvents::Service < Services::ApplicationService
+  include Services::AssignmentExerciseRequests
+
   BATCH_SIZE = 1000
   GRACE_PERIOD = 1.month
 
@@ -714,6 +716,50 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
         .where(assigned_exercises: { uuid: assigned_exercise_uuids })
         .ordered_update_all(is_pending_for_student: true) unless assigned_exercise_uuids.empty?
+
+      # Get assignments that need PEs or SPEs and do not yet have an ExerciseCalculation
+      default_calculation_assignments = Assignment.need_pes_or_spes.joins(
+        default_exercise_calculation: :algorithm_exercise_calculations
+      ).where(uuid: assignment_uuids).where.not(
+        ExerciseCalculation.where(
+          ExerciseCalculation.arel_table[:student_uuid].eq(Assignment.arel_table[:student_uuid]),
+          ExerciseCalculation.arel_table[:ecosystem_uuid].eq(Assignment.arel_table[:ecosystem_uuid])
+        ).arel.exists
+      ).preload(default_exercise_calculation: :algorithm_exercise_calculation).to_a
+
+      excluded_uuids_by_student_uuid = get_excluded_exercises_by_student_uuid(
+        default_calculation_assignments, current_time: current_time
+      )
+
+      # Upload default assignment PE information
+      default_pe_reqs = default_calculation_assignments.select(&:needs_pes?).map do |assignment|
+        exercise_calculation = assignment.default_exercise_calculation
+        student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[assignment.student_uuid]
+
+        build_pe_request(
+          algorithm_exercise_calculation: exercise_calculation.algorithm_exercise_calculation,
+          assignment: assignment,
+          excluded_exercise_uuids: student_excluded_exercise_uuids
+        )
+      end
+
+      # Send the default AssignmentPEs to the API server
+      OpenStax::Biglearn::Api.update_assignment_pes(default_pe_reqs) if default_pe_reqs.any?
+
+      # Upload default assignment SPE information
+      default_spe_reqs = default_calculation_assignments.select(&:needs_spes?).map do |assignment|
+        exercise_calculation = assignment.default_exercise_calculation
+        student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[assignment.student_uuid]
+
+        build_spe_request(
+          algorithm_exercise_calculation: exercise_calculation.algorithm_exercise_calculation,
+          assignment: assignment,
+          excluded_exercise_uuids: student_excluded_exercise_uuids
+        )
+      end
+
+      # Send the default AssignmentSPEs to the API server
+      OpenStax::Biglearn::Api.update_assignment_spes(default_spe_reqs) if default_spe_reqs.any?
     end
 
     unless course_uuids_with_changed_ecosystems.empty?

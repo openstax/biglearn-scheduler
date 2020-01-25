@@ -1,4 +1,6 @@
 class ExerciseCalculation < ApplicationRecord
+  DEFAULT_STUDENT_UUID = '00000000-0000-0000-0000-000000000000'
+
   has_many :algorithm_exercise_calculations, primary_key: :uuid,
                                              foreign_key: :exercise_calculation_uuid,
                                              dependent: :destroy,
@@ -33,4 +35,6 @@ class ExerciseCalculation < ApplicationRecord
 
   scope :superseded,     -> { where.not superseded_at: nil }
   scope :not_superseded, -> { where     superseded_at: nil }
+
+  scope :default, -> { where student_uuid: DEFAULT_STUDENT_UUID }
 end
