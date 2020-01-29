@@ -18,15 +18,16 @@ module Services::AssignmentExerciseRequests
       :course_excluded_exercise_group_uuids
     ).index_by(&:first)
 
-    # Get assignments that should have hidden feedback for each student
+    # Get assignments are not yet due or do not yet have feedback for each student
     student_uuids = assignments.map(&:student_uuid)
-    no_feedback_yet_assignments = Assignment
-                                    .where(student_uuid: student_uuids)
-                                    .where(Assignment.arel_table[:feedback_at].gt(current_time))
-                                    .pluck(:student_uuid, :assigned_exercise_uuids)
+    anti_cheating_assignments = Assignment
+                                  .where(student_uuid: student_uuids)
+                                  .where(aa[:due_at].gt(start_time))
+                                  .or(Assignment.where(aa[:feedback_at].gt(start_time)))
+                                  .pluck(:student_uuid, :assigned_exercise_uuids)
 
     # Convert excluded exercise uuids to group uuids
-    assigned_exercise_uuids = no_feedback_yet_assignments.flat_map(&:second)
+    assigned_exercise_uuids = anti_cheating_assignments.flat_map(&:second)
     assigned_exercise_group_uuid_by_uuid = Exercise.where(uuid: assigned_exercise_uuids)
                                                    .pluck(:uuid, :group_uuid)
                                                    .to_h
@@ -61,8 +62,8 @@ module Services::AssignmentExerciseRequests
         end
       end
 
-      # Add the exclusions from no_feedback_yet_assignments to the map above
-      no_feedback_yet_assignments.each do |student_uuid, assigned_exercise_uuids|
+      # Add the exclusions from anti_cheating_assignments to the map above
+      anti_cheating_assignments.each do |student_uuid, assigned_exercise_uuids|
         excluded_group_uuids =
           assigned_exercise_group_uuid_by_uuid.values_at(*assigned_exercise_uuids)
         excluded_exercise_uuids =
