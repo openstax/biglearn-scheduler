@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_01_24_225041) do
+ActiveRecord::Schema.define(version: 2020_01_29_215718) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
@@ -80,6 +80,7 @@ ActiveRecord::Schema.define(version: 2020_01_24_225041) do
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["assignment_uuid", "is_spe", "is_pe"], name: "index_assigned_exercises_on_a_uuid_and_is_spe_and_is_pe"
+    t.index ["exercise_uuid"], name: "index_assigned_exercises_on_exercise_uuid"
     t.index ["uuid"], name: "index_assigned_exercises_on_uuid", unique: true
   end
 
