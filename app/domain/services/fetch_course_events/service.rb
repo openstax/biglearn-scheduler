@@ -358,8 +358,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           )
 
           anti_cheating_assigned_exercise_uuids << assigned_exercise_uuid \
-            if (!due_at.nil? && due_at > start_time) ||
-               (!feedback_at.nil? && feedback_at > start_time)
+            if (!due_at.nil? && due_at > current_time) ||
+               (!feedback_at.nil? && feedback_at > current_time)
         end
       end
 
@@ -620,9 +620,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
       .pluck(:uuid)
 
-      # Recalculate Assignment PEs and SPEs for updated assignments and
-      # Assignment PEs and SPEs that conflict with the AssignedExercises that were just
-      # created to prevent any assignment from getting a PE or SPE that was already used elsewhere
+      # Recalculate Assignment PEs and SPEs for assignments that need them and were updated or
+      # have PEs and SPEs that conflict with the AssignedExercises that were just created,
+      # to prevent any assignment from getting a PE or SPE that was already used elsewhere
       assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
       ecu = ec[:uuid].as('"exercise_calculation_uuid"')
       aeeu = AssignedExercise.arel_table[:exercise_uuid]
@@ -631,6 +631,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           (#{
             Assignment
               .select(:uuid, ecu)
+              .need_pes_or_spes
               .joins(:exercise_calculation)
               .where(uuid: assignment_uuids)
               .to_sql
@@ -639,6 +640,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           #{
             Assignment
               .select(:uuid, ecu)
+              .need_pes_or_spes
               .joins(
                 :assignment_pes,
                 exercise_calculation: { student: { assignments: :assigned_exercises } }
@@ -659,6 +661,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           #{
             Assignment
               .select(:uuid, ecu)
+              .need_pes_or_spes
               .joins(
                 :assignment_spes,
                 exercise_calculation: { student: { assignments: :assigned_exercises } }

@@ -53,8 +53,8 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
               ).arel.exists
             )
           )
-          .joins(:student)
           .need_pes_or_spes
+          .joins(:student)
           .lock('FOR NO KEY UPDATE OF "students" SKIP LOCKED')
           .limit(BATCH_SIZE)
           .pluck(st[:uuid], :ecosystem_uuid)
@@ -130,8 +130,8 @@ class Services::PrepareExerciseCalculations::Service < Services::ApplicationServ
     # We don't care about missing assignments here because we call this method every iteration
     # No order needed because of SKIP LOCKED
     assignment_uuids = Assignment
-      .joins(:student)
       .need_pes_or_spes
+      .joins(:student)
       .where(has_exercise_calculation: false)
       .where(
         ExerciseCalculation.where(
