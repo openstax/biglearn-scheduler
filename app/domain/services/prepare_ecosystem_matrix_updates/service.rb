@@ -72,84 +72,79 @@ class Services::PrepareEcosystemMatrixUpdates::Service < Services::ApplicationSe
     # Check updated exercise groups and their ecosystems to see if we triggered a new matrix update
     total_ecosystems = 0
     loop do
-      begin
-        num_exercise_groups, num_ecosystems = ExerciseGroup.transaction do
-          # No order needed because of SKIP LOCKED
-          group_uuids = ExerciseGroup.where(trigger_ecosystem_matrix_update: true)
-                                     .lock('FOR NO KEY UPDATE SKIP LOCKED')
-                                     .limit(EXERCISE_GROUP_BATCH_SIZE)
-                                     .pluck(:uuid)
-          num_exercise_groups = group_uuids.size
-          next [ 0, 0 ] if num_exercise_groups == 0
+      num_exercise_groups, num_ecosystems = ExerciseGroup.transaction do
+        # No order needed because of SKIP LOCKED
+        group_uuids = ExerciseGroup.where(trigger_ecosystem_matrix_update: true)
+                                   .lock('FOR NO KEY UPDATE SKIP LOCKED')
+                                   .limit(EXERCISE_GROUP_BATCH_SIZE)
+                                   .pluck(:uuid)
+        num_exercise_groups = group_uuids.size
+        next [ 0, 0 ] if num_exercise_groups == 0
 
-          # Get Ecosystems with Exercises whose number of Responses that have not yet
-          # been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
-          # We order by uuid here to avoid deadlocks when locking the ecosystems
-          # Cannot use SKIP LOCKED here,
-          # otherwise we could miss an Ecosystem that needs to be updated
-          ecosystem_uuids = Ecosystem
-            .where(
-              EcosystemExercise.joins(exercise: :exercise_group).where(
-                eex[:ecosystem_uuid].eq(ec[:uuid]).and(eg[:uuid].in(group_uuids))
-              ).arel.exists
-            )
-            .ordered
-            .lock('FOR NO KEY UPDATE')
-            .pluck(:uuid)
+        # Get Ecosystems with Exercises whose number of Responses that have not yet
+        # been used in EcosystemMatrixUpdates exceeds the UPDATE_THRESHOLD
+        # We order by uuid here to avoid deadlocks when locking the ecosystems
+        # Cannot use SKIP LOCKED here,
+        # otherwise we could miss an Ecosystem that needs to be updated
+        ecosystem_uuids = Ecosystem
+          .where(
+            EcosystemExercise.joins(exercise: :exercise_group).where(
+              eex[:ecosystem_uuid].eq(ec[:uuid]).and(eg[:uuid].in(group_uuids))
+            ).arel.exists
+          )
+          .ordered
+          .lock('FOR NO KEY UPDATE')
+          .pluck(:uuid)
 
-          num_ecosystems = ecosystem_uuids.size
-          next [ num_exercise_groups, 0 ] if num_ecosystems == 0
+        num_ecosystems = ecosystem_uuids.size
+        next [ num_exercise_groups, 0 ] if num_ecosystems == 0
 
-          # Record the counts needed to trigger the next update and clear the trigger flag
-          ExerciseGroup
-            .where(
-              EcosystemExercise.joins(:exercise).where(
-                eex[:ecosystem_uuid].in(ecosystem_uuids).and(ex[:group_uuid].eq(eg[:uuid]))
-              ).arel.exists
-            )
-            .ordered_update_all(
-              <<~UPDATE_SQL
-                "trigger_ecosystem_matrix_update" = FALSE,
-                "next_update_response_count" =
-                  FLOOR((1 + #{UPDATE_THRESHOLD}) * "exercise_groups"."response_count") + 1
-              UPDATE_SQL
-            )
-
-          ecosystem_matrix_updates = ecosystem_uuids.map do |ecosystem_uuid|
-            EcosystemMatrixUpdate.new(
-              uuid: SecureRandom.uuid,
-              ecosystem_uuid: ecosystem_uuid
-            )
-          end
-
-          ecosystem_matrix_update_uuids = EcosystemMatrixUpdate.where(
-            ecosystem_uuid: ecosystem_uuids
-          ).ordered.lock('FOR UPDATE').pluck(:uuid)
-
-          # Record any new ecosystem matrix updates
-          EcosystemMatrixUpdate.import(
-            ecosystem_matrix_updates,
-            validate: false, on_duplicate_key_update: {
-              conflict_target: [ :ecosystem_uuid ], columns: [ :uuid, :algorithm_names ]
-            }
+        # Record the counts needed to trigger the next update and clear the trigger flag
+        ExerciseGroup
+          .where(
+            EcosystemExercise.joins(:exercise).where(
+              eex[:ecosystem_uuid].in(ecosystem_uuids).and(ex[:group_uuid].eq(eg[:uuid]))
+            ).arel.exists
+          )
+          .ordered_update_all(
+            <<~UPDATE_SQL
+              "trigger_ecosystem_matrix_update" = FALSE,
+              "next_update_response_count" =
+                FLOOR((1 + #{UPDATE_THRESHOLD}) * "exercise_groups"."response_count") + 1
+            UPDATE_SQL
           )
 
-          # Cleanup AlgorithmEcosystemMatrixUpdates that no longer have
-          # an associated EcosystemMatrixUpdate record
-          AlgorithmEcosystemMatrixUpdate.where(
-            ecosystem_matrix_update_uuid: ecosystem_matrix_update_uuids
-          ).delete_all
-
-          [ num_exercise_groups, num_ecosystems ]
+        ecosystem_matrix_updates = ecosystem_uuids.map do |ecosystem_uuid|
+          EcosystemMatrixUpdate.new(
+            uuid: SecureRandom.uuid,
+            ecosystem_uuid: ecosystem_uuid
+          )
         end
 
-        total_ecosystems += num_ecosystems
-        # If we got less exercise groups than the batch size, then this is the last batch
-        break if num_exercise_groups < EXERCISE_GROUP_BATCH_SIZE
-      rescue ActiveRecord::StatementInvalid => ee
-        raise unless ee.cause.is_a? PG::LockNotAvailable
-        # Swallow PG::LockNotAvailable errors and retry
+        ecosystem_matrix_update_uuids = EcosystemMatrixUpdate.where(
+          ecosystem_uuid: ecosystem_uuids
+        ).ordered.lock('FOR UPDATE').pluck(:uuid)
+
+        # Record any new ecosystem matrix updates
+        EcosystemMatrixUpdate.import(
+          ecosystem_matrix_updates,
+          validate: false, on_duplicate_key_update: {
+            conflict_target: [ :ecosystem_uuid ], columns: [ :uuid, :algorithm_names ]
+          }
+        )
+
+        # Cleanup AlgorithmEcosystemMatrixUpdates that no longer have
+        # an associated EcosystemMatrixUpdate record
+        AlgorithmEcosystemMatrixUpdate.where(
+          ecosystem_matrix_update_uuid: ecosystem_matrix_update_uuids
+        ).delete_all
+
+        [ num_exercise_groups, num_ecosystems ]
       end
+
+      total_ecosystems += num_ecosystems
+      # If we got less exercise groups than the batch size, then this is the last batch
+      break if num_exercise_groups < EXERCISE_GROUP_BATCH_SIZE
     end
 
     log(:debug) do
