@@ -20,10 +20,11 @@ module Services::AssignmentExerciseRequests
 
     # Get assignments are not yet due or do not yet have feedback for each student
     student_uuids = assignments.map(&:student_uuid)
+    aa = Assignment.arel_table
     anti_cheating_assignments = Assignment
+                                  .where(aa[:due_at].gt(current_time))
+                                  .or(Assignment.where(aa[:feedback_at].gt(current_time)))
                                   .where(student_uuid: student_uuids)
-                                  .where(aa[:due_at].gt(start_time))
-                                  .or(Assignment.where(aa[:feedback_at].gt(start_time)))
                                   .pluck(:student_uuid, :assigned_exercise_uuids)
 
     # Convert excluded exercise uuids to group uuids
