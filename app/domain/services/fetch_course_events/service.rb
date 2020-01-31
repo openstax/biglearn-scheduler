@@ -115,6 +115,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     assignments_hash = {}
     used_algorithm_exercise_calculation_uuids = []
     assigned_exercises = []
+    anti_cheating_assigned_exercise_uuids = []
     student_uuids_by_assigned_exercise_uuid = Hash.new { |hash, key| hash[key] = [] }
     responses_hash = {}
     courses = course_event_responses.map do |course_event_response|
@@ -313,9 +314,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         exercise_uuids = exercises.map { |exercise| exercise.fetch(:exercise_uuid) }.uniq
 
         exclusion_info = data.fetch(:exclusion_info, {})
-        opens_at = exclusion_info[:opens_at]
-        due_at = exclusion_info[:due_at]
-        feedback_at = exclusion_info[:feedback_at]
+        opens_at = DateTime.iso8601(exclusion_info[:opens_at]) rescue nil
+        due_at = DateTime.iso8601(exclusion_info[:due_at]) rescue nil
+        feedback_at = DateTime.iso8601(exclusion_info[:feedback_at]) rescue nil
 
         pe_calculation_uuid = data.dig(:pes, :calculation_uuid)
         spe_calculation_uuid = data.dig(:spes, :calculation_uuid)
@@ -331,9 +332,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           ecosystem_uuid: ecosystem_uuid,
           student_uuid: student_uuid,
           assignment_type: data.fetch(:assignment_type),
-          opens_at: opens_at.nil? ? nil : DateTime.iso8601(opens_at),
-          due_at: due_at.nil? ? nil : DateTime.iso8601(due_at),
-          feedback_at: feedback_at.nil? ? nil : DateTime.iso8601(feedback_at),
+          opens_at: opens_at,
+          due_at: due_at,
+          feedback_at: feedback_at,
           assigned_book_container_uuids: data.fetch(:assigned_book_container_uuids),
           assigned_exercise_uuids: exercise_uuids,
           goal_num_tutor_assigned_spes: data[:goal_num_tutor_assigned_spes],
@@ -345,15 +346,20 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         )
 
         data.fetch(:assigned_exercises).each do |assigned_exercise|
+          assigned_exercise_uuid = assigned_exercise.fetch(:trial_uuid)
           exercise_uuid = assigned_exercise.fetch(:exercise_uuid)
 
           assigned_exercises << AssignedExercise.new(
-            uuid: assigned_exercise.fetch(:trial_uuid),
+            uuid: assigned_exercise_uuid,
             assignment: assignments_hash[assignment_uuid],
             exercise_uuid: exercise_uuid,
             is_spe: assigned_exercise.fetch(:is_spe),
             is_pe: assigned_exercise.fetch(:is_pe)
           )
+
+          anti_cheating_assigned_exercise_uuids << assigned_exercise_uuid \
+            if (!due_at.nil? && due_at > current_time) ||
+               (!feedback_at.nil? && feedback_at > current_time)
         end
       end
 
@@ -551,7 +557,6 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
     unless assignments_hash.empty?
       assignment_uuids = assignments_hash.keys
-      assigned_exercise_uuids = assigned_exercises.map(&:uuid)
 
       # Find relevant ExerciseCalculations
       # The ExerciseCalculation lock ensures we don't miss updates on
@@ -575,7 +580,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                   student: { assignments: :assigned_exercises }
                 )
                 .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
-                .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+                .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
                 .to_sql
             }
             UNION ALL
@@ -584,7 +589,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 .select(:uuid)
                 .joins(assignments: :assignment_pes, student: { assignments: :assigned_exercises })
                 .where('"assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"')
-                .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+                .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
                 .to_sql
             }
             UNION ALL
@@ -593,7 +598,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 .select(:uuid)
                 .joins(assignments: :assignment_spes, student: { assignments: :assigned_exercises })
                 .where('"assigned_exercises"."exercise_uuid" = "assignment_spes"."exercise_uuid"')
-                .where(assigned_exercises: { uuid: assigned_exercise_uuids })
+                .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
                 .to_sql
             }
             UNION ALL
@@ -615,9 +620,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
       .pluck(:uuid)
 
-      # Recalculate Assignment PEs and SPEs for updated assignments and
-      # Assignment PEs and SPEs that conflict with the AssignedExercises that were just
-      # created to prevent any assignment from getting a PE or SPE that was already used elsewhere
+      # Recalculate Assignment PEs and SPEs for assignments that need them and were updated or
+      # have PEs and SPEs that conflict with the AssignedExercises that were just created,
+      # to prevent any assignment from getting a PE or SPE that was already used elsewhere
       assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
       ecu = ec[:uuid].as('"exercise_calculation_uuid"')
       aeeu = AssignedExercise.arel_table[:exercise_uuid]
@@ -626,6 +631,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           (#{
             Assignment
               .select(:uuid, ecu)
+              .need_pes_or_spes
               .joins(:exercise_calculation)
               .where(uuid: assignment_uuids)
               .to_sql
@@ -634,6 +640,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           #{
             Assignment
               .select(:uuid, ecu)
+              .need_pes_or_spes
               .joins(
                 :assignment_pes,
                 exercise_calculation: { student: { assignments: :assigned_exercises } }
@@ -642,7 +649,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
               .where(
                 exercise_calculation: {
                   student: {
-                    assignments: { assigned_exercises: { uuid: assigned_exercise_uuids } }
+                    assignments: {
+                      assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids }
+                    }
                   }
                 }
               )
@@ -652,6 +661,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           #{
             Assignment
               .select(:uuid, ecu)
+              .need_pes_or_spes
               .joins(
                 :assignment_spes,
                 exercise_calculation: { student: { assignments: :assigned_exercises } }
@@ -660,7 +670,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
               .where(
                 exercise_calculation: {
                   student: {
-                    assignments: { assigned_exercises: { uuid: assigned_exercise_uuids } }
+                    assignments: {
+                      assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids }
+                    }
                   }
                 }
               )
@@ -714,8 +726,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           :student_pes, exercise_calculation: { student: { assignments: :assigned_exercises } }
         )
         .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
-        .where(assigned_exercises: { uuid: assigned_exercise_uuids })
-        .ordered_update_all(is_pending_for_student: true) unless assigned_exercise_uuids.empty?
+        .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
+        .ordered_update_all(is_pending_for_student: true) \
+          unless anti_cheating_assigned_exercise_uuids.empty?
 
       # Get assignments that need PEs or SPEs and do not yet have an ExerciseCalculation
       default_calculation_assignments = Assignment.need_pes_or_spes.joins(

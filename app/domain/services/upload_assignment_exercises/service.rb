@@ -485,21 +485,30 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         # No sort needed because no conflict clause
         AssignmentSpe.import assignment_spes, validate: false
 
-        # Remove SPEs for any assignments that are using the PEs above (PEs have priority over SPEs)
-        unless assignment_pes.empty?
-          assignment_pe_uuids = assignment_pes.map(&:uuid)
-
-          AssignmentSpe.joins(:conflicting_assignment_pes)
-                       .where(assignment_pes: { uuid: assignment_pe_uuids })
-                       .ordered_delete_all
-        end
-
         # Mark the AlgorithmExerciseCalculations as uploaded (even the superseded ones)
         all_assignments.group_by(
           &:algorithm_exercise_calculation_uuid
         ).each do |calc_uuid, assignments|
           algorithm_exercise_calculation = algorithm_exercise_calculations_by_uuid[calc_uuid]
           algorithm_exercise_calculation.pending_assignment_uuids -= assignments.map(&:uuid)
+        end
+
+        # Mark AlgorithmExerciseCalculations with conflicting AssignmentSpes for recalculation
+        unless assignment_pes.empty?
+          assignment_pe_uuids = assignment_pes.map(&:uuid)
+
+          AlgorithmExerciseCalculation
+            .select(aec[Arel.star], aspe[:assignment_uuid])
+            .joins(assignment_spes: :conflicting_assignment_pes)
+            .where(assignment_spes: { conflicting_assignment_pes: { uuid: assignment_pe_uuids } })
+            .group_by(&:uuid)
+            .each do |uuid, algorithm_exercise_calculations|
+            algorithm_exercise_calculations_by_uuid[uuid] ||= algorithm_exercise_calculations.first
+            algorithm_exercise_calculations_by_uuid[uuid].pending_assignment_uuids = (
+              algorithm_exercise_calculations_by_uuid[uuid].pending_assignment_uuids +
+              algorithm_exercise_calculations.map(&:assignment_uuid)
+            ).uniq
+          end
         end
 
         # No sort needed because already locked above

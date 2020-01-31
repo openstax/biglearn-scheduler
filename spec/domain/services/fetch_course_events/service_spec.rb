@@ -509,8 +509,8 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
       let(:assigned_book_container_uuids)     do
         num_assigned_book_container_uuids.times.map { SecureRandom.uuid }
       end
-      let(:goal_num_tutor_assigned_spes)      { rand 5 }
-      let(:spes_are_assigned)                 { [true, false].sample }
+      let(:goal_num_tutor_assigned_spes)      { rand(5) + 1 }
+      let(:spes_are_assigned)                 { false }
       let(:goal_num_tutor_assigned_pes)       { rand 2 }
       let(:pes_are_assigned)                  { [true, false].sample }
       let(:num_assigned_exercises)            { 10 }

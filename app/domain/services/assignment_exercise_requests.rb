@@ -18,15 +18,17 @@ module Services::AssignmentExerciseRequests
       :course_excluded_exercise_group_uuids
     ).index_by(&:first)
 
-    # Get assignments that should have hidden feedback for each student
+    # Get assignments are not yet due or do not yet have feedback for each student
     student_uuids = assignments.map(&:student_uuid)
-    no_feedback_yet_assignments = Assignment
-                                    .where(student_uuid: student_uuids)
-                                    .where(Assignment.arel_table[:feedback_at].gt(current_time))
-                                    .pluck(:student_uuid, :assigned_exercise_uuids)
+    aa = Assignment.arel_table
+    anti_cheating_assignments = Assignment
+                                  .where(aa[:due_at].gt(current_time))
+                                  .or(Assignment.where(aa[:feedback_at].gt(current_time)))
+                                  .where(student_uuid: student_uuids)
+                                  .pluck(:student_uuid, :assigned_exercise_uuids)
 
     # Convert excluded exercise uuids to group uuids
-    assigned_exercise_uuids = no_feedback_yet_assignments.flat_map(&:second)
+    assigned_exercise_uuids = anti_cheating_assignments.flat_map(&:second)
     assigned_exercise_group_uuid_by_uuid = Exercise.where(uuid: assigned_exercise_uuids)
                                                    .pluck(:uuid, :group_uuid)
                                                    .to_h
@@ -61,8 +63,8 @@ module Services::AssignmentExerciseRequests
         end
       end
 
-      # Add the exclusions from no_feedback_yet_assignments to the map above
-      no_feedback_yet_assignments.each do |student_uuid, assigned_exercise_uuids|
+      # Add the exclusions from anti_cheating_assignments to the map above
+      anti_cheating_assignments.each do |student_uuid, assigned_exercise_uuids|
         excluded_group_uuids =
           assigned_exercise_group_uuid_by_uuid.values_at(*assigned_exercise_uuids)
         excluded_exercise_uuids =
@@ -131,12 +133,11 @@ module Services::AssignmentExerciseRequests
   def build_pe_request(algorithm_exercise_calculation:, assignment:, excluded_exercise_uuids:)
     assignment_type = assignment.assignment_type
     assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
-    assignment_excluded_uuids = excluded_exercise_uuids
     # Ignore book containers with no dynamic exercises
     book_container_uuids = assignment.assigned_book_container_uuids
                                      .uniq
                                      .reject do |book_container_uuid|
-      ( assignment_type_exercise_uuids_map[book_container_uuid] - assignment_excluded_uuids ).empty?
+      ( assignment_type_exercise_uuids_map[book_container_uuid] - excluded_exercise_uuids ).empty?
     end.shuffle
 
     unless book_container_uuids.empty?
@@ -154,12 +155,12 @@ module Services::AssignmentExerciseRequests
         assignment: assignment,
         book_container_uuids: book_container_uuid,
         prioritized_exercise_uuids: algorithm_exercise_calculation.exercise_uuids,
-        excluded_exercise_uuids: assignment_excluded_uuids,
+        excluded_exercise_uuids: excluded_exercise_uuids,
         exercise_count: book_container_num_pes
       ).tap do |chosen_pe_uuids|
         num_chosen_pes = chosen_pe_uuids.size
         remainder += num_pes_per_book_container - num_chosen_pes
-        assignment_excluded_uuids += chosen_pe_uuids
+        excluded_exercise_uuids += chosen_pe_uuids
       end
     end
 
@@ -187,8 +188,6 @@ module Services::AssignmentExerciseRequests
     include_random_ago = history_type == :student_driven &&
                          assignment_sequence_number >= MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO
     k_ago_map = get_k_ago_map(assignment, include_random_ago)
-
-    assignment_excluded_uuids = excluded_exercise_uuids
 
     forbidden_random_k_agos = k_ago_map.map(&:first).compact
     allowed_random_k_agos = K_AGOS_TO_LOAD - forbidden_random_k_agos
@@ -218,13 +217,13 @@ module Services::AssignmentExerciseRequests
           assignment: assignment,
           book_container_uuids: book_container_uuid,
           prioritized_exercise_uuids: algorithm_exercise_calculation.exercise_uuids,
-          excluded_exercise_uuids: assignment_excluded_uuids,
+          excluded_exercise_uuids: excluded_exercise_uuids,
           exercise_count: book_container_num_spes
         ).tap do |chosen_spe_uuids|
           num_chosen_spes = chosen_spe_uuids.size
           num_remaining_exercises -= num_chosen_spes
           remainder += num_spes_per_book_container - num_chosen_spes
-          assignment_excluded_uuids += chosen_spe_uuids
+          excluded_exercise_uuids += chosen_spe_uuids
 
           # SPE spy info
           chosen_k_ago = k_ago.nil? ? assignment_history.find do |k_ago, history_entry|
@@ -242,7 +241,7 @@ module Services::AssignmentExerciseRequests
       assignment: assignment,
       book_container_uuids: assignment.assigned_book_container_uuids,
       prioritized_exercise_uuids: algorithm_exercise_calculation.exercise_uuids,
-      excluded_exercise_uuids: assignment_excluded_uuids,
+      excluded_exercise_uuids: excluded_exercise_uuids,
       exercise_count: num_remaining_exercises
     )
 

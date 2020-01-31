@@ -90,13 +90,13 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
                          to_book_container_uuid: @reading_pool_3_old.book_container_uuid
       @reading_pool_4_old = FactoryBot.create(
         :exercise_pool,
-        exercises_count: 7,
+        exercises_count: 14,
         ecosystem_uuid: ecosystem_1.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
       @reading_pool_4_new = FactoryBot.create(
         :exercise_pool,
-        exercises_count: 7,
+        exercises_count: 14,
         ecosystem_uuid: ecosystem_2.uuid,
         use_for_personalized_for_assignment_types: ['reading']
       )
@@ -318,9 +318,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         is_deleted: false
       )
 
-      # 2 SPEs (1 random-ago), 1 PEs requested; PE is filled
-      # EO: 1-ago SPE filled from reading 1, random-ago SPE filled as PE
-      # RO: 1-ago SPE filled from reading 3, random-ago SPE filled as PE
+      # 2 SPEs (1 random-ago), 1 PEs requested; can be filled
       @reading_2 = FactoryBot.create(
         :assignment,
         course_uuid: course.uuid,
@@ -342,9 +340,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         is_deleted: false
       )
 
-      # 3 SPEs (1 random-ago), 2 PEs requested; PEs are filled taking 2 out of 3 available exercises
-      # EO: 1-ago SPE filled from reading 2, 3-ago SPE filled as PE, random-ago SPE unfilled
-      # RO: Only 1-ago SPE filled as PE
+      # 3 SPEs (1 random-ago), 2 PEs requested; can be filled
       @reading_3 = FactoryBot.create(
         :assignment,
         course_uuid: course.uuid,
@@ -368,7 +364,6 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
 
       # These homeworks are taking all available exercises, so no PEs are possible
 
-      # Immediate feedback
       # 3 SPEs, 1 PE requested; PE cannot be filled
       # EO: No exercises available to fill anything
       # RO: Only 1-ago SPE can be filled from homework 2
@@ -393,11 +388,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         is_deleted: false
       )
 
-      # Immediate feedback
-      # 2 SPEs, 1 PE requested; PE cannot be filled
-      # EO: Only 1-ago SPE can be filled from homework 1
-      # RO: No exercises available to fill anything
-      #     (1-ago SPE would be filled from homework 3 if homework 3 had immediate feedback)
+      # 2 SPEs, 1 PE requested; cannot be filled
       @homework_2 = FactoryBot.create(
         :assignment,
         course_uuid: course.uuid,
@@ -419,10 +410,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
         is_deleted: false
       )
 
-      # Feedback on due date
-      # 3 SPEs, 1 PE requested; PE cannot be filled
-      # EO: Only 1-ago SPE can be filled from homework 2
-      # RO: No exercises available to fill anything
+      # 3 SPEs, 1 PE requested; cannot be filled
       @homework_3 = FactoryBot.create(
         :assignment,
         course_uuid: course.uuid,
@@ -542,10 +530,10 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
     end
 
     let(:expected_num_spes) do
-      expected_assignment_spes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
+      expected_assignment_spes.map { |calc| calc[:exercise_count] }.sum
     end
     let(:expected_num_pes) do
-      expected_assignment_pes.map { |calc| calc[:exercise_count] }.reduce(0, :+)
+      expected_assignment_pes.map { |calc| calc[:exercise_count] }.sum
     end
 
     before do
@@ -594,20 +582,18 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             assignment_uuid: @reading_3.uuid,
             history_type: 'instructor_driven',
             exercise_pool: @reading_pool_3_new.exercise_uuids +
-                           @reading_pool_4_new.exercise_uuids +
-                           @reading_pool_5_new.exercise_uuids -
+                           @reading_pool_4_new.exercise_uuids -
                            @reading_3.assigned_exercise_uuids,
-            exercise_count: 2
+            exercise_count: 3
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
             assignment_uuid: @reading_3.uuid,
             history_type: 'student_driven',
             exercise_pool: @reading_pool_3_new.exercise_uuids +
-                           @reading_pool_4_new.exercise_uuids +
-                           @reading_pool_5_new.exercise_uuids -
+                           @reading_pool_4_new.exercise_uuids -
                            @reading_3.assigned_exercise_uuids,
-            exercise_count: 2
+            exercise_count: 3
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_1,
@@ -627,33 +613,29 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
             assignment_uuid: @homework_2.uuid,
             history_type: 'instructor_driven',
-            exercise_pool: @homework_pool_1_new.exercise_uuids +
-                           @homework_pool_2_new.exercise_uuids,
-            exercise_count: 1
+            exercise_pool: [],
+            exercise_count: 0
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
             assignment_uuid: @homework_2.uuid,
             history_type: 'student_driven',
-            exercise_pool: @homework_pool_1_new.exercise_uuids +
-                           @homework_pool_2_new.exercise_uuids,
-            exercise_count: 1
+            exercise_pool: [],
+            exercise_count: 0
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
             assignment_uuid: @homework_3.uuid,
             history_type: 'instructor_driven',
-            exercise_pool: @homework_pool_3_new.exercise_uuids +
-                           @homework_pool_4_new.exercise_uuids,
-            exercise_count: 1
+            exercise_pool: [],
+            exercise_count: 0
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
             assignment_uuid: @homework_3.uuid,
             history_type: 'student_driven',
-            exercise_pool: @homework_pool_3_new.exercise_uuids +
-                           @homework_pool_4_new.exercise_uuids,
-            exercise_count: 1
+            exercise_pool: [],
+            exercise_count: 0
           }
         ]
       end
@@ -729,10 +711,9 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             assignment_uuid: @reading_3.uuid,
             history_type: 'instructor_driven',
             exercise_pool: @reading_pool_3_new.exercise_uuids +
-                           @reading_pool_4_new.exercise_uuids +
-                           @reading_pool_5_new.exercise_uuids -
+                           @reading_pool_4_new.exercise_uuids -
                            @reading_3.assigned_exercise_uuids,
-            exercise_count: 2
+            exercise_count: 3
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
@@ -741,7 +722,7 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             exercise_pool: @reading_pool_4_new.exercise_uuids +
                            @reading_pool_5_new.exercise_uuids -
                            @reading_3.assigned_exercise_uuids,
-            exercise_count: 1
+            exercise_count: 3
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_1,
@@ -762,9 +743,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
             assignment_uuid: @homework_2.uuid,
             history_type: 'instructor_driven',
-            exercise_pool: @homework_pool_1_new.exercise_uuids +
-                           @homework_pool_2_new.exercise_uuids,
-            exercise_count: 1
+            exercise_pool: [],
+            exercise_count: 0
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
@@ -777,9 +757,8 @@ RSpec.describe Services::UploadAssignmentExercises::Service, type: :service do
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
             assignment_uuid: @homework_3.uuid,
             history_type: 'instructor_driven',
-            exercise_pool: @homework_pool_3_new.exercise_uuids +
-                           @homework_pool_4_new.exercise_uuids,
-            exercise_count: 1
+            exercise_pool: [],
+            exercise_count: 0
           },
           {
             algorithm_exercise_calculation: @algorithm_exercise_calculation_2,
