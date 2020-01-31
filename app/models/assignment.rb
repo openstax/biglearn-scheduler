@@ -25,6 +25,15 @@ class Assignment < ApplicationRecord
     ExerciseCalculation.find_by student_uuid: student_uuid, ecosystem_uuid: ecosystem_uuid
   end
 
+  has_one :default_exercise_calculation,
+    -> { default },
+    class_name: 'ExerciseCalculation',
+    primary_key: :ecosystem_uuid,
+    foreign_key: :ecosystem_uuid
+  def default_exercise_calculation
+    ExerciseCalculation.default.find_by ecosystem_uuid: ecosystem_uuid
+  end
+
   belongs_to :student, primary_key: :uuid,
                        foreign_key: :student_uuid,
                        optional: true,

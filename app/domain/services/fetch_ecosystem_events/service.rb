@@ -10,7 +10,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
     ec = Ecosystem.arel_table
     last_uuid = nil
     ecosystem_uuids_to_requery = []
-    results = []
+    failures = 0
     total_events = 0
     total_ecosystems = 0
 
@@ -29,11 +29,11 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
         last_uuid = ecosystems.last.uuid
 
-        partial_ecosystem_uuids_to_requery, partial_results, num_events =
+        partial_ecosystem_uuids_to_requery, partial_failures, num_events =
           fetch_and_process_ecosystem_events(ecosystems, event_types, restart)
 
         ecosystem_uuids_to_requery.concat partial_ecosystem_uuids_to_requery
-        results.concat partial_results
+        failures += partial_failures
         total_events += num_events
 
         ecosystems_size
@@ -53,11 +53,11 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
                               .to_a
         next if ecosystems.empty?
 
-        partial_ecosystem_uuids_to_requery, partial_results, num_events =
+        partial_ecosystem_uuids_to_requery, partial_failures, num_events =
           fetch_and_process_ecosystem_events(ecosystems, event_types, restart)
 
         ecosystem_uuids_to_requery.concat partial_ecosystem_uuids_to_requery
-        results.concat partial_results
+        failures += partial_failures
         total_events += num_events
       end
 
@@ -65,11 +65,8 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
     end
 
     log(:debug) do
-      conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-      time = Time.current - start_time
-
       "Received: #{total_events} event(s) from #{total_ecosystems} ecosystem(s)" +
-      " with #{conflicts} conflict(s) in #{time} second(s)"
+      " with #{failures} failure(s) in #{Time.current - start_time} second(s)"
     end
   end
 
@@ -77,7 +74,7 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
   def fetch_and_process_ecosystem_events(ecosystems, event_types, restart)
     ecosystem_uuids_to_requery = []
-    results = []
+    failures = 0
     total_events = 0
 
     ecosystem_event_requests = []
@@ -88,6 +85,8 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
 
       [ ecosystem.uuid, ecosystem ]
     end.to_h
+
+    exercise_calculations = []
 
     ecosystem_event_responses = OpenStax::Biglearn::Api
       .fetch_ecosystem_events(ecosystem_event_requests)
@@ -179,37 +178,50 @@ class Services::FetchEcosystemEvents::Service < Services::ApplicationService
         ecosystem.sequence_number, events.map { |event| event.fetch(:sequence_number) }.max + 1
       ].max
 
+      exercise_calculations << ExerciseCalculation.default.new(
+        uuid: ecosystem_uuid,
+        ecosystem_uuid: ecosystem_uuid,
+        is_used_in_assignments: true
+      )
+
       ecosystem
     end.compact
 
-    results << ExerciseGroup.import(
+    failures += ExerciseGroup.import(
       exercise_groups.sort_by(&ExerciseGroup.sort_proc), validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ], columns: [ :trigger_ecosystem_matrix_update ]
       }
-    )
+    ).failed_instances.size
 
     # No sort needed because of on_duplicate_key_ignore
-    results << Exercise.import(
+    failures += Exercise.import(
       exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
-    )
+    ).failed_instances.size
 
     # No sort needed because of on_duplicate_key_ignore
-    results << EcosystemExercise.import(
+    failures += EcosystemExercise.import(
       ecosystem_exercises, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
-    )
+    ).failed_instances.size
 
     # No sort needed because of on_duplicate_key_ignore
-    results << ExercisePool.import(
+    failures += ExercisePool.import(
       exercise_pools, validate: false, on_duplicate_key_ignore: { conflict_target: [ :uuid ] }
-    )
+    ).failed_instances.size
 
     # No sort needed because already locked above
-    results << Ecosystem.import(
+    failures += Ecosystem.import(
       ecosystems, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ], columns: [ :sequence_number, :exercise_uuids ]
       }
-    )
+    ).failed_instances.size
 
-    [ ecosystem_uuids_to_requery, results, total_events ]
+    # No sort needed because of on_duplicate_key_ignore
+    failures += ExerciseCalculation.import(
+      exercise_calculations, validate: false, on_duplicate_key_ignore: {
+        conflict_target: [ :uuid ]
+      }
+    ).failed_instances.size
+
+    [ ecosystem_uuids_to_requery, failures, total_events ]
   end
 end

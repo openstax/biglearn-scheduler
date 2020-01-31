@@ -1,4 +1,6 @@
 class Services::FetchCourseEvents::Service < Services::ApplicationService
+  include Services::AssignmentExerciseRequests
+
   BATCH_SIZE = 1000
   GRACE_PERIOD = 1.month
 
@@ -22,7 +24,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     co = Course.arel_table
     last_uuid = nil
     course_uuids_to_requery = []
-    results = []
+    failures = 0
     total_events = 0
     total_courses = 0
 
@@ -43,11 +45,11 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
         last_uuid = courses.last.uuid
 
-        partial_course_uuids_to_requery, partial_results, num_events =
+        partial_course_uuids_to_requery, partial_failures, num_events =
           fetch_and_process_course_events(courses, event_types, restart, start_time)
 
         course_uuids_to_requery.concat partial_course_uuids_to_requery
-        results.concat partial_results
+        failures += partial_failures
         total_events += num_events
 
         courses_size
@@ -66,11 +68,11 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                         .to_a
         next if courses.empty?
 
-        partial_course_uuids_to_requery, partial_results, num_events =
+        partial_course_uuids_to_requery, partial_failures, num_events =
           fetch_and_process_course_events(courses, event_types, restart, start_time)
 
         course_uuids_to_requery.concat partial_course_uuids_to_requery
-        results.concat partial_results
+        failures += partial_failures
         total_events += num_events
       end
 
@@ -78,11 +80,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     end
 
     log(:debug) do
-      conflicts = results.map { |result| result.failed_instances.size }.reduce(0, :+)
-      time = Time.current - start_time
-
       "Received: #{total_events} event(s) from #{total_courses} course(s)" +
-      " with #{conflicts} conflict(s) in #{time} second(s)"
+      " with #{failures} failure(s) in #{Time.current - start_time} second(s)"
     end
   end
 
@@ -92,7 +91,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     ec = ExerciseCalculation.arel_table
     as = Assignment.arel_table
     course_uuids_to_requery = []
-    results = []
+    failures = 0
     total_events = 0
 
     course_event_requests = []
@@ -390,13 +389,13 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
     # Update all the records in as few queries as possible
 
-    results << EcosystemPreparation.import(
+    failures += EcosystemPreparation.import(
       ecosystem_preparations, validate: false, on_duplicate_key_ignore: {
         conflict_target: [ :uuid ]
       }
-    )
+    ).failed_instances.size
 
-    results << BookContainerMapping.import(
+    failures += BookContainerMapping.import(
       book_container_mappings, validate: false, on_duplicate_key_ignore: {
         conflict_target: [
           :from_book_container_uuid,
@@ -404,7 +403,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           :to_ecosystem_uuid
         ]
       }
-    )
+    ).failed_instances.size
 
     # Chain mappings
     from_ecosystem_uuids = book_container_mappings.map(&:from_ecosystem_uuid)
@@ -478,29 +477,29 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       )
     end.compact
 
-    results << BookContainerMapping.import(
+    failures += BookContainerMapping.import(
       chain_mappings + reverse_mappings, validate: false, on_duplicate_key_ignore: {
         conflict_target: [
           :from_book_container_uuid, :from_ecosystem_uuid, :to_ecosystem_uuid
         ]
       }
-    )
+    ).failed_instances.size
 
-    results << CourseContainer.import(
+    failures += CourseContainer.import(
       course_containers_hash.values.sort_by(&CourseContainer.sort_proc),
       validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ], columns: [ :course_uuid, :student_uuids ]
       }
-    )
+    ).failed_instances.size
 
-    results << Student.import(
+    failures += Student.import(
       students_hash.values.sort_by(&Student.sort_proc), validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
         columns: [ :course_uuid, :course_container_uuids ]
       }
-    )
+    ).failed_instances.size
 
-    results << Assignment.import(
+    failures += Assignment.import(
       assignments_hash.values.sort_by(&Assignment.sort_proc),
       validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
@@ -522,19 +521,19 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           :has_exercise_calculation
         ]
       }
-    )
+    ).failed_instances.size
 
-    results << AssignedExercise.import(
+    failures += AssignedExercise.import(
       assigned_exercises, validate: false, on_duplicate_key_ignore: {
         conflict_target: [ :uuid ]
       }
-    )
+    ).failed_instances.size
 
     # NOTE: update happens when an answer is changed
     #       first_responded_at is not included here so it is never updated after set
     #       is_used_in_clue_calculations is here because the CLUes need to be recalculated
     #       exercise calculations, response counts and student history are unaffected
-    results << Response.import(
+    failures += Response.import(
       responses_hash.values.sort_by(&Response.sort_proc), validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
         columns: [
@@ -546,7 +545,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           :is_used_in_clue_calculations
         ]
       }
-    )
+    ).failed_instances.size
 
     # Event side-effects
 
@@ -717,6 +716,50 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
         .where(assigned_exercises: { uuid: assigned_exercise_uuids })
         .ordered_update_all(is_pending_for_student: true) unless assigned_exercise_uuids.empty?
+
+      # Get assignments that need PEs or SPEs and do not yet have an ExerciseCalculation
+      default_calculation_assignments = Assignment.need_pes_or_spes.joins(
+        default_exercise_calculation: :algorithm_exercise_calculations
+      ).where(uuid: assignment_uuids).where.not(
+        ExerciseCalculation.where(
+          ExerciseCalculation.arel_table[:student_uuid].eq(Assignment.arel_table[:student_uuid]),
+          ExerciseCalculation.arel_table[:ecosystem_uuid].eq(Assignment.arel_table[:ecosystem_uuid])
+        ).arel.exists
+      ).preload(default_exercise_calculation: :algorithm_exercise_calculation).to_a
+
+      excluded_uuids_by_student_uuid = get_excluded_exercises_by_student_uuid(
+        default_calculation_assignments, current_time: current_time
+      )
+
+      # Upload default assignment PE information
+      default_pe_reqs = default_calculation_assignments.select(&:needs_pes?).map do |assignment|
+        exercise_calculation = assignment.default_exercise_calculation
+        student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[assignment.student_uuid]
+
+        build_pe_request(
+          algorithm_exercise_calculation: exercise_calculation.algorithm_exercise_calculation,
+          assignment: assignment,
+          excluded_exercise_uuids: student_excluded_exercise_uuids
+        )
+      end
+
+      # Send the default AssignmentPEs to the API server
+      OpenStax::Biglearn::Api.update_assignment_pes(default_pe_reqs) if default_pe_reqs.any?
+
+      # Upload default assignment SPE information
+      default_spe_reqs = default_calculation_assignments.select(&:needs_spes?).map do |assignment|
+        exercise_calculation = assignment.default_exercise_calculation
+        student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[assignment.student_uuid]
+
+        build_spe_request(
+          algorithm_exercise_calculation: exercise_calculation.algorithm_exercise_calculation,
+          assignment: assignment,
+          excluded_exercise_uuids: student_excluded_exercise_uuids
+        )
+      end
+
+      # Send the default AssignmentSPEs to the API server
+      OpenStax::Biglearn::Api.update_assignment_spes(default_spe_reqs) if default_spe_reqs.any?
     end
 
     unless course_uuids_with_changed_ecosystems.empty?
@@ -742,7 +785,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     end
 
     # No sort needed because already locked above
-    results << Course.import(
+    failures += Course.import(
       courses, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
         columns: [
@@ -756,8 +799,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           :global_excluded_exercise_group_uuids
         ]
       }
-    )
+    ).failed_instances.size
 
-    [ course_uuids_to_requery, results, total_events ]
+    [ course_uuids_to_requery, failures, total_events ]
   end
 end
