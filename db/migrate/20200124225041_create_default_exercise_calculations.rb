@@ -1,9 +1,8 @@
 class CreateDefaultExerciseCalculations < ActiveRecord::Migration[5.2]
-  def change
-    exercise_calculations = Ecosystem.where(
-      Ecosystem.arel_table[:sequence_number].gt 0
-    ).in_batches.map do |ecosystem|
-      ExerciseCalculation.default.new(
+  def up
+    exercise_calculations = []
+    Ecosystem.where(Ecosystem.arel_table[:sequence_number].gt 0).find_each do |ecosystem|
+      exercise_calculations << ExerciseCalculation.default.new(
         uuid: ecosystem.uuid,
         ecosystem_uuid: ecosystem.uuid,
         is_used_in_assignments: true
@@ -14,7 +13,7 @@ class CreateDefaultExerciseCalculations < ActiveRecord::Migration[5.2]
       exercise_calculations, validate: false, on_duplicate_key_ignore: {
         conflict_target: [ :uuid ]
       }
-    )
+    ) unless exercise_calculations.empty?
   end
 
   def down
