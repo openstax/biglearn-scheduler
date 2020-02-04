@@ -7,6 +7,23 @@ module Services::AssignmentExerciseRequests
 
   MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO = 5
 
+  def get_exercise_uuids_map(book_container_uuids)
+    # Get exercises for all relevant book_container_uuids
+    Hash.new do |hash, key|
+      hash[key] = Hash.new { |hash, key| hash[key] = [] }
+    end.tap do |exercise_uuids_map|
+      ExercisePool.where(book_container_uuid: book_container_uuids).pluck(
+        :book_container_uuid,
+        :use_for_personalized_for_assignment_types,
+        :exercise_uuids
+      ).each do |book_container_uuid, assignment_types, exercise_uuids|
+        assignment_types.each do |assignment_type|
+          exercise_uuids_map[assignment_type][book_container_uuid].concat exercise_uuids
+        end
+      end
+    end
+  end
+
   def get_excluded_exercises_by_student_uuid(assignments, current_time: Time.current)
     # Get exercise exclusions for each course
     course_uuids = assignments.map(&:course_uuid)
@@ -112,6 +129,7 @@ module Services::AssignmentExerciseRequests
   def choose_exercise_uuids(
     assignment:,
     book_container_uuids:,
+    exercise_uuids_map:,
     prioritized_exercise_uuids:,
     excluded_exercise_uuids:,
     exercise_count:
@@ -120,7 +138,7 @@ module Services::AssignmentExerciseRequests
 
     # Get exercises in relevant book containers for the relevant assignment type
     book_container_exercise_uuids =
-      @exercise_uuids_map[assignment.assignment_type].values_at(*book_container_uuids).flatten
+      exercise_uuids_map[assignment.assignment_type].values_at(*book_container_uuids).flatten
 
     # Remove duplicates (same assignment), assigned exercises and exclusions
     allowed_exercise_uuids = book_container_exercise_uuids -
@@ -130,9 +148,12 @@ module Services::AssignmentExerciseRequests
     (prioritized_exercise_uuids & allowed_exercise_uuids).first(exercise_count)
   end
 
-  def build_pe_request(algorithm_exercise_calculation:, assignment:, excluded_exercise_uuids:)
+  def build_pe_request(algorithm_exercise_calculation:,
+                       assignment:,
+                       exercise_uuids_map:,
+                       excluded_exercise_uuids:)
     assignment_type = assignment.assignment_type
-    assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
+    assignment_type_exercise_uuids_map = exercise_uuids_map[assignment_type]
     # Ignore book containers with no dynamic exercises
     book_container_uuids = assignment.assigned_book_container_uuids
                                      .uniq
@@ -154,6 +175,7 @@ module Services::AssignmentExerciseRequests
       choose_exercise_uuids(
         assignment: assignment,
         book_container_uuids: book_container_uuid,
+        exercise_uuids_map: exercise_uuids_map,
         prioritized_exercise_uuids: algorithm_exercise_calculation.exercise_uuids,
         excluded_exercise_uuids: excluded_exercise_uuids,
         exercise_count: book_container_num_pes
@@ -184,6 +206,7 @@ module Services::AssignmentExerciseRequests
                         assignment_sequence_number:,
                         history_type:,
                         assignment_history:,
+                        exercise_uuids_map:,
                         excluded_exercise_uuids:)
     include_random_ago = history_type == :student_driven &&
                          assignment_sequence_number >= MIN_SEQUENCE_NUMBER_FOR_RANDOM_AGO
@@ -216,6 +239,7 @@ module Services::AssignmentExerciseRequests
         choose_exercise_uuids(
           assignment: assignment,
           book_container_uuids: book_container_uuid,
+          exercise_uuids_map: exercise_uuids_map,
           prioritized_exercise_uuids: algorithm_exercise_calculation.exercise_uuids,
           excluded_exercise_uuids: excluded_exercise_uuids,
           exercise_count: book_container_num_spes
@@ -241,6 +265,7 @@ module Services::AssignmentExerciseRequests
       assignment: assignment,
       book_container_uuids: assignment.assigned_book_container_uuids,
       prioritized_exercise_uuids: algorithm_exercise_calculation.exercise_uuids,
+      exercise_uuids_map: exercise_uuids_map,
       excluded_exercise_uuids: excluded_exercise_uuids,
       exercise_count: num_remaining_exercises
     )

@@ -25,7 +25,10 @@ class ExerciseCalculation < ApplicationRecord
 
   belongs_to :student, primary_key: :uuid,
                        foreign_key: :student_uuid,
+                       optional: true,
                        inverse_of: :exercise_calculations
+
+  validates :student, presence: true, if: -> { !default? }
 
   unique_index :uuid
 
@@ -37,4 +40,8 @@ class ExerciseCalculation < ApplicationRecord
   scope :not_superseded, -> { where     superseded_at: nil }
 
   scope :default, -> { where student_uuid: DEFAULT_STUDENT_UUID }
+
+  def default?
+    student_uuid == DEFAULT_STUDENT_UUID
+  end
 end
