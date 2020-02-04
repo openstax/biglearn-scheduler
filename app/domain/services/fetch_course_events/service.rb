@@ -731,44 +731,64 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           unless anti_cheating_assigned_exercise_uuids.empty?
 
       # Get assignments that need PEs or SPEs and do not yet have an ExerciseCalculation
-      default_calculation_assignments = Assignment.need_pes_or_spes.joins(
+      default_assignments = Assignment.need_pes_or_spes.joins(
         default_exercise_calculation: :algorithm_exercise_calculations
       ).where(uuid: assignment_uuids).where.not(
         ExerciseCalculation.where(
           ExerciseCalculation.arel_table[:student_uuid].eq(Assignment.arel_table[:student_uuid]),
           ExerciseCalculation.arel_table[:ecosystem_uuid].eq(Assignment.arel_table[:ecosystem_uuid])
         ).arel.exists
-      ).preload(default_exercise_calculation: :algorithm_exercise_calculation).to_a
+      ).preload(default_exercise_calculation: :algorithm_exercise_calculations).to_a
+
+      exercise_uuids_map = get_exercise_uuids_map(
+        default_assignments.map(&:assigned_book_container_uuids).uniq
+      )
 
       excluded_uuids_by_student_uuid = get_excluded_exercises_by_student_uuid(
-        default_calculation_assignments, current_time: current_time
+        default_assignments, current_time: current_time
       )
 
       # Upload default assignment PE information
-      default_pe_reqs = default_calculation_assignments.select(&:needs_pes?).map do |assignment|
+      default_pe_reqs = default_assignments.select(&:needs_pes?).flat_map do |assignment|
         exercise_calculation = assignment.default_exercise_calculation
         student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[assignment.student_uuid]
 
-        build_pe_request(
-          algorithm_exercise_calculation: exercise_calculation.algorithm_exercise_calculation,
-          assignment: assignment,
-          excluded_exercise_uuids: student_excluded_exercise_uuids
-        )
+        exercise_calculation.algorithm_exercise_calculations.map do |algorithm_exercise_calculation|
+          build_pe_request(
+            algorithm_exercise_calculation: algorithm_exercise_calculation,
+            assignment: assignment,
+            exercise_uuids_map: exercise_uuids_map,
+            excluded_exercise_uuids: student_excluded_exercise_uuids
+          )
+        end
       end
 
       # Send the default AssignmentPEs to the API server
       OpenStax::Biglearn::Api.update_assignment_pes(default_pe_reqs) if default_pe_reqs.any?
 
       # Upload default assignment SPE information
-      default_spe_reqs = default_calculation_assignments.select(&:needs_spes?).map do |assignment|
+      default_spe_reqs = default_assignments.select(&:needs_spes?).flat_map do |assignment|
         exercise_calculation = assignment.default_exercise_calculation
         student_excluded_exercise_uuids = excluded_uuids_by_student_uuid[assignment.student_uuid]
 
-        build_spe_request(
-          algorithm_exercise_calculation: exercise_calculation.algorithm_exercise_calculation,
-          assignment: assignment,
-          excluded_exercise_uuids: student_excluded_exercise_uuids
-        )
+        exercise_calculation.algorithm_exercise_calculations.flat_map do |aec|
+          [ :student_driven, :instructor_driven ].map do |history_type|
+            build_spe_request(
+              algorithm_exercise_calculation: aec,
+              assignment: assignment,
+              assignment_sequence_number: 0,
+              history_type: history_type,
+              assignment_history: {
+                0 => {
+                  assignment_uuid: assignment.uuid,
+                  book_container_uuids: assignment.assigned_book_container_uuids
+                }
+              },
+              exercise_uuids_map: exercise_uuids_map,
+              excluded_exercise_uuids: student_excluded_exercise_uuids
+            )
+          end
+        end
       end
 
       # Send the default AssignmentSPEs to the API server

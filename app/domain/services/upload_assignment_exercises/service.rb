@@ -245,19 +245,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
         book_container_uuids = assignments.flat_map(&:assigned_book_container_uuids) +
                                spaced_book_container_uuids
 
-        # Get exercises for all relevant book_container_uuids
-        @exercise_uuids_map = Hash.new do |hash, key|
-          hash[key] = Hash.new { |hash, key| hash[key] = [] }
-        end
-        ExercisePool.where(book_container_uuid: book_container_uuids).pluck(
-          :book_container_uuid,
-          :use_for_personalized_for_assignment_types,
-          :exercise_uuids
-        ).each do |book_container_uuid, assignment_types, exercise_uuids|
-          assignment_types.each do |assignment_type|
-            @exercise_uuids_map[assignment_type][book_container_uuid].concat exercise_uuids
-          end
-        end
+        exercise_uuids_map = get_exercise_uuids_map book_container_uuids
 
         excluded_uuids_by_student_uuid = get_excluded_exercises_by_student_uuid(
           assignments, current_time: start_time
@@ -291,7 +279,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           student_sequence_number = student_sequence_numbers_by_assignment_uuid.fetch(uuid)
           to_ecosystem_uuid = spe_assignment.ecosystem_uuid
 
-          assignment_type_exercise_uuids_map = @exercise_uuids_map[assignment_type]
+          assignment_type_exercise_uuids_map = exercise_uuids_map[assignment_type]
           excluded_exercise_uuids = excluded_uuids_by_student_uuid[student_uuid]
 
           instructor_book_container_uuids = assigned_book_container_uuids.dup
@@ -372,6 +360,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
           pe_request = build_pe_request(
             algorithm_exercise_calculation: algorithm_exercise_calculation,
             assignment: assignment,
+            exercise_uuids_map: exercise_uuids_map,
             excluded_exercise_uuids: student_excluded_exercise_uuids
           )
           assignment_pe_requests << pe_request
@@ -438,6 +427,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             assignment_sequence_number: instructor_sequence_number,
             history_type: :instructor_driven,
             assignment_history: mapped_instructor_history,
+            exercise_uuids_map: exercise_uuids_map,
             excluded_exercise_uuids: excluded_exercise_uuids
           )
           assignment_spe_requests << instructor_driven_spe_request
@@ -461,6 +451,7 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
             assignment_sequence_number: student_sequence_number,
             history_type: :student_driven,
             assignment_history: mapped_student_history,
+            exercise_uuids_map: exercise_uuids_map,
             excluded_exercise_uuids: excluded_exercise_uuids
           )
           assignment_spe_requests << student_driven_spe_request

@@ -4,5 +4,7 @@ FactoryBot.define do
     ecosystem
     student
     is_used_in_assignments { [ true, false ].sample }
+
+    trait(:default) { student_uuid { ExerciseCalculation::DEFAULT_STUDENT_UUID } }
   end
 end
