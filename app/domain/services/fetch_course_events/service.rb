@@ -561,50 +561,58 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       # Find relevant ExerciseCalculations
       # The ExerciseCalculation lock ensures we don't miss updates on
       # concurrent AlgorithmExerciseCalculation inserts
-      exercise_calculation_uuids = ExerciseCalculation.where(
-        <<~WHERE_SQL
-          "exercise_calculations"."uuid" IN (
+      assigned_ex_ex_uuid = AssignedExercise.arel_table[:exercise_uuid]
+      student_pe_ex_uuid = StudentPe.arel_table[:exercise_uuid]
+      assignment_pe_ex_uuid = AssignmentPe.arel_table[:exercise_uuid]
+      assignment_spe_ex_uuid = AssignmentSpe.arel_table[:exercise_uuid]
+      assignment_uuids_by_exercise_calculation_uuid = {}
+      ExerciseCalculation.select(:uuid, '"ec"."assignment_uuid"').joins(
+        <<~JOIN_SQL
+          INNER JOIN (
             #{
               ExerciseCalculation
-                .select(:uuid)
+                .select(:uuid, as[:uuid].as('assignment_uuid'))
                 .joins(:assignments)
                 .where(assignments: { uuid: assignment_uuids })
+                .merge(Assignment.need_pes_or_spes)
                 .to_sql
             }
             UNION ALL
             #{
               ExerciseCalculation
-                .select(:uuid)
+                .select(:uuid, 'NULL as "assignment_uuid"')
                 .joins(
                   algorithm_exercise_calculations: :student_pes,
                   student: { assignments: :assigned_exercises }
                 )
-                .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
+                .where(assigned_ex_ex_uuid.eq(student_pe_ex_uuid))
                 .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
                 .to_sql
             }
             UNION ALL
             #{
               ExerciseCalculation
-                .select(:uuid)
+                .select(:uuid, as[:uuid].as('assignment_uuid'))
                 .joins(assignments: :assignment_pes, student: { assignments: :assigned_exercises })
-                .where('"assigned_exercises"."exercise_uuid" = "assignment_pes"."exercise_uuid"')
+                .merge(Assignment.need_pes_or_spes)
+                .where(assigned_ex_ex_uuid.eq(assignment_pe_ex_uuid))
                 .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
                 .to_sql
             }
             UNION ALL
             #{
               ExerciseCalculation
-                .select(:uuid)
+                .select(:uuid, as[:uuid].as('assignment_uuid'))
                 .joins(assignments: :assignment_spes, student: { assignments: :assigned_exercises })
-                .where('"assigned_exercises"."exercise_uuid" = "assignment_spes"."exercise_uuid"')
+                .merge(Assignment.need_pes_or_spes)
+                .where(assigned_ex_ex_uuid.eq(assignment_spe_ex_uuid))
                 .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
                 .to_sql
             }
             UNION ALL
             #{
               ExerciseCalculation
-                .select(:uuid)
+                .select(:uuid, 'NULL as "assignment_uuid"')
                 .joins(:algorithm_exercise_calculations)
                 .where(
                   algorithm_exercise_calculations: {
@@ -613,82 +621,24 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
                 )
                 .to_sql
             }
-          )
-        WHERE_SQL
+          ) AS "ec" ON "exercise_calculations".uuid = "ec"."uuid"
+        JOIN_SQL
       )
       .ordered
       .lock('FOR NO KEY UPDATE OF "exercise_calculations"')
-      .pluck(:uuid)
+      .pluck(:uuid, :assignment_uuid)
+      .each do |exercise_calculation_uuid, assignment_uuid|
+        # Make sure the exercise_calculation_uuid exists in the hash, even if it is empty
+        assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] ||= []
+        next if assignment_uuid.nil?
 
-      # Recalculate Assignment PEs and SPEs for assignments that need them and were updated or
-      # have PEs and SPEs that conflict with the AssignedExercises that were just created,
-      # to prevent any assignment from getting a PE or SPE that was already used elsewhere
-      assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
-      ecu = ec[:uuid].as('"exercise_calculation_uuid"')
-      aeeu = AssignedExercise.arel_table[:exercise_uuid]
-      Assignment.from(
-        <<~FROM_SQL
-          (#{
-            Assignment
-              .select(:uuid, ecu)
-              .need_pes_or_spes
-              .joins(:exercise_calculation)
-              .where(uuid: assignment_uuids)
-              .to_sql
-          }
-          UNION
-          #{
-            Assignment
-              .select(:uuid, ecu)
-              .need_pes_or_spes
-              .joins(
-                :assignment_pes,
-                exercise_calculation: { student: { assignments: :assigned_exercises } }
-              )
-              .where(aeeu.eq(AssignmentPe.arel_table[:exercise_uuid]))
-              .where(
-                exercise_calculation: {
-                  student: {
-                    assignments: {
-                      assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids }
-                    }
-                  }
-                }
-              )
-              .to_sql
-          }
-          UNION
-          #{
-            Assignment
-              .select(:uuid, ecu)
-              .need_pes_or_spes
-              .joins(
-                :assignment_spes,
-                exercise_calculation: { student: { assignments: :assigned_exercises } }
-              )
-              .where(aeeu.eq(AssignmentSpe.arel_table[:exercise_uuid]))
-              .where(
-                exercise_calculation: {
-                  student: {
-                    assignments: {
-                      assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids }
-                    }
-                  }
-                }
-              )
-              .to_sql
-          }) AS "assignments"
-        FROM_SQL
-      )
-      .pluck(:uuid, as[:exercise_calculation_uuid])
-      .each do |uuid, exercise_calculation_uuid|
-        assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << uuid
+        assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid] << assignment_uuid
       end
 
       used_exercise_calculations_uuids = []
       algorithm_exercise_calculation_values = []
       AlgorithmExerciseCalculation
-        .where(exercise_calculation_uuid: exercise_calculation_uuids)
+        .where(exercise_calculation_uuid: assignment_uuids_by_exercise_calculation_uuid.keys)
         .ordered
         .lock('FOR NO KEY UPDATE')
         .pluck(:uuid, :exercise_calculation_uuid, :pending_assignment_uuids)
