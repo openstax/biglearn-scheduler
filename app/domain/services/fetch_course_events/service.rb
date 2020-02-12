@@ -732,11 +732,14 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
       # Get assignments that need PEs or SPEs and do not yet have an ExerciseCalculation
       default_assignments = Assignment.need_pes_or_spes.joins(
-        default_exercise_calculation: :algorithm_exercise_calculations
-      ).where(uuid: assignment_uuids).where.not(
+        :default_exercise_calculation
+      ).where(uuid: assignment_uuids).where(
+        AlgorithmExerciseCalculation.where(
+          AlgorithmExerciseCalculation.arel_table[:exercise_calculation_uuid].eq(ec[:uuid])
+        ).arel.exists
+      ).where.not(
         ExerciseCalculation.where(
-          ExerciseCalculation.arel_table[:student_uuid].eq(Assignment.arel_table[:student_uuid]),
-          ExerciseCalculation.arel_table[:ecosystem_uuid].eq(Assignment.arel_table[:ecosystem_uuid])
+          ec[:student_uuid].eq(as[:student_uuid]), ec[:ecosystem_uuid].eq(as[:ecosystem_uuid])
         ).arel.exists
       ).preload(default_exercise_calculation: :algorithm_exercise_calculations).to_a
 
