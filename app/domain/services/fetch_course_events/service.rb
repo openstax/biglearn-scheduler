@@ -1,7 +1,7 @@
 class Services::FetchCourseEvents::Service < Services::ApplicationService
   include Services::AssignmentExerciseRequests
 
-  BATCH_SIZE = 1000
+  BATCH_SIZE = 1
   GRACE_PERIOD = 1.month
 
   # create_course is already included in the metadata
