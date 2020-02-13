@@ -36,16 +36,23 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
     let(:course_events_response) do
       {
         request_uuid: SecureRandom.uuid,
-        course_uuid: course.uuid,
-        events: course_events,
+        events: [],
         is_gap: false,
         is_end: true
       }
     end
 
     before                       do
-      expect(OpenStax::Biglearn::Api).to receive(:fetch_course_events) do |requests|
-        { requests.first => course_events_response }
+      expect(OpenStax::Biglearn::Api).to receive(:fetch_course_events).at_least(:once) do |requests|
+        {}.tap do |response|
+          requests.each do |request|
+            response[request] = course_events_response.merge(
+              course_uuid: request[:course].uuid
+            )
+
+            response[request][:events] = course_events if request[:course].uuid == course.uuid
+          end
+        end
       end
     end
 
