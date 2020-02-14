@@ -1,5 +1,5 @@
 class Services::UploadAssignmentExercises::Service < Services::ApplicationService
-  include Services::AssignmentExerciseRequests
+  include AssignmentExerciseRequests
 
   BATCH_SIZE = 10
 

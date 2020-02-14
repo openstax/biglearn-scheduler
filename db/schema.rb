@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_01_29_215718) do
+ActiveRecord::Schema.define(version: 2020_02_14_175452) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
@@ -190,6 +190,21 @@ ActiveRecord::Schema.define(version: 2020_01_29_215718) do
     t.index ["metadata_sequence_number"], name: "index_courses_on_metadata_sequence_number", unique: true
     t.index ["updated_at"], name: "index_courses_on_updated_at", where: "((ends_at IS NULL) AND (starts_at IS NULL))"
     t.index ["uuid"], name: "index_courses_on_uuid", unique: true
+  end
+
+  create_table "delayed_jobs", force: :cascade do |t|
+    t.integer "priority", default: 0, null: false
+    t.integer "attempts", default: 0, null: false
+    t.text "handler", null: false
+    t.text "last_error"
+    t.datetime "run_at"
+    t.datetime "locked_at"
+    t.datetime "failed_at"
+    t.string "locked_by"
+    t.string "queue"
+    t.datetime "created_at"
+    t.datetime "updated_at"
+    t.index ["priority", "run_at"], name: "delayed_jobs_priority"
   end
 
   create_table "ecosystem_exercises", id: :serial, force: :cascade do |t|

@@ -1,4 +1,4 @@
-module Services::AssignmentExerciseRequests
+module AssignmentExerciseRequests
   DEFAULT_NUM_PES_PER_BOOK_CONTAINER = 3
   DEFAULT_NUM_SPES_PER_K_AGO = 1
 
