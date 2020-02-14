@@ -1,4 +1,9 @@
 class Assignment < ApplicationRecord
+  belongs_to :ecosystem, primary_key: :uuid,
+                         foreign_key: :ecosystem_uuid,
+                         inverse_of: :assignments,
+                         optional: true
+
   has_many :assigned_exercises, primary_key: :uuid,
                                 foreign_key: :assignment_uuid,
                                 dependent: :destroy,

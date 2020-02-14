@@ -553,16 +553,16 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
     CreateUpdateAssignmentSideEffectsJob.perform_later(
       assignment_uuids: assignments_hash.keys,
-      anti_cheating_assigned_exercise_uuids: anti_cheating_assigned_exercise_uuids,
-      used_algorithm_exercise_calculation_uuids: used_algorithm_exercise_calculation_uuids
+      assigned_exercise_uuids: anti_cheating_assigned_exercise_uuids,
+      algorithm_exercise_calculation_uuids: used_algorithm_exercise_calculation_uuids
     ) unless assignments_hash.empty?
 
     UpdateCourseEcosystemSideEffectsJob.perform_later(
-      course_uuids_with_changed_ecosystems: course_uuids_with_changed_ecosystems
+      course_uuids: course_uuids_with_changed_ecosystems
     ) unless course_uuids_with_changed_ecosystems.empty?
 
     UpdateRosterSideEffectsJob.perform_later(
-      course_uuids_with_changed_rosters: course_uuids_with_changed_rosters
+      course_uuids: course_uuids_with_changed_rosters
     ) unless course_uuids_with_changed_rosters.empty?
 
     # No sort needed because already locked above

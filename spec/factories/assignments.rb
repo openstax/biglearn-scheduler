@@ -7,7 +7,7 @@ FactoryBot.define do
 
     uuid                          { SecureRandom.uuid }
     course_uuid                   { SecureRandom.uuid }
-    ecosystem_uuid                { SecureRandom.uuid }
+    ecosystem
     student_uuid                  { SecureRandom.uuid }
     assignment_type               { ['reading', 'homework', 'practice', 'concept-coach'].sample }
     assigned_book_container_uuids { book_containers_count.times.map { SecureRandom.uuid } }

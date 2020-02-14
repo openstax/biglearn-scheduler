@@ -3,8 +3,8 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
 
   def perform(
     assignment_uuids:,
-    anti_cheating_assigned_exercise_uuids:,
-    used_algorithm_exercise_calculation_uuids:
+    assigned_exercise_uuids:,
+    algorithm_exercise_calculation_uuids:
   )
     # Find relevant ExerciseCalculations
     # The ExerciseCalculation lock ensures we don't miss updates on
@@ -36,7 +36,7 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
                 student: { assignments: :assigned_exercises }
               )
               .where(assigned_ex_ex_uuid.eq(student_pe_ex_uuid))
-              .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
+              .where(assigned_exercises: { uuid: assigned_exercise_uuids })
               .to_sql
           }
           UNION ALL
@@ -46,7 +46,7 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
               .joins(assignments: :assignment_pes, student: { assignments: :assigned_exercises })
               .merge(Assignment.need_pes_or_spes)
               .where(assigned_ex_ex_uuid.eq(assignment_pe_ex_uuid))
-              .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
+              .where(assigned_exercises: { uuid: assigned_exercise_uuids })
               .to_sql
           }
           UNION ALL
@@ -56,7 +56,7 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
               .joins(assignments: :assignment_spes, student: { assignments: :assigned_exercises })
               .merge(Assignment.need_pes_or_spes)
               .where(assigned_ex_ex_uuid.eq(assignment_spe_ex_uuid))
-              .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
+              .where(assigned_exercises: { uuid: assigned_exercise_uuids })
               .to_sql
           }
           UNION ALL
@@ -65,9 +65,7 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
               .select(:uuid, 'NULL as "assignment_uuid"')
               .joins(:algorithm_exercise_calculations)
               .where(
-                algorithm_exercise_calculations: {
-                  uuid: used_algorithm_exercise_calculation_uuids
-                }
+                algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids }
               )
               .to_sql
           }
@@ -94,13 +92,13 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
       .pluck(:uuid, :exercise_calculation_uuid, :pending_assignment_uuids)
       .each do |uuid, exercise_calculation_uuid, pending_assignment_uuids|
       used_exercise_calculations_uuids << exercise_calculation_uuid \
-        if used_algorithm_exercise_calculation_uuids.include? uuid
+        if algorithm_exercise_calculation_uuids.include? uuid
 
-      assignment_uuids = assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid]
+      a_uuids = assignment_uuids_by_exercise_calculation_uuid[exercise_calculation_uuid]
       # Don't bother updating records where assignment_uuids is empty
       algorithm_exercise_calculation_values << [
-        uuid, (pending_assignment_uuids + assignment_uuids).uniq
-      ] unless assignment_uuids.empty?
+        uuid, (pending_assignment_uuids + a_uuids).uniq
+      ] unless a_uuids.empty?
     end
 
     ExerciseCalculation.where(uuid: used_exercise_calculations_uuids)
@@ -126,9 +124,9 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
         :student_pes, exercise_calculation: { student: { assignments: :assigned_exercises } }
       )
       .where('"assigned_exercises"."exercise_uuid" = "student_pes"."exercise_uuid"')
-      .where(assigned_exercises: { uuid: anti_cheating_assigned_exercise_uuids })
+      .where(assigned_exercises: { uuid: assigned_exercise_uuids })
       .ordered_update_all(is_pending_for_student: true) \
-        unless anti_cheating_assigned_exercise_uuids.empty?
+        unless assigned_exercise_uuids.empty?
 
     # Get assignments that need PEs or SPEs and do not yet have an ExerciseCalculation
     default_assignments = Assignment.need_pes_or_spes.joins(

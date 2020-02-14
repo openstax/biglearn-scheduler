@@ -9,6 +9,10 @@ class Ecosystem < ApplicationRecord
                                    dependent: :destroy,
                                    inverse_of: :ecosystem
 
+  has_many :assignments, primary_key: :uuid,
+                         foreign_key: :ecosystem_uuid,
+                         inverse_of: :ecosystem
+
   unique_index :uuid
 
   validates :sequence_number, presence: true,
