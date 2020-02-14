@@ -1,5 +1,5 @@
 class UpdateCourseEcosystemSideEffectsJob < ApplicationJob
-  def perform(course_uuids:)
+  def perform_with_transaction(course_uuids:)
     # Get students in courses with updated ecosystems
     student_uuids = Student.where(course_uuid: course_uuids).pluck(:uuid)
 

@@ -1,5 +1,5 @@
 class UpdateRosterSideEffectsJob < ApplicationJob
-  def perform(course_uuids:)
+  def perform_with_transaction(course_uuids:)
     # Get course containers in courses with updated rosters
     course_container_uuids = CourseContainer.where(course_uuid: course_uuids).pluck(:uuid)
 

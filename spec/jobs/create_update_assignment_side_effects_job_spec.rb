@@ -17,14 +17,30 @@ RSpec.describe CreateUpdateAssignmentSideEffectsJob, type: :job do
   let(:student)                              { exercise_calculation.student }
   let(:ecosystem)                            { exercise_calculation.ecosystem }
   let(:pe_assignment)                        do
-    FactoryBot.create :assignment, student: student, ecosystem: ecosystem
+    FactoryBot.create(
+      :assignment,
+      ecosystem: ecosystem,
+      student: student,
+      goal_num_tutor_assigned_pes: rand(10) + 1,
+      pes_are_assigned: false,
+      goal_num_tutor_assigned_spes: rand(4) + 1,
+      spes_are_assigned: false
+    )
   end
 
   let(:assignment_pe)                        do
     FactoryBot.create :assignment_pe, assignment: pe_assignment
   end
   let(:spe_assignment)                       do
-    FactoryBot.create :assignment, ecosystem: ecosystem, student: student
+    FactoryBot.create(
+      :assignment,
+      ecosystem: ecosystem,
+      student: student,
+      goal_num_tutor_assigned_pes: rand(10) + 1,
+      pes_are_assigned: false,
+      goal_num_tutor_assigned_spes: rand(4) + 1,
+      spes_are_assigned: false
+    )
   end
   let(:assignment_spe)                       do
     FactoryBot.create :assignment_spe, assignment: spe_assignment

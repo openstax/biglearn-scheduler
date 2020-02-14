@@ -1,7 +1,7 @@
 class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
   include AssignmentExerciseRequests
 
-  def perform(
+  def perform_with_transaction(
     assignment_uuids:,
     assigned_exercise_uuids:,
     algorithm_exercise_calculation_uuids:
