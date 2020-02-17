@@ -34,6 +34,11 @@ class Assignment < ApplicationRecord
     ExerciseCalculation.default.find_by ecosystem_uuid: ecosystem_uuid
   end
 
+  belongs_to :ecosystem, primary_key: :uuid,
+                         foreign_key: :ecosystem_uuid,
+                         inverse_of: :assignments,
+                         optional: true
+
   belongs_to :student, primary_key: :uuid,
                        foreign_key: :student_uuid,
                        optional: true,

@@ -5,6 +5,10 @@ RSpec.describe Ecosystem, type: :model do
 
   it { is_expected.to have_many(:ecosystem_exercises).dependent(:destroy) }
 
+  it { is_expected.to have_many(:exercise_calculations).dependent(:destroy) }
+
+  it { is_expected.to have_many(:assignments) }
+
   it { is_expected.to validate_presence_of :sequence_number }
 
   it do
