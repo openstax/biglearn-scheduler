@@ -188,7 +188,7 @@ ActiveRecord::Schema.define(version: 2020_02_14_175452) do
     t.index ["ecosystem_uuid"], name: "index_courses_on_ecosystem_uuid"
     t.index ["ends_at", "starts_at"], name: "index_courses_on_ends_at_and_starts_at"
     t.index ["metadata_sequence_number"], name: "index_courses_on_metadata_sequence_number", unique: true
-    t.index ["updated_at"], name: "index_courses_on_updated_at", where: "((ends_at IS NULL) AND (starts_at IS NULL))"
+    t.index ["updated_at"], name: "index_courses_on_updated_at"
     t.index ["uuid"], name: "index_courses_on_uuid", unique: true
   end
 
