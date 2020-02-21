@@ -23,6 +23,7 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
             ExerciseCalculation
               .select(:uuid, assignment[:uuid].as('assignment_uuid'))
               .joins(:assignments)
+              .not_superseded
               .where(assignments: { uuid: assignment_uuids })
               .merge(Assignment.need_pes_or_spes)
               .to_sql
@@ -35,6 +36,7 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
                 algorithm_exercise_calculations: :student_pes,
                 student: { assignments: :assigned_exercises }
               )
+              .not_superseded
               .where(assigned_ex_ex_uuid.eq(student_pe_ex_uuid))
               .where(assigned_exercises: { uuid: assigned_exercise_uuids })
               .to_sql
@@ -44,6 +46,7 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
             ExerciseCalculation
               .select(:uuid, assignment[:uuid].as('assignment_uuid'))
               .joins(assignments: :assignment_pes, student: { assignments: :assigned_exercises })
+              .not_superseded
               .merge(Assignment.need_pes_or_spes)
               .where(assigned_ex_ex_uuid.eq(assignment_pe_ex_uuid))
               .where(assigned_exercises: { uuid: assigned_exercise_uuids })
@@ -54,6 +57,7 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
             ExerciseCalculation
               .select(:uuid, assignment[:uuid].as('assignment_uuid'))
               .joins(assignments: :assignment_spes, student: { assignments: :assigned_exercises })
+              .not_superseded
               .merge(Assignment.need_pes_or_spes)
               .where(assigned_ex_ex_uuid.eq(assignment_spe_ex_uuid))
               .where(assigned_exercises: { uuid: assigned_exercise_uuids })
@@ -106,7 +110,6 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
       unless used_exercise_calculations_uuids.empty?
 
     unless algorithm_exercise_calculation_values.empty?
-      algorithm_exercise_calculation_uuids = algorithm_exercise_calculation_values.map(&:first)
       AlgorithmExerciseCalculation.update_all(
         <<~UPDATE_SQL
           "pending_assignment_uuids" = "values"."pending_assignment_uuids"
