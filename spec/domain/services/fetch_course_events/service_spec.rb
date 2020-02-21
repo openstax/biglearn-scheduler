@@ -676,6 +676,17 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         let!(:existing_assignment)      do
           FactoryBot.create :assignment, uuid: assignment_uuid, student_uuid: student_uuid
         end
+        let(:num_existing_assigned_exercises) { num_assigned_exercises/2 }
+        let!(:existing_assigned_exercises) do
+          assigned_exercises.first(num_existing_assigned_exercises).map do |assigned_exercise|
+            FactoryBot.create(
+              :assigned_exercise,
+              assignment: existing_assignment,
+              uuid: assigned_exercise.fetch(:trial_uuid),
+              **assigned_exercise.slice(:exercise_uuid, :is_spe, :is_pe)
+            )
+          end
+        end
         let!(:existing_assignment_pes)  do
           assigned_exercise_exercise_uuids.map do |assigned_exercise_uuid|
             FactoryBot.create :assignment_pe,
@@ -694,38 +705,41 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         end
 
         it 'updates the existing assignment' do
-            expect(CreateUpdateAssignmentSideEffectsJob).to receive(:perform_later).with(
-              assignment_uuids: [ assignment_uuid ],
-              assigned_exercise_uuids: assigned_exercise_trial_uuids,
-              algorithm_exercise_calculation_uuids: [
-                existing_algorithm_exercise_calculation.uuid
-              ]
-            )
+          existing_assigned_ex_uuids = existing_assigned_exercises.map(&:uuid)
+          expect(CreateUpdateAssignmentSideEffectsJob).to receive(:perform_later).with(
+            assignment_uuids: [ assignment_uuid ],
+            assigned_exercise_uuids: assigned_exercise_trial_uuids - existing_assigned_ex_uuids,
+            algorithm_exercise_calculation_uuids: [
+              existing_algorithm_exercise_calculation.uuid
+            ]
+          )
 
-            expect do
-              subject.process
-            end.to  not_change { Course.count }
-               .and not_change { EcosystemPreparation.count }
-               .and not_change { BookContainerMapping.count }
-               .and not_change { CourseContainer.count }
-               .and not_change { Student.count }
-               .and not_change { Assignment.count }
-               .and change     { AssignedExercise.count }.by(num_assigned_exercises)
-               .and not_change { Response.count }
-               .and not_change { ExerciseCalculation.count }
-               .and not_change { AlgorithmExerciseCalculation.count }
-               .and not_change { other_assignment.reload.spes_are_assigned }
-               .and not_change { other_assignment.pes_are_assigned }
-               .and not_change { other_assignment.is_deleted }
-               .and not_change { other_assignment.has_exercise_calculation }
-               .and change     { course.reload.sequence_number }.from(0).to(sequence_number + 1)
-               .and not_change { course.ecosystem_uuid }
-               .and not_change { course.starts_at }
-               .and not_change { course.ends_at }
-               .and not_change { course.course_excluded_exercise_uuids }
-               .and not_change { course.course_excluded_exercise_group_uuids }
-               .and not_change { course.global_excluded_exercise_uuids }
-               .and not_change { course.global_excluded_exercise_group_uuids }
+          expect do
+            subject.process
+          end.to  not_change { Course.count }
+             .and not_change { EcosystemPreparation.count }
+             .and not_change { BookContainerMapping.count }
+             .and not_change { CourseContainer.count }
+             .and not_change { Student.count }
+             .and not_change { Assignment.count }
+             .and change     { AssignedExercise.count }.by(
+               num_assigned_exercises - num_existing_assigned_exercises
+             )
+             .and not_change { Response.count }
+             .and not_change { ExerciseCalculation.count }
+             .and not_change { AlgorithmExerciseCalculation.count }
+             .and not_change { other_assignment.reload.spes_are_assigned }
+             .and not_change { other_assignment.pes_are_assigned }
+             .and not_change { other_assignment.is_deleted }
+             .and not_change { other_assignment.has_exercise_calculation }
+             .and change     { course.reload.sequence_number }.from(0).to(sequence_number + 1)
+             .and not_change { course.ecosystem_uuid }
+             .and not_change { course.starts_at }
+             .and not_change { course.ends_at }
+             .and not_change { course.course_excluded_exercise_uuids }
+             .and not_change { course.course_excluded_exercise_group_uuids }
+             .and not_change { course.global_excluded_exercise_uuids }
+             .and not_change { course.global_excluded_exercise_group_uuids }
 
           assignment = existing_assignment.reload
           expect(assignment.course_uuid).to eq course.uuid

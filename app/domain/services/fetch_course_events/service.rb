@@ -111,7 +111,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
     assignments_hash = {}
     used_algorithm_exercise_calculation_uuids = []
     assigned_exercises = []
-    anti_cheating_assigned_exercise_uuids = []
+    no_feedback_assigned_exercise_uuids = Set.new
     student_uuids_by_assigned_exercise_uuid = Hash.new { |hash, key| hash[key] = [] }
     responses_hash = {}
     courses = course_event_responses.map do |course_event_response|
@@ -322,7 +322,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         used_algorithm_exercise_calculation_uuids << spe_calculation_uuid \
           unless spe_calculation_uuid.nil?
 
-        assignments_hash[assignment_uuid] = Assignment.new(
+        assignment = Assignment.new(
           uuid: assignment_uuid,
           course_uuid: course_uuid,
           ecosystem_uuid: ecosystem_uuid,
@@ -340,20 +340,20 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           is_deleted: data[:is_deleted] || false,
           has_exercise_calculation: !pe_calculation_uuid.nil? || !spe_calculation_uuid.nil?
         )
+        assignments_hash[assignment_uuid] = assignment
 
-        data.fetch(:assigned_exercises).each do |assigned_exercise|
+        exercises.each do |assigned_exercise|
           assigned_exercise_uuid = assigned_exercise.fetch(:trial_uuid)
-          exercise_uuid = assigned_exercise.fetch(:exercise_uuid)
 
           assigned_exercises << AssignedExercise.new(
             uuid: assigned_exercise_uuid,
-            assignment: assignments_hash[assignment_uuid],
-            exercise_uuid: exercise_uuid,
+            assignment: assignment,
+            exercise_uuid: assigned_exercise.fetch(:exercise_uuid),
             is_spe: assigned_exercise.fetch(:is_spe),
             is_pe: assigned_exercise.fetch(:is_pe)
           )
 
-          anti_cheating_assigned_exercise_uuids << assigned_exercise_uuid \
+          no_feedback_assigned_exercise_uuids << assigned_exercise_uuid \
             if (!due_at.nil? && due_at > current_time) ||
                (!feedback_at.nil? && feedback_at > current_time)
         end
@@ -525,11 +525,13 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       }
     ).failed_instances.size
 
-    failures += AssignedExercise.import(
+    result = AssignedExercise.import(
       assigned_exercises, validate: false, on_duplicate_key_ignore: {
         conflict_target: [ :uuid ]
-      }
-    ).failed_instances.size
+      }, returning: [ :uuid ]
+    )
+    failures += result.failed_instances.size
+    imported_assigned_exercise_uuids = result.results
 
     # NOTE: update happens when an answer is changed
     #       first_responded_at is not included here so it is never updated after set
@@ -551,11 +553,17 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
     # Event side-effects
 
-    CreateUpdateAssignmentSideEffectsJob.perform_later(
-      assignment_uuids: assignments_hash.keys,
-      assigned_exercise_uuids: anti_cheating_assigned_exercise_uuids,
-      algorithm_exercise_calculation_uuids: used_algorithm_exercise_calculation_uuids
-    ) unless assignments_hash.empty?
+    unless assignments_hash.empty?
+      deduplication_assigned_exercise_uuids = imported_assigned_exercise_uuids.select do |a_ex_uuid|
+        no_feedback_assigned_exercise_uuids.include? a_ex_uuid
+      end
+
+      CreateUpdateAssignmentSideEffectsJob.perform_later(
+        assignment_uuids: assignments_hash.keys,
+        assigned_exercise_uuids: deduplication_assigned_exercise_uuids,
+        algorithm_exercise_calculation_uuids: used_algorithm_exercise_calculation_uuids
+      )
+    end
 
     UpdateCourseEcosystemSideEffectsJob.perform_later(
       course_uuids: course_uuids_with_changed_ecosystems
