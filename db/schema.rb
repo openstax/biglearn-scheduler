@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema.define(version: 2020_02_14_175452) do
+ActiveRecord::Schema.define(version: 2020_02_21_231419) do
 
   # These are extensions that must be enabled in order to support this database
   enable_extension "citext"
@@ -263,6 +263,7 @@ ActiveRecord::Schema.define(version: 2020_02_14_175452) do
     t.datetime "superseded_at"
     t.index ["algorithm_names"], name: "index_exercise_calculations_on_algorithm_names", using: :gin
     t.index ["ecosystem_uuid"], name: "index_exercise_calculations_on_ecosystem_uuid"
+    t.index ["student_uuid", "ecosystem_uuid"], name: "index_active_ex_calc_on_student_uuid_and_ecosystem_uuid", where: "(superseded_at IS NULL)"
     t.index ["student_uuid", "ecosystem_uuid"], name: "index_exercise_calculations_on_student_uuid_and_ecosystem_uuid"
     t.index ["superseded_at"], name: "index_deletable_exercise_calculations_on_superseded_at", where: "(NOT is_used_in_assignments)"
     t.index ["uuid"], name: "index_exercise_calculations_on_uuid", unique: true
