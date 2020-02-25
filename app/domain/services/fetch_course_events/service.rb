@@ -531,7 +531,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       }, returning: [ :uuid ]
     )
     failures += result.failed_instances.size
-    imported_assigned_exercise_uuids = result.results
+    imported_assigned_exercise_uuids = result.results || []
 
     # NOTE: update happens when an answer is changed
     #       first_responded_at is not included here so it is never updated after set
