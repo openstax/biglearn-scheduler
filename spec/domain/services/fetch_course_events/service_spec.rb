@@ -618,11 +618,15 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
 
       context 'with a new Assignment' do
         it 'creates an Assignment for the Course' do
-          expect(CreateUpdateAssignmentSideEffectsJob).to receive(:perform_later).with(
-            assignment_uuids: [ assignment_uuid ],
-            assigned_exercise_uuids: assigned_exercise_trial_uuids,
-            algorithm_exercise_calculation_uuids: []
-          )
+          if is_deleted
+            expect(CreateUpdateAssignmentSideEffectsJob).not_to receive(:perform_later)
+          else
+            expect(CreateUpdateAssignmentSideEffectsJob).to receive(:perform_later).with(
+              assignment_uuids: [ assignment_uuid ],
+              assigned_exercise_uuids: assigned_exercise_trial_uuids,
+              algorithm_exercise_calculation_uuids: []
+            )
+          end
 
           expect do
             subject.process
@@ -705,13 +709,18 @@ RSpec.describe Services::FetchCourseEvents::Service, type: :service do
         end
 
         it 'updates the existing assignment' do
-          existing_assigned_ex_uuids = existing_assigned_exercises.map(&:uuid)
+          if is_deleted
+            assignment_uuids = []
+            assigned_exercise_uuids = []
+          else
+            assignment_uuids = [ assignment_uuid ]
+            existing_assigned_ex_uuids = existing_assigned_exercises.map(&:uuid)
+            assigned_exercise_uuids = assigned_exercise_trial_uuids - existing_assigned_ex_uuids
+          end
           expect(CreateUpdateAssignmentSideEffectsJob).to receive(:perform_later).with(
-            assignment_uuids: [ assignment_uuid ],
-            assigned_exercise_uuids: assigned_exercise_trial_uuids - existing_assigned_ex_uuids,
-            algorithm_exercise_calculation_uuids: [
-              existing_algorithm_exercise_calculation.uuid
-            ]
+            assignment_uuids: assignment_uuids,
+            assigned_exercise_uuids: assigned_exercise_uuids,
+            algorithm_exercise_calculation_uuids: [ existing_algorithm_exercise_calculation.uuid ]
           )
 
           expect do

@@ -34,18 +34,21 @@ class Services::UploadAssignmentExercises::Service < Services::ApplicationServic
 
         all_assignments = Assignment
           .select(
-            aa[Arel.star], aec[:uuid].as('algorithm_exercise_calculation_uuid'), ec[:superseded_at]
+            <<~SELECT_SQL
+              DISTINCT ON ("assignments"."uuid", "algorithm_exercise_calculations"."algorithm_name")
+                "assignments".*,
+                "algorithm_exercise_calculations"."uuid" AS "algorithm_exercise_calculation_uuid"
+            SELECT_SQL
           )
-          .joins(exercise_calculation: :algorithm_exercise_calculations)
+          .joins(exercise_calculations: :algorithm_exercise_calculations)
           .where(uuid: algorithm_exercise_calculations.flat_map(&:pending_assignment_uuids))
           .where(
-            exercise_calculation: {
+            exercise_calculations: {
               algorithm_exercise_calculations: { uuid: algorithm_exercise_calculation_uuids }
             }
           )
-        assignments = all_assignments.select do |assignment|
-          !assignment.is_deleted && assignment.superseded_at.nil?
-        end
+          .order(aa[:uuid], aec[:algorithm_name], ec[:superseded_at].desc)
+        assignments = all_assignments.to_a.uniq
 
         # Delete relevant AssignmentPe and AssignmentSpes, since we are about to reupload them
         pe_assignments = assignments.select(&:needs_pes?)

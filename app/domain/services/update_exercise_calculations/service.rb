@@ -16,7 +16,7 @@ class Services::UpdateExerciseCalculations::Service < Services::ApplicationServi
 
       assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
       Assignment
-        .joins(:exercise_calculation)
+        .joins(:exercise_calculations)
         .where(exercise_calculations: { uuid: exercise_calculation_uuids })
         .pluck(ec[:uuid], :uuid)
         .each do |exercise_calculation_uuid, uuid|
