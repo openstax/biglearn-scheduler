@@ -53,7 +53,8 @@ RSpec.describe CreateUpdateAssignmentSideEffectsJob, type: :job do
       goal_num_tutor_assigned_pes: rand(10) + 1,
       pes_are_assigned: false,
       goal_num_tutor_assigned_spes: rand(4) + 1,
-      spes_are_assigned: false
+      spes_are_assigned: false,
+      book_containers_count: rand(10) + 1
     )
   end
   let!(:assigned_exercise_1)                 do
@@ -75,9 +76,21 @@ RSpec.describe CreateUpdateAssignmentSideEffectsJob, type: :job do
   let(:default_exercise_calculation)         do
     FactoryBot.create :exercise_calculation, :default, ecosystem: ecosystem
   end
+  let!(:exercise_pools)                      do
+    new_assignment.assigned_book_container_uuids.map do |book_container_uuid|
+      FactoryBot.create(
+        :exercise_pool,
+        book_container_uuid: book_container_uuid,
+        use_for_personalized_for_assignment_types: [ new_assignment.assignment_type ],
+        exercises_count: rand(10) + 1
+      )
+    end
+  end
   let!(:default_algorithm_exercise_calculation) do
     FactoryBot.create(
-      :algorithm_exercise_calculation, exercise_calculation: default_exercise_calculation
+      :algorithm_exercise_calculation,
+      exercise_calculation: default_exercise_calculation,
+      exercise_uuids: exercise_pools.flat_map(&:exercise_uuids).shuffle
     )
   end
 
@@ -95,10 +108,18 @@ RSpec.describe CreateUpdateAssignmentSideEffectsJob, type: :job do
       end
     end
 
-    context 'with a default ExerciseCalculation' do
+    context 'with a default ExerciseCalculation and some ExercisePools' do
       it 'uploads default PEs and SPEs for the assignment' do
-        expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes)
-        expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes)
+        expect(OpenStax::Biglearn::Api).to receive(:update_assignment_pes) do |requests|
+          requests.each do |request|
+            expect(request[:exercise_uuids]).not_to be_empty
+          end
+        end
+        expect(OpenStax::Biglearn::Api).to receive(:update_assignment_spes) do |requests|
+          requests.each do |request|
+            expect(request[:exercise_uuids]).not_to be_empty
+          end
+        end
 
         expect do
           subject

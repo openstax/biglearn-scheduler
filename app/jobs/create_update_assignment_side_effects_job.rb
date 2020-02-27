@@ -146,7 +146,7 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
     ).preload(default_exercise_calculation: :algorithm_exercise_calculations).to_a
 
     exercise_uuids_map = get_exercise_uuids_map(
-      default_assignments.map(&:assigned_book_container_uuids).uniq
+      default_assignments.flat_map(&:assigned_book_container_uuids).uniq
     )
 
     excluded_uuids_by_student_uuid = get_excluded_exercises_by_student_uuid default_assignments
