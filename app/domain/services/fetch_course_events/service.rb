@@ -355,8 +355,8 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           )
 
           no_feedback_assigned_exercise_uuids << assigned_exercise_uuid if !is_deleted && (
-            (!due_at.nil? && due_at > current_time) ||
-            (!feedback_at.nil? && feedback_at > current_time)
+            (due_at.present? && due_at > current_time) ||
+            (feedback_at.present? && feedback_at > current_time)
           )
         end
       end
