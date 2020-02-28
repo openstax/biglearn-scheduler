@@ -192,7 +192,7 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
     ).preload(default_exercise_calculation: :algorithm_exercise_calculations).to_a
 
     exercise_uuids_map = get_exercise_uuids_map(
-      default_assignments.map(&:assigned_book_container_uuids).uniq
+      default_assignments.flat_map(&:assigned_book_container_uuids).uniq
     )
 
     excluded_uuids_by_student_uuid = get_excluded_exercises_by_student_uuid default_assignments
@@ -208,7 +208,13 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
           assignment: assignment,
           exercise_uuids_map: exercise_uuids_map,
           excluded_exercise_uuids: student_excluded_exercise_uuids
-        )
+        ).tap do |request|
+          raise(
+            "Bad PE Request: #{request.inspect}; AEC: #{algorithm_exercise_calculation.inspect
+            }; A: #{assignment.inspect}; EXM: #{exercise_uuids_map.inspect
+            }; EE: #{student_excluded_exercise_uuids.inspect}"
+          ) if request[:exercise_uuids].empty?
+        end
       end
     end
 
@@ -235,7 +241,12 @@ class CreateUpdateAssignmentSideEffectsJob < ApplicationJob
             },
             exercise_uuids_map: exercise_uuids_map,
             excluded_exercise_uuids: student_excluded_exercise_uuids
-          )
+          ).tap do |request|
+            raise(
+              "Bad SPE Request: #{request.inspect}; AEC: #{aec.inspect}; A: #{assignment.inspect
+              }; EXM: #{exercise_uuids_map.inspect}; EE: #{student_excluded_exercise_uuids.inspect}"
+            ) if request[:exercise_uuids].empty?
+          end
         end
       end
     end
