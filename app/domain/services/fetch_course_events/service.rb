@@ -322,6 +322,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
         used_algorithm_exercise_calculation_uuids << spe_calculation_uuid \
           unless spe_calculation_uuid.nil?
 
+        is_deleted = data[:is_deleted] || false
         assignment = Assignment.new(
           uuid: assignment_uuid,
           course_uuid: course_uuid,
@@ -337,7 +338,7 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
           spes_are_assigned: data.fetch(:spes_are_assigned),
           goal_num_tutor_assigned_pes: data[:goal_num_tutor_assigned_pes],
           pes_are_assigned: data.fetch(:pes_are_assigned),
-          is_deleted: data[:is_deleted] || false,
+          is_deleted: is_deleted,
           has_exercise_calculation: !pe_calculation_uuid.nil? || !spe_calculation_uuid.nil?
         )
         assignments_hash[assignment_uuid] = assignment
@@ -353,9 +354,10 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
             is_pe: assigned_exercise.fetch(:is_pe)
           )
 
-          no_feedback_assigned_exercise_uuids << assigned_exercise_uuid \
-            if (!due_at.nil? && due_at > current_time) ||
-               (!feedback_at.nil? && feedback_at > current_time)
+          no_feedback_assigned_exercise_uuids << assigned_exercise_uuid if !is_deleted && (
+            (due_at.present? && due_at > current_time) ||
+            (feedback_at.present? && feedback_at > current_time)
+          )
         end
       end
 
@@ -501,9 +503,9 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
       }
     ).failed_instances.size
 
+    assignments = assignments_hash.values.sort_by(&Assignment.sort_proc)
     failures += Assignment.import(
-      assignments_hash.values.sort_by(&Assignment.sort_proc),
-      validate: false, on_duplicate_key_update: {
+      assignments, validate: false, on_duplicate_key_update: {
         conflict_target: [ :uuid ],
         columns: [
           :course_uuid,
@@ -553,16 +555,19 @@ class Services::FetchCourseEvents::Service < Services::ApplicationService
 
     # Event side-effects
 
-    unless assignments_hash.empty?
+    unless assignments.empty?
+      assignment_uuids = assignments.reject(&:is_deleted).map(&:uuid)
       deduplication_assigned_exercise_uuids = imported_assigned_exercise_uuids.select do |a_ex_uuid|
         no_feedback_assigned_exercise_uuids.include? a_ex_uuid
       end
 
       CreateUpdateAssignmentSideEffectsJob.perform_later(
-        assignment_uuids: assignments_hash.keys,
+        assignment_uuids: assignment_uuids,
         assigned_exercise_uuids: deduplication_assigned_exercise_uuids,
         algorithm_exercise_calculation_uuids: used_algorithm_exercise_calculation_uuids
-      )
+      ) unless assignment_uuids.empty? &&
+               deduplication_assigned_exercise_uuids.empty? &&
+               used_algorithm_exercise_calculation_uuids.empty?
     end
 
     UpdateCourseEcosystemSideEffectsJob.perform_later(

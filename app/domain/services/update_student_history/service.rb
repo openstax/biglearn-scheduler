@@ -145,7 +145,7 @@ class Services::UpdateStudentHistory::Service < Services::ApplicationService
 
     assignment_uuids_by_exercise_calculation_uuid = Hash.new { |hash, key| hash[key] = [] }
     Assignment
-      .joins(:exercise_calculation)
+      .joins(:exercise_calculations)
       .where(exercise_calculations: { uuid: exercise_calculation_uuids })
       .pluck(ExerciseCalculation.arel_table[:uuid], :uuid)
       .each do |exercise_calculation_uuid, uuid|

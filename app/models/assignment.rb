@@ -12,17 +12,19 @@ class Assignment < ApplicationRecord
                                 dependent: :destroy,
                                 inverse_of: :assignment
 
-  has_one :exercise_calculation,
+  has_many :exercise_calculations,
     -> do
       where(
         ExerciseCalculation.arel_table[:ecosystem_uuid].eq(Assignment.arel_table[:ecosystem_uuid])
-      )
+      ).order(superseded_at: :desc)
     end,
     primary_key: :student_uuid,
     foreign_key: :student_uuid,
     inverse_of: :assignments
-  def exercise_calculation
-    ExerciseCalculation.find_by student_uuid: student_uuid, ecosystem_uuid: ecosystem_uuid
+  def exercise_calculations
+    ExerciseCalculation.where(student_uuid: student_uuid, ecosystem_uuid: ecosystem_uuid).order(
+      superseded_at: :desc
+    )
   end
 
   has_one :default_exercise_calculation,
